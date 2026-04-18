@@ -1,169 +1,131 @@
-% 
-%  chapter2.tex
-%  ReportISEL
-%  
-%  Created by Matilde Pós-de-Mina Pato on 2012/10/09.
 %
-\chapter{Manual do utilizador}
-\label{cha:users_manual}
-
-% ================
-% = Introduction =
-% ================
-\section{Introdução} % (fold)
-\label{sec:introduction}
-Este documento reutiliza algumas partes do \textit{template} criado para a escrita da Dissertação/Trabalho de Projecto de Mestrado de MEIC. Por ser meramente informativo, o resto do documento encontra-se escrito na lingua inglesa.
-
-% section introduction (end)
-
-% ====================
-% = Folder Structure =
-% ====================
-\section{Folder Structure} % (fold)
-\label{sec:folder_structure}
-
-The template file for writing dissertations in  \texttt{LaTeX} is organized into a main directory, a set of files and sub-directories. \textbf{reportisel}  is the main directory and includes:
-	\begin{description}
-		\item[Logo] Directory with Faculty logos;
-		\item[Chapters] Directory where to put user files (text and figures);
-		\begin{description}
-		\item[scripts] Directory with useful bash scripts, e.g., for cleaning all temporary files;
-		\item[img] Directory with all images to use in the chapters, e.g. \texttt{ra-raster.png};
-		\end{description}
-		\item[alpha-pt.bst] A file with bibliography names in portuguese, e.g., 'Relatório Técnico'. This file is used automatically if Portuguese is selected as the main language (see below);
-		\item[defaults.tex] A file with the main default values for the package (institution name, faculty's logo, degree name and similars - {\color{red}{TO CHANGE BY THE USER}});
-		\item[personaldataofreport.tex] A file with the main default values for the package (identification of report as well as the author and juries - {\color{red}{TO CHANGE BY THE USER}});
-		\item[template.tex] The main file. You should run  \texttt{LaTeX} in this one. Please refrain from changing the file content outside of the well defined area;
-		\item[bibliography.bib] The bib file. An easy way to find to import citation into \texttt{bibtex} is select option \texttt{Show links to import citation into \texttt{BibTex}} in \href{http://scholar.google.pt/scholar_settings?hl=en&as_sdt=0,5}{\texttt{Scholar google settings}}.
-		\item[reportisel.cls] The  \texttt{LaTeX} class file for the thesis{} style. Currently, some of the defaults are stored here instead of \verb!defaults.tex!. This file should not be changed, unless you're ready to play with fire! :) - {\color{red}{DO NOT CHANGE}});
-	\end{description}
-
-Again, we would like to recall that all the user \texttt{LaTeX} files should be stored in the \verb!reportisel! directory, and all the images in \verb!reportisel/Chapters/img! directory.\todo[inline]{Yet another note!}
-% section folder_structure (end)
-
-% ===================
-% = Package options =
-% ===================
-\section{Package Options} % (fold)
-\label{sec:package_options}
-
-The thesis{} style includes the following options, that must be included in the options list in the \verb!\documentclass[options]{reportisel}! line at the top of the \texttt{template.tex} file.
-
-The list below aggregates related options in a single item. For each list, the default value is prefixed with a *.
-
-\subsection{Language Related Options} % (fold)
-\label{sub:language_related_options}
-
-You must choose the main language for the document. The available options are:
-
-\begin{enumerate}
-	\item \textbf{*pt} --- The text is written in Portuguese (with a small abstract in English).
-	\item \textbf{en} --- The text is written in English (with a small abstract in Portuguese).
-\end{enumerate}
-
-The language option affects:
-\begin{itemize}
-	\item \textbf{The order of the summaries.} At first the abstract in the main language and then in the foreign language. This means that if your main language for the document in english, you will see first the abstract (in english) and then the 'resumo' (in portuguese). If you switch the main language for the document, it will also automatically switch the order of the summaries.
-	\item \textbf{The names for document sectioning.} E.g., 'Chapter' vs.\ 'Capítulo', 'Table of Contents' vs.\ 'Índice', 'Figure' vs.\ 'Figura', etc.
-	\item \textbf{The type of documents in the bibliography.} E.g., 'Technical Report' vs.\ 'Relatório Técnico'.
-\end{itemize} 
-
-No mater which language you chose, you will always have the appropriate hyphenation rules according to the language at that point. You always get portuguese hyphenation rules in the 'Resumo', english hyphenation rules in the 'Abstract', and then the main language hyphenation rules for the rest of the document. If you need to force hyphenation write inside of \verb!\hyphenation{}! the hyphenated word, e.g. \verb!\hyphenation{op-ti-cal net-works}!.
-% section package_options (end)
-
-\subsection{Class of Text} % (fold)
-\label{sub:class_of_text}
-
-You must choose the class of text for the document. The available options are:
-
-\begin{enumerate}
-	\item \textbf{rpt} --- BSc report.
-	\item \textbf{preprpt} --- Preparation of Bsc report. This is a preliminary report graduate students at ISEL/IPL must prepare to conclude the first semester.
-\end{enumerate}
-%% subsection class_of_text (end)
+%  chapter2.tex — Background and State of the Art
 %
-%% ============
-%% = Printing =
-%% ============
-\subsection{Printing} % (fold)
-\label{sub:printing}
+\chapter{Background and State of the Art}
+\label{cha:background}
 
-You must choose how your document will be printed. The available options are:
-\begin{enumerate}
-	\item \textbf{oneside} --- Single side page printing.
-	\item \textbf{*twoside} --- Double sided page printing.
-\end{enumerate}
-% subsection printing (end)
+\section{E-Learning Platforms}
+\label{sec:elearning}
 
-% =============
-% = Font Size =
-% =============
-\subsection{Font Size} % (fold)
-\label{ssec:font_size}
+The e-learning industry has grown substantially over the past decade. Platforms such as Coursera, edX, Udemy, and Khan Academy have demonstrated that digital education can reach millions of learners globally. However, their core model — video lectures supplemented by multiple-choice assessments — has been repeatedly criticized for low engagement and poor knowledge retention~\cite{jordan2014initial}.
 
-You must select the encoding for your text. The available options are:
-\begin{enumerate}
-	\item \textbf{11pt} --- Eleven (11) points font size.
-	\item \textbf{*12pt} --- Twelve (12) points font size. You should really stick to 12pt\ldots
-\end{enumerate}
-% subsection font_size (end)
+Duolingo~\cite{vesselinov2012duolingo} is a notable exception: by applying gamification rigorously to language learning, it achieves significantly higher daily active usage than traditional platforms. Play4Change draws inspiration from this approach while extending it to sustainability and digital literacy topics and adding AI-driven content generation.
 
-% =================
-% = Text encoding =
-% =================
-\subsection{Text Encoding} % (fold)
-\label{ssec:text_encoding}
+\section{Gamification in Education}
+\label{sec:gamification}
 
-You must choose the font size for your document. The available options are:
-\begin{enumerate}
-	\item \textbf{latin1} --- Use Latin-1 (\href{http://en.wikipedia.org/wiki/ISO/IEC_8859-1}{ISO 8859-1}) encoding.  Most probably you should use this option if you use Windows;
-	\item \textbf{utf8} --- Use \href{http://en.wikipedia.org/wiki/UTF-8}{UTF8} encoding.    Most probably you should use this option if you are not using Windows.
-\end{enumerate}
-% subsection font_size (end)
-
-% ============
-% = Examples =
-% ============
-\subsection{Examples} % (fold)
-\label{ssec:examples}
-
-Let's have a look at a couple of examples:
+Gamification is defined by Deterding et al.~\cite{deterding2011game} as the use of game design elements in non-game contexts. In education, the most effective mechanics include:
 
 \begin{itemize}
-	\item Preparation of report document, in portuguese, with 12pt size, to be printed twoside sided  and to be read on screen
-	\begin{lstlisting}[language=myLatex]
-	\documentclass[
-		preprpt,	% (*)rpt, preprpt - Technical Report or PrepTechnical Report
-		pt,	% (*)pt, en - languages 
-		twoside,	% (*)twoside, oneside - single or double sided printing
-		12pt,	% (*)12pt, 11pt, 10pt - use font size
-		a4paper,	% Paper size/format
-		utf8,		% (*)utf8, latin1 - Text encoding: Linux, Mac or Windows
-		onscreen,	% (*)onscreen, onpaper - Page layout: screen versus paper print
-		hyperref = true,  % (*)true, false - Hyperlinks in citations
-		listof = totoc	% Print all entries in table of contents
-	]{reportisel} 
-	\end{lstlisting}
-	\item Report, in english, with 12pt size and to be printed one sided (I wonder why one would do this!), in paper
-	\begin{lstlisting}[language=myLatex]
-	\documentclass[
-		rpt,	% (*)rpt, preprpt - Technical Report or PrepTechnical Report
-		pt,	% (*)pt, en - languages 
-		oneside,	% (*)twoside, oneside - single or double sided printing
-		12pt,	% (*)12pt, 11pt, 10pt - use font size
-		a4paper,	% Paper size/format
-		utf8,		% (*)utf8, latin1 - Text encoding: Linux, Mac or Windows
-		onpaper,	% (*)onscreen, onpaper - Page layout: screen versus paper print
-		hyperref = true,  % (*)true, false - Hyperlinks in citations
-		listof = totoc	% Print all entries in table of contents
-	]{reportisel} 
-	\end{lstlisting}
+    \item \textbf{Daily streaks}: reinforce consistent engagement through loss aversion.
+    \item \textbf{Leaderboards}: provide social proof and healthy competition.
+    \item \textbf{Achievement badges}: signal mastery and milestone completion.
+    \item \textbf{Peer review}: builds critical thinking and collaborative knowledge through distributed evaluation.
 \end{itemize}
-% subsection examples (end)
 
-\section{How to Write Using \texttt{LaTeX}} % (fold)
-\label{sec:how_to_write_using_latex}
+Play4Change incorporates all of these mechanics. Gamification must serve learning, not replace it — badges are awarded for genuine comprehension, not mere participation.
 
-Please have a look at Chapter~\ref{cha:a_short_latex_tutorial_with_examples}, where you may find many examples of \href{http://tobi.oetiker.ch/lshort/lshort.pdf}{\texttt{LaTeX}} constructs, such as Sectioning, inserting Figures and Tables, writing Equations, Theorems and algorithms, exhibit code listings, etc.
+\section{Adaptive Learning and Flow State}
+\label{sec:adaptive}
 
-%% section how_to_write_using_latex (end)
+Adaptive learning systems adjust the difficulty, pacing, and content of lessons based on each learner's performance~\cite{vanlehn2011relative}. The goal is to maintain learners in the \emph{flow state}~\cite{csikszentmihalyi1990flow} — the optimal cognitive zone between boredom and anxiety.
+
+Play4Change implements adaptive difficulty through a struggle detection mechanism (see Section~\ref{sec:struggle_detect}) that triggers AI-generated remediation branches when a learner fails the same task twice consecutively.
+
+\section{Generative AI and Retrieval-Augmented Generation}
+\label{sec:genai}
+
+Large Language Models (LLMs) have transformed content generation. However, raw LLM output suffers from hallucination and lack of grounding in specific source material. Retrieval-Augmented Generation (RAG)~\cite{lewis2020retrieval} addresses this by augmenting generation with a retrieval step: documents are embedded into a vector database and semantically similar passages are retrieved at inference time to ground the model's response.
+
+Play4Change uses the \textbf{Mistral} LLM~\cite{mistral2024} for content generation, combined with a \textbf{pgvector} index over educator-supplied materials. Mistral is selected for its strong performance-to-cost ratio and self-hostable deployment option. \textbf{LangChain4j}~\cite{langchain4j2024} provides the JVM integration layer between the Spring Boot server and Mistral, behind a provider-agnostic interface (see Section~\ref{sec:ai_module}).
+
+\section{Peer Review as an Assessment Mechanism}
+\label{sec:peer_review_bg}
+
+Peer review is a pedagogically superior assessment mechanism for applied, open-ended tasks. The act of evaluating another learner's work is itself a form of retrieval practice — one of the most evidence-backed learning techniques~\cite{roediger2011retrieval}. Calibrated peer review in higher education has demonstrated that distributed assessment across three independent reviewers produces robust signals even for subjective tasks~\cite{reily2010two}.
+
+Play4Change uses majority-vote peer review (2 of 3 verdicts) for \emph{todo-action} tasks where learners photograph real-world applications of their learning. This achieves zero marginal AI cost per submission while simultaneously creating learning events for the reviewers.
+
+\section{Sustainability Education and the UN SDGs}
+\label{sec:sdgs}
+
+The United Nations' 2030 Agenda defines 17 Sustainable Development Goals~\cite{unsdgs2015} covering poverty, health, education, climate action, and more. Despite global commitments, integrating SDG content into daily learning routines remains a challenge. Play4Change curates topics around the SDGs and digital citizenship, enabling educators to contribute materials that the AI automatically structures into SDG-tagged learning paths.
+
+\section{Passwordless Authentication}
+\label{sec:passwordless}
+
+Traditional password-based authentication is a leading cause of security breaches. The FIDO2 standard~\cite{fido2} and related approaches (magic links, OTPs, social OAuth) eliminate shared secrets entirely. Play4Change adopts passwordless authentication as a first principle: magic links delivered via email for users without social accounts, and OAuth 2.0 ID token verification (Google, Facebook) for users who prefer social login. No password hashes are stored anywhere in the system (see Section~\ref{sec:security}).
+
+\section{Cross-Platform Mobile Development}
+\label{sec:crossplatform}
+
+Three major approaches compete for cross-platform mobile development:
+
+\begin{itemize}
+    \item \textbf{React Native} (Meta): JavaScript/TypeScript bridge to native components.
+    \item \textbf{Flutter} (Google): Dart with a custom rendering engine.
+    \item \textbf{Kotlin Multiplatform (KMP)}~\cite{kotlinmultiplatform2024}: shares business logic and data layers across platforms while keeping UI native.
+\end{itemize}
+
+Play4Change uses KMP because it allows the team to share domain logic, network code, serialization, and database queries across iOS and Android, while writing native UI in Jetpack Compose (Android) and SwiftUI (iOS). \textbf{Decompose}~\cite{decompose2024} is used for navigation and lifecycle management within KMP, providing a component-based navigation model that works identically on both platforms without relying on Android-specific ViewModels.
+
+\section{Typed Error Handling: Railway Oriented Programming}
+\label{sec:rop}
+
+Railway Oriented Programming~\cite{wlaschin2014rop} is a functional design pattern for building pipelines where each step either continues on the happy path or short-circuits with a typed error. It avoids thrown exceptions for \emph{expected} domain failures — validations, not-found cases, business rule violations — replacing them with explicit return types.
+
+Play4Change uses \textbf{Arrow}~\cite{arrowkt2024} \texttt{Either<E, A>} and the \texttt{Raise<E>} DSL for this purpose. The custom error hierarchy (\texttt{AppError} and its sealed subclasses) is domain-specific and Arrow-independent; Arrow provides the combinators (\texttt{bind()}, \texttt{ensure()}, \texttt{mapError()}, \texttt{zip()}) (see Appendix~\ref{app:adrs}, ADR-001).
+
+\section{Backend Technologies}
+\label{sec:backend}
+
+Spring Boot~\cite{springboot2024} with Kotlin is the chosen backend framework. Kotlin's null-safety, coroutine support, and seamless interoperability with the Java ecosystem make it an ideal fit. The backend is containerized with Docker for reproducible deployments. \textbf{MinIO}~\cite{minio2024} provides S3-compatible object storage for educator-uploaded PDF materials, running as a Docker Compose service alongside the application.
+
+\section{Architectural Patterns}
+\label{sec:architecture_patterns}
+
+\subsection{Domain-Driven Design}
+\label{ssec:ddd}
+
+Domain-Driven Design (DDD)~\cite{evans2003domain} organizes software around the business domain rather than technical concerns. Key DDD building blocks used in Play4Change include \emph{aggregates}, \emph{value objects}, \emph{domain events}, and \emph{bounded contexts} — each with its own model and repository.
+
+\subsection{Hexagonal Architecture}
+\label{ssec:hexagonal}
+
+The hexagonal architecture~\cite{cockburn2005hexagonal} separates the application core from its infrastructure. The core defines \emph{ports} (interfaces), and \emph{adapters} implement those ports for specific technologies. This enables thorough unit testing of domain logic without any infrastructure.
+
+\subsection{Clean Architecture}
+\label{ssec:clean}
+
+Clean Architecture~\cite{martin2017clean} enforces a strict dependency rule: inner layers know nothing about outer layers. In Play4Change: \textbf{Domain} → \textbf{Application} → \textbf{Infrastructure} → \textbf{Presentation}. Domain logic is framework-agnostic and testable in isolation.
+
+\section{Observability: Metrics and Monitoring}
+\label{sec:observability_bg}
+
+Production systems require visibility into runtime behaviour. \textbf{Micrometer}~\cite{micrometer2024} provides a metrics façade that decouples instrumentation from any specific backend. \textbf{Prometheus}~\cite{prometheus2024} scrapes Micrometer's HTTP endpoint and stores time-series data. \textbf{Grafana}~\cite{grafana2024} queries Prometheus with PromQL and renders dashboards. This stack runs entirely within Docker Compose, making the full observability pipeline reproducible from source.
+
+\section{Related Work and Gap Analysis}
+\label{sec:related}
+
+Table~\ref{tab:related_work} summarizes the key differentiators of Play4Change relative to existing platforms.
+
+\begin{table}[ht]
+    \caption{Comparison of Play4Change with related platforms.}
+    \label{tab:related_work}
+    \vskip0.5em
+    \centering
+    \begin{tabular}{lcccc}
+    \toprule
+    Feature & Duolingo & Coursera & Khan Academy & Play4Change \\
+    \midrule
+    AI content generation    & \texttimes & \texttimes & \texttimes & \checkmark \\
+    Adaptive difficulty      & \checkmark & \texttimes & Partial    & \checkmark \\
+    Daily streak mechanics   & \checkmark & \texttimes & \texttimes & \checkmark \\
+    Peer review tasks        & \texttimes & Partial    & \texttimes & \checkmark \\
+    SDG-focused topics       & \texttimes & Partial    & Partial    & \checkmark \\
+    Passwordless auth        & \texttimes & \texttimes & \texttimes & \checkmark \\
+    KMP cross-platform       & \texttimes & \texttimes & \texttimes & \checkmark \\
+    Open-source stack        & \texttimes & \texttimes & \texttimes & \checkmark \\
+    \bottomrule
+    \end{tabular}
+\end{table}

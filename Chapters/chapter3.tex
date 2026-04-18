@@ -1,96 +1,99 @@
-\chapter{Tutorial de \texttt{LaTeX} com exemplos}
-\label{cha:a_short_latex_tutorial_with_examples}
+%
+%  chapter3.tex — Play4Change Platform
+%
+\chapter{Play4Change Platform}
+\label{cha:platform}
 
-Este capítulo irá mostrar como pode inserir tabelas, figuras e/ou listagens. Consi\-de\-re-se que listagens não são todo o código mas partes do código. Estas irão suportar algumas frases dos parágrafos escritos. Não se esqueça, que todas as tabelas, figuras e listagens devem ser referenciadas no corpo do texto.
+\section{Vision and Value Proposition}
+\label{sec:vision}
 
-\section{Tabelas} % (fold)
-\label{sec:inserting_tables}
+Play4Change transforms passive knowledge into active engagement. The platform makes sustainability education and digital literacy accessible, habit-forming, and impactful — one daily challenge at a time. Its core value proposition rests on three pillars:
 
-Some notes are important to followed, such as present in \tablename~  \ref{tab:results}: 
-\begin{inparaenum}[i)]
-	\item Not defined vertical lines;
-	\item The legend must be on top;
-	\item Use \verb!\toprule!, \verb!\midrule! and \verb!\bottomrule! to draw horizontal lines.
-\end{inparaenum}
- 
-\begin{table}[ht]
-	\caption{Table's rules.}\vskip0.5em
-	\label{tab:results}
-\centering
-\begin{tabular}{llr}
-\toprule
-\multicolumn{2}{c}{Item} \\
-\cmidrule(r){1-2}
-Animal & Description & Price (\$) 
-\\
-\midrule
-Gnat  & per gram & 13.65 \\
-      & each     &  0.01 \\
-Gnu   & stuffed  & 92.50 \\
-Emu   & stuffed  & 33.33 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\begin{enumerate}
+    \item \textbf{Learning that creates real change}: content is curated and AI-enriched so that every challenge connects to real-world behavioral outcomes aligned with the UN SDGs.
+    \item \textbf{Minimum friction, maximum impact}: learners receive one challenge per day — bite-sized and achievable — reducing the activation energy required to engage consistently.
+    \item \textbf{A healthy system for providers}: the platform is designed so that its infrastructure costs scale predictably with the user base, preventing the platform from becoming an operational liability.
+\end{enumerate}
 
+\section{Core Features}
+\label{sec:features}
 
-\section{Importar Figuras} % (fold)
-\label{sec:importing_images}
+\subsection{AI-Generated Content}
+\label{ssec:ai_content}
 
-\subsection{Inserir figuras lado-a-lado com texto} % (fold)
- \label{ssec:inserting_images_wrapped_with_text}
- 
- You should only use this feature is \emph{really} necessary. This means, you have a very small image, that will look lonely just with text above and below.
+Topics are created by educators who upload PDF materials or provide URLs. The AI pipeline (Mistral + RAG) processes this content and automatically generates:
+\begin{itemize}
+    \item Multiple-choice and open-ended \textbf{quizzes};
+    \item \textbf{Daily challenge} prompts (reflection, action-based, or knowledge tasks);
+    \item \textbf{Difficulty variants} for adaptive delivery.
+\end{itemize}
 
- \begin{wrapfigure}{l}{3cm}
-   \centering
-     \includegraphics[width=2cm]{evolution_steps-vectorial}
-   \caption{Vectorial image}\
- \end{wrapfigure}	
- 
- \noindent\verb!\usepackage{wrapfig}!\\
- This then gives you access to:\\
- \verb!\begin{wrapfigure}[lineheight]{alignment}{width}!
- 
- Alignment can normally be either 'l' for left, or 'r' for right. Lowercase 'l' or 'r' forces the figure to start precisely where specified (and may cause it to run over page breaks), while capital 'L' or 'R' allows the figure to float. If you defined your document as twosided, the alignment can also be 'i' for inside or 'o' for outside, as well as 'I' or 'O'. The width is obviously the width of the figure. \\[.5em]
+Educators review and curate the generated content through the admin panel before it is made available to learners.
 
- 
- 
-\subsection{Outras imagens} % (fold)
-\label{ssec:floats_figures_and_captions}
+\subsection{Adaptive Learning}
+\label{ssec:adaptive_learning}
 
- 
-There are two different ways to place two figures/tables side-by-side.  More complicated figures with multiple images. You can do this using subfigure environments inside a figure environment. Subfigure will alphabetically number your subfigures and you have access to the complete reference as usual through \verb!\ref{fig:figurelabel}!, \figurename~\ref{fig:figura-completa}, or \figurename~\ref{fig:ra-raster} using \verb!\ref{fig:subfigurelabel}!.
+The platform adapts to each learner's pace and performance. After each challenge response, the system evaluates correctness, response time, and streak continuity to place the learner on a difficulty trajectory. Learners performing consistently well receive progressively harder challenges; those struggling receive scaffolded hints and easier variants.
 
-\begin{figure}[htbp]
-	\centering
-    \begin{subfigure}[b]{0.25\textwidth}
-    	\centering
-		\includegraphics[width=\textwidth]{ra-vectorial}
-		\caption{}
-		\label{fig:ra-vectorial}
-     \end{subfigure}	
-\qquad\qquad
- 	\begin{subfigure}[b]{0.25\textwidth}
-    	\centering
-		\includegraphics[width=\textwidth]{ra-raster}
-		\caption{}
-		\label{fig:ra-raster}
-	\end{subfigure}		
-  \caption{Subfigure example with vectorial and no-vectorial images}
-  \label{fig:figura-completa}
-\end{figure}
+\subsection{Gamification and Peer Review}
+\label{ssec:gamification_feature}
 
-\section{Listagens} % (fold)
-\label{sec:listings}
+The gamification layer includes:
+\begin{itemize}
+    \item \textbf{Daily streaks}: learners are notified if their streak is at risk, leveraging loss aversion.
+    \item \textbf{Leaderboards}: scoped to a topic or global, updated daily.
+    \item \textbf{Achievement badges}: awarded for milestones (first challenge, 7-day streak, topic completion, peer review contribution).
+    \item \textbf{Peer review tasks}: the final task of each topic (\emph{todo-action}) requires the learner to photograph a real-world application of their learning. Three enrolled peers evaluate the submission by majority vote (2 of 3 verdicts). Reviewers earn 10 points per completed review — the act of evaluating a peer's work is itself a retrieval practice event~\cite{roediger2011retrieval}. Reviewer identity is never disclosed (anonymity prevents social pressure). After submitting their verdict, reviewers see the community vote breakdown — social feedback without prior anchoring bias.
+\end{itemize}
 
-Using the package listings you can add non-formatted text as you would do with \verb!\begin{verbatim}! but its main aim is to include the source code of any programming language within your document, or inline with 
-\verb!\codejava{int i;}.!
-If you wish to include pseudocode or algorithms see \url{http://en.wikibooks.org/wiki/LaTeX/Algorithms\_and\_Pseudocode}, as \lstlistingname ~\ref{lst:Calculadora}.
-\vskip1em
+\subsection{Sustainability Focus}
+\label{ssec:sustainability}
 
-%  \lstfromfile{language}{linerange}{caption}{label}{othersinsideoflstinoputlisting}{path}
+All topics on the platform are curated around the UN Sustainable Development Goals and digital citizenship. Each topic is tagged to one or more SDGs, allowing learners to explore specific goals (e.g., SDG 13 Climate Action, SDG 4 Quality Education) and track their engagement across the SDG framework.
 
-\lstfromfile{java}{7,11-12,15-17}{Opera\c{c}\~{o}es elementares de uma Calculadora}{Calculadora}{showlines=true,morekeywords={begin,System,out,print},numbers=left, firstnumber=1}{Calculadora.java}
+\section{User Roles}
+\label{sec:roles}
 
+Play4Change defines three primary user roles:
 
-\centering{\textbf{Written by Matilde Pós-de-Mina Pato\footnote{O autor escreve segundo o antigo AO}, \\2020 September -  version 2.2}}
+\begin{description}
+    \item[Administrator (Educator)] Can create and manage topics, upload learning materials, review AI-generated content, and publish challenges. Administrators access the platform via the hidden admin panel on the landing page.
+    \item[Learner] Can browse and enroll in topics, receive daily challenges, submit responses, participate in peer review, and track their progress and achievements.
+    \item[System (AI Agent)] The internal AI component that processes educator materials, generates challenge content, and adapts difficulty — not a human user but an active system actor.
+\end{description}
+
+\section{The Four-Step Learning Journey}
+\label{sec:journey}
+
+Play4Change bridges the gap between educational content and real behavioral change through a four-step process:
+
+\paragraph{Step 1 — Educators Create Topics}
+Administrators upload PDF materials or provide URLs pointing to relevant resources. The AI pipeline processes the content, generates a structured learning path with daily challenges, and presents it for educator review and approval.
+
+\paragraph{Step 2 — Learners Enroll and Start}
+Students discover topics through the mobile application, enroll in seconds, and begin receiving one challenge per day. The bite-sized format fits any schedule, requiring as little as five minutes of daily engagement.
+
+\paragraph{Step 3 — Progress Through Challenges}
+Each day brings a new challenge — quiz, reflection prompt, or peer task. The AI monitors performance and adapts difficulty to keep each learner in the flow state. Push notifications maintain streak momentum.
+
+\paragraph{Step 4 — Earn Achievements and Grow}
+Learners complete streaks, earn badges, and climb leaderboards. Community peer reviews build deeper understanding and collaborative knowledge. Progress is visualized through the learner's profile, showing SDG engagement and mastery levels per topic.
+
+\section{Landing Page and Administration}
+\label{sec:landing}
+
+The public-facing landing page is built with TypeScript and React. It serves as the primary marketing and onboarding surface for the platform. A \emph{hidden administration route} — accessible only to authenticated administrators — provides the content management interface without exposing it to the general public.
+
+\todo[inline]{Add screenshot of landing page and admin panel once UI is finalized.}
+
+\section{Platform Constraints and Design Philosophy}
+\label{sec:philosophy}
+
+Play4Change is designed around the following non-negotiable properties:
+
+\begin{itemize}
+    \item \textbf{Sustainable, predictable costs}: infrastructure is sized for actual load, not theoretical peaks. Caching and CDN reduce origin server pressure significantly.
+    \item \textbf{Accessibility}: the platform must be usable on low-bandwidth connections. Challenge payloads are small; heavy content (videos, large images) is served via CDN.
+    \item \textbf{Security by minimization}: the system avoids storing sensitive information wherever possible. Passwordless authentication eliminates the password database entirely.
+    \item \textbf{Growth without penalty}: the architecture is designed so that a 10× increase in users does not require a 10× increase in cost or engineering effort. Kubernetes orchestration (planned) and horizontal scaling are first-class citizens.
+\end{itemize}
