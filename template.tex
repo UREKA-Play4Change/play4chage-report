@@ -35,7 +35,7 @@
 
 \documentclass[
 	rpt,		% (*)rpt, preprpt - Technical Report or PrepTechnical Report
-	pt,			% (*)pt, en - languages 
+	en,			% (*)pt, en - languages: report written in English
 	twoside,	% (*)twoside, oneside - single or double sided printing
 	12pt,		% (*)12pt, 11pt, 10pt - use font size
 	a4paper,	% the paper size/format
@@ -43,7 +43,7 @@
 	onscreen, 	% (*)onscreen, onpaper - Page layout: screen versus paper print
 	hyperref = true,  % (*)true, false - Hyperlinks in citations
 	listof = totoc
-	]{reportisel} 
+	]{reportisel}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  BEGINING OF USER COSTUMIZATION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -117,7 +117,7 @@
              pdfauthor={ \theauthor},
              pdfsubject={ 
              },
-             pdfkeywords={{ }, { }, { } }
+             pdfkeywords={adaptive learning, gamification, AI, sustainability, KMP, Kotlin}
              }
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% All the names inside braces below sould correspond to a file
@@ -148,6 +148,9 @@
 \chapterfile{chapter1}
 \chapterfile{chapter2}
 \chapterfile{chapter3}
+\chapterfile{chapter4}
+\chapterfile{chapter5}
+\chapterfile{chapter6}
 
 %======================================================
 %% Bibliography style
@@ -171,6 +174,7 @@
 % Comment if not needed
 % syntax: \appendixfile{file}
 \appendixfile{appendix1}
+\appendixfile{appendix2}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
