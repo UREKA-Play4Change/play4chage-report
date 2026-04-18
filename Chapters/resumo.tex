@@ -1,17 +1,9 @@
 \abstractPT  % Do NOT modify this line
 
-O objectivo deste documento é uniformizar a apresentação dos trabalhos escolares de licenciatura, trabalhos de investigação científicos e dissertações de mestrado.
+Play4Change é uma plataforma de aprendizagem adaptativa que combina inteligência artificial generativa, mecânicas de gamificação e revisão por pares para transformar conteúdo educativo em desafios diários personalizados. A plataforma responde a duas necessidades críticas: a educação para a sustentabilidade alinhada com os Objetivos de Desenvolvimento Sustentável das Nações Unidas, e a literacia digital.
 
-Independentemente da língua em que está escrita o documento, é necessário um resumo na língua do texto principal e um resumo noutra língua.  Assume-se que as duas línguas em questão serão sempre o Português e o Inglês.
+Do ponto de vista técnico, o sistema é constituído por uma aplicação móvel multiplataforma em Kotlin Multiplatform (KMP) com Decompose e o padrão MVI para iOS e Android; um servidor Spring Boot em Kotlin com Design Orientado a Domínio, arquitetura hexagonal e Clean Architecture; um módulo Kotlin partilhado que garante contratos de API type-safe entre cliente e servidor; e uma página de destino em TypeScript/React com painel de administração. A geração de conteúdo é realizada por um pipeline de IA que combina o modelo Mistral (via LangChain4j) com Retrieval-Augmented Generation (RAG) e pesquisa por similaridade vetorial com pgvector. Todas as decisões arquiteturais estão documentadas em 16 Architecture Decision Records.
 
-Resumo é a versão precisa, sintética e selectiva do texto do documento, destacando os elementos de maior importância. O resumo possibilita a maior divulgação do trabalho e a sua indexação em bases de dados.
+O sistema privilegia custos sustentáveis e previsíveis, autenticação sem palavra-passe (magic link + OAuth 2.0), cache Redis com degradação silenciosa, observabilidade completa com Micrometer e Grafana, e preparação para Kubernetes com gatilhos de migração explicitamente definidos. A revisão por pares das tarefas aplicadas oferece avaliação sem custo marginal de IA, gerando simultaneamente eventos de aprendizagem para os revisores.
 
-O resumo não deve conter citações bibliográficas, tabelas, quadros, esquemas. Deve evitar o uso de abreviaturas e siglas - quando absolutamente necessário, citá-las entre parênteses e precedidas da explicação de seu significado, na primeira vez em que aparecem. 
-
-E, deve-se evitar o uso de expressões como ``O presente trabalho trata $\ldots$'', ``O documento conclui que $\ldots$'', ``aparentemente é $\ldots$'' etc. 
-
-Existe um limite de palavras, 150 palavras é o limite.
-
-\begin{center}
-	\textbf{\large this package and template are not official for ISEL/IPL}.
-\end{center}
+\keywords{Aprendizagem Adaptativa \sep Gamificação \sep Inteligência Artificial Generativa \sep Kotlin Multiplatform \sep Sustentabilidade \sep Clean Architecture \sep Arrow Either \sep pgvector}
