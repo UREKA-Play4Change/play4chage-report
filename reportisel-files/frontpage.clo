@@ -11,8 +11,13 @@
 \newgeometry{tmargin=0.5cm,bmargin=0.5cm,lmargin=2cm,rmargin=2cm}
 
 \begin{minipage}{0.3\textwidth}
-% Put logo
+% Put ISEL logo
 	\logo{\@universitylogo}
+\end{minipage}
+\hfill
+\begin{minipage}{0.25\textwidth}
+\raggedleft
+\includegraphics[width=\textwidth]{02_UREKA}%
 \end{minipage}
 
 \begin{center}
