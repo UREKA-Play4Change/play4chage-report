@@ -1,0 +1,306 @@
+%
+%  appendix2.tex — Architecture Decision Records
+%
+\chapter{Architecture Decision Records}
+\label{app:adrs}
+
+Architecture Decision Records (ADRs) document the significant engineering decisions made during the development of Play4Change — the context, the decision, the alternatives considered, and the consequences. They serve as an audit trail of the reasoning behind the system's current design and as a guide for future evolution.
+
+\section{ADR Registry}
+\label{app:adr_registry}
+
+\begin{table}[ht]
+    \caption{ADR registry — all decisions recorded during the project.}
+    \label{tab:adr_registry}
+    \vskip0.5em
+    \centering
+    \begin{tabular}{p{1.2cm}p{5.5cm}lp{3.5cm}}
+    \toprule
+    ID & Title & Status & Phase \\
+    \midrule
+    ADR-001 & Result Type: Custom Impl → Arrow Either & Accepted & 1 — Core \\
+    ADR-002 & Communication: Hybrid REST + gRPC & Superseded by ADR-006 & 1 — Core \\
+    ADR-003 & AI Content: Batch vs On-Demand & Accepted (Hybrid) & 2 — AI \\
+    ADR-004 & Internationalisation: Hybrid Server + Client & Accepted & 1 — Core \\
+    ADR-005 & Adaptive Learning Path Architecture & Accepted & 2 — AI \\
+    ADR-006 & AI Agent: gRPC → Gradle Module Boundary & Accepted & 2 — AI \\
+    ADR-007 & AI Content Generation Pipeline & Accepted & 2 — AI \\
+    ADR-008 & Client: Decompose + MVI + DDD Feature Slices & Accepted & 3 — Client \\
+    ADR-009 & Deployment: Docker Compose over Kubernetes & Accepted & 3 — Client \\
+    ADR-010 & BaseView Scaffold: Edge-to-Edge + Drawer & Accepted & 3 — Client \\
+    ADR-011 & Passwordless Auth: Magic Link + OAuth 2.0 & Accepted & 4 — Learning \\
+    ADR-012 & Topic Pipeline: Async + MinIO + Extraction & Accepted & 4 — Learning \\
+    ADR-013 & Learning Flow: Day Progression + Caching & Accepted & 4 — Learning \\
+    ADR-014 & Peer Review: Cost-Free Collective Assessment & Accepted & 5 — Peer Review \\
+    ADR-015 & Observability: Metrics + Prometheus + Grafana & Accepted & 6 — Observability \\
+    ADR-016 & Auth Hardening: Security Audit + Remediation & Accepted & 6 — Observability \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+The following sections present each ADR in condensed form — context, decision, and key rationale. Full ADR documents (including all alternatives considered and consequences) are maintained in \texttt{docs/adr/} in the project repository.
+
+%----------------------------------------------------------------------
+\newpage
+\section{ADR-001 — Result Type: Custom Implementation → Arrow Either}
+\label{adr:001}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Context}
+The application requires type-safe error handling that avoids exceptions for expected domain failures. The goal is Railway Oriented Programming~\cite{wlaschin2014rop} — a pipeline where each step either continues on the happy path or short-circuits with a typed error.
+
+\subsection*{Decision}
+\textbf{Phase 1} — built a custom \texttt{Result<T, E>} sealed class with \texttt{ResultScope}, \texttt{bind()}, \texttt{ensure()}, \texttt{ensureNotNull()}, and coroutine-safe wrappers. This was intentional: building the pattern from scratch to achieve deep comprehension before adopting a library.
+
+\textbf{Phase 2} — migrated to Arrow~\cite{arrowkt2024} \texttt{Either<E, A>} and the \texttt{Raise<E>} DSL. The custom \texttt{AppError} interface and sealed error hierarchy are retained — they are domain-specific and Arrow has no opinion on them. The \texttt{bind()}, \texttt{ensure()}, and \texttt{ensureNotNull()} APIs are identical, making the migration mechanical (see Table~\ref{tab:arrow_migration}).
+
+\subsection*{Rationale}
+Building custom proved comprehension. Shipping with Arrow proves pragmatism. Both matter; the sequence matters. Arrow is actively maintained, industry-standard among Kotlin engineers, and provides combinators (\texttt{mapError}, \texttt{recover}, \texttt{zip}) the team would otherwise have to build.
+
+%----------------------------------------------------------------------
+\section{ADR-002 — Communication Architecture: Hybrid REST + gRPC}
+\label{adr:002}
+\textbf{Status:} Superseded by ADR-006 \quad \textbf{Date:} March 2026
+
+\subsection*{Context}
+Original design: REST for client-to-server communication; gRPC for server-to-AI-agent communication (AI was planned as a separate Cloudflare Workers TypeScript service).
+
+\subsection*{Decision (original)}
+REST for the mobile client (cacheable, stateless, KMP/Ktor native); gRPC for the AI agent boundary (typed protobuf contracts, binary-efficient, streaming).
+
+\subsection*{Why Superseded}
+The AI stack changed from Cloudflare Workers (TypeScript) to LangChain4j + Mistral running on the same JVM. With both ends in the same process, gRPC is the wrong abstraction — serialization overhead without any of the benefits. See ADR-006.
+
+\subsection*{Historical Artifact}
+The proto definition is retained in \texttt{docs/proto/task\_generation.proto}. The \texttt{TaskGenerationPort} interface designed for the gRPC boundary is now the Gradle module boundary — the same interface becomes a gRPC stub when scale demands extraction.
+
+%----------------------------------------------------------------------
+\section{ADR-003 — AI Content Generation: Batch vs On-Demand}
+\label{adr:003}
+\textbf{Status:} Accepted (Hybrid) \quad \textbf{Date:} March 2026
+
+\subsection*{Decision}
+\textbf{Fixed-path tasks}: nightly batch via Spring \texttt{@Scheduled(cron = "0 0 2 * * *")}. Cost scales with domains, not users — at 10,000 users across 5 topics, $\approx$50 LLM calls per night vs $\approx$10,000 on-demand calls per day.
+
+\textbf{Adaptive branches}: on-demand, triggered by struggle detection. Volume is low (only struggling users) and latency is acceptable (user is paused awaiting help).
+
+\subsection*{Similarity-Based Reuse}
+Before generating adaptive content, pgvector is queried for similar past struggles. Similarity $>0.90$: full reuse (zero LLM cost). Similarity $>0.65$: partial merge. Below 0.65: fresh generation. This cost curve decreases over time as the pattern library grows.
+
+\subsection*{Resilience}
+\texttt{@Retryable} (3 attempts, exponential back-off), Resilience4j circuit breaker, and a static fallback task library ensure generation failures never prevent course creation.
+
+%----------------------------------------------------------------------
+\section{ADR-004 — Internationalisation Strategy: Hybrid Server + Client}
+\label{adr:004}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Decision}
+API error messages are translated server-side: Spring \texttt{MessageSource} resolves \texttt{AppError.messageKey + params + locale} from the \texttt{Accept-Language} header. \texttt{messages.properties} (EN, default), \texttt{messages\_pt.properties} (PT), \texttt{messages\_fr.properties} (FR extended objective).
+
+UI labels are translated client-side: Compose Multiplatform resource system (\texttt{stringResource(Res.string.key)}), with \texttt{commonMain/composeResources/values/strings.xml} and \texttt{values-pt/}, \texttt{values-fr/}.
+
+\subsection*{Rationale}
+Server-side for errors = one source of truth across Android, iOS, and any future web client; adding a new language is one \texttt{.properties} file with zero app updates. Client-side for UI = works offline, no round trip for static labels, uses the standard mechanism each platform already provides.
+
+%----------------------------------------------------------------------
+\section{ADR-005 — Adaptive Learning Path Architecture}
+\label{adr:005}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Decision}
+Fixed path as the spine; adaptive branches as temporary detours. The user always returns to the fixed path after completing the branch — no retry of the original task.
+
+\subsection*{Course Lifecycle}
+\texttt{CREATED} → \texttt{SUBSCRIPTION\_OPEN} → \texttt{SUBSCRIPTION\_CLOSED} → \texttt{IN\_PROGRESS} → \texttt{COMPLETED}. The course ends when the \emph{last enrolled user} completes it — not on a fixed date. Adaptive branching directly impacts course completion by accelerating struggling learners.
+
+\subsection*{Key Data Entities}
+\texttt{courses}, \texttt{course\_modules}, \texttt{task\_templates} (with \texttt{embedding} vector), \texttt{user\_course\_enrollments}, \texttt{user\_task\_progress}, \texttt{struggle\_events} (with \texttt{embedding} vector), \texttt{adaptive\_branches}, \texttt{adaptive\_tasks}.
+
+%----------------------------------------------------------------------
+\section{ADR-006 — AI Agent: gRPC Service → Gradle Module Boundary}
+\label{adr:006}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Context}
+When the AI stack changed to LangChain4j on the same JVM, gRPC between two modules in the same process was the wrong abstraction: serialization overhead without benefits.
+
+\subsection*{Decision}
+Replace gRPC with a Gradle module boundary using the Provider pattern:
+
+\begin{verbatim}
+:ai-agent:api       ← TaskGenerationPort interface only
+:ai-agent:langchain ← LangChain4j + Mistral implementation
+:server             ← depends on :ai-agent:api only
+\end{verbatim}
+
+\texttt{:server} never imports LangChain4j. Switching LLM providers: create a new \texttt{:ai-agent:openai} module, implement \texttt{TaskGenerationPort}, change one line in \texttt{settings.gradle.kts}. Zero changes in \texttt{:server}.
+
+\subsection*{Future Migration Path}
+If the AI agent must scale independently: extract \texttt{:ai-agent:langchain} into a separate service, create \texttt{:ai-agent:grpc-client} implementing \texttt{TaskGenerationPort} via gRPC. The interface designed today becomes the service contract tomorrow.
+
+%----------------------------------------------------------------------
+\section{ADR-007 — AI Content Generation Pipeline}
+\label{adr:007}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Decision}
+Single \texttt{TaskGenerationPort} with two operation contracts: \texttt{generateTasks()} for fixed-path content, \texttt{generateAdaptiveBranch()} for on-demand remediation. Both use Mistral via LangChain4j but with separate prompt strategies: \texttt{TaskGenerationPrompt} (content designer persona) and \texttt{StruggleAnalysisPrompt} (adaptive learning coach persona).
+
+\subsection*{pgvector as Load-Bearing Infrastructure}
+pgvector serves both deduplication (batch) and similarity-based reuse (adaptive). At current content volumes, pgvector's performance is equivalent to a dedicated vector database. \texttt{PgVectorDeduplicationService} uses \texttt{JdbcTemplate} for cosine distance queries (\texttt{<=>} operator not supported by JPQL).
+
+\subsection*{Three-Layer Graceful Degradation}
+\begin{enumerate}
+    \item \texttt{@ConditionalOnExpression} on \texttt{LangChain4jConfig}: absent API key → bean graph not loaded.
+    \item \texttt{NoOpTaskGenerationAdapter} (\texttt{@ConditionalOnMissingBean}): returns \texttt{ServiceUnavailable} for every call.
+    \item \texttt{CourseService} mock fallback: pre-authored tasks substitute on \texttt{Either.Left} from the AI port.
+\end{enumerate}
+
+\subsection*{Known Gaps (documented)}
+(1) Fresh adaptive branch embeddings not stored → reuse library does not grow from the most expensive path. (2) \texttt{runBlocking} inside \texttt{@Transactional} blocks a DB connection during Mistral inference.
+
+%----------------------------------------------------------------------
+\section{ADR-008 — Client Architecture: Decompose + MVI + DDD Feature Slices}
+\label{adr:008}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Decision}
+Three-layer client architecture: Decompose \texttt{ChildStack} for navigation, MVI via \texttt{BaseComponent<S, E>} for state management, and domain-driven feature slices for code organisation.
+
+\subsection*{Why MutableValue over StateFlow}
+Decompose's \texttt{MutableValue} integrates with the component lifecycle — no coroutine collector, no memory leak risk on Kotlin/Native (iOS), renders synchronously on first composition (no \texttt{LaunchedEffect} frame delay).
+
+\subsection*{Events vs Effects}
+Navigation is always an \texttt{Effect} (one-time signal via \texttt{Channel<Effect>}), never a state field. Putting navigation targets in state risks re-triggering on recomposition — a documented bug class in ViewModel-based architectures.
+
+\subsection*{Feature Slice Structure}
+\texttt{domain/model}, \texttt{domain/repository} (interfaces), \texttt{data/mock} (deterministic fakes with \texttt{delay(600)}), \texttt{presentation} (State, Events, Effect, Component, DefaultXxxComponent), \texttt{ui} (pure composables). Switching from mock to production: one line in one Koin DI module.
+
+%----------------------------------------------------------------------
+\section{ADR-009 — Deployment: Docker Compose over Kubernetes + AWS}
+\label{adr:009}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Decision}
+Deploy on Docker Compose on a single-node VPS. Do not use Kubernetes or AWS managed services at this stage.
+
+\subsection*{Rationale}
+At demo scale (1–5 concurrent users, 1 active topic), Docker Compose on a €4–8/month VPS provides identical availability to an EKS cluster at 1\% of the cost. AWS EKS minimum: €150–250/month (control plane + worker nodes + load balancer), with none of the problems Kubernetes solves present at current scale.
+
+\subsection*{Architecture Remains Kubernetes-Ready}
+Each Docker Compose service maps directly to a Kubernetes \texttt{Deployment}. Configuration is all environment variables. The nightly batch maps to a \texttt{CronJob}. The \texttt{TaskGenerationPort} module boundary is already the correct seam for future service extraction.
+
+\subsection*{Migration Triggers}
+Migrate to Kubernetes when: (1) batch jobs measurably increase API P95 latency, (2) multi-institution data residency is required, (3) a zero-downtime SLA is committed, or (4) LLM inference becomes the latency bottleneck.
+
+%----------------------------------------------------------------------
+\section{ADR-010 — BaseView Scaffold: Edge-to-Edge Insets + Navigation Drawer}
+\label{adr:010}
+\textbf{Status:} Accepted \quad \textbf{Date:} March 2026
+
+\subsection*{Context}
+Two visual defects (double gap at screen edges from unabsorbed window insets; inconsistent per-screen layout handling) and one UX problem (log-out buried at the bottom of the Profile screen).
+
+\subsection*{Decision}
+Replace \texttt{Box + padding(24.dp)} with \texttt{Scaffold(contentWindowInsets = WindowInsets.safeDrawing)} as the \texttt{BaseView} implementation. Add optional \texttt{topBar}, \texttt{bottomBar}, \texttt{drawerState}, and \texttt{drawerContent} parameters. Move log-out to a \texttt{ModalNavigationDrawer} on Home, positioned at the bottom of the drawer panel with a visual divider.
+
+\subsection*{Rationale}
+\texttt{enableEdgeToEdge()} instructs the system to draw behind system bars; \texttt{Scaffold} with \texttt{safeDrawing} absorbs bar heights into \texttt{innerPadding}, eliminating the double-gap for all screens simultaneously. Log-out is a session-level action (terminates the entire session) — it belongs with session-level navigation, not nested in profile data.
+
+%----------------------------------------------------------------------
+\section{ADR-011 — Passwordless Authentication: Magic Link + OAuth 2.0}
+\label{adr:011}
+\textbf{Status:} Accepted \quad \textbf{Date:} April 2026
+
+\subsection*{Decision}
+Two complementary mechanisms converge at the same \texttt{TokenPair} output:
+
+\textbf{Magic Link}: \texttt{SHA-256(token)} stored (not plaintext); 15-minute expiry; atomic CTE claim prevents TOCTOU race; delivery via Resend REST API (\texttt{ConsoleEmailAdapter} fallback for local dev).
+
+\textbf{OAuth 2.0}: Google uses JWKS local verification (1-hour cache — no per-login call to Google's \texttt{tokeninfo} endpoint); audience claim validated against \texttt{GOOGLE\_CLIENT\_ID}; Facebook uses Graph API \texttt{/me} (correct for opaque tokens).
+
+\textbf{Tokens}: access JWT (15 min, \texttt{userId + email + role} claims, not stored); refresh token (7 days, stored as SHA-256 hash); token family rotation with reuse detection (entire family revoked on reuse).
+
+\subsection*{Why not Firebase Authentication}
+Vendor lock-in (user identity owned by Firebase), loss of custom user model control, cost at scale ($0.0055/MAU above 10,000), and the educational value of implementing the security model from first principles.
+
+%----------------------------------------------------------------------
+\section{ADR-012 — Topic Content Pipeline: Async Generation, MinIO, Extraction}
+\label{adr:012}
+\textbf{Status:} Accepted \quad \textbf{Date:} April 2026
+
+\subsection*{Decision}
+\textbf{Async}: Spring \texttt{@Async("generationExecutor")} with bounded thread pool (3 threads, 25-item queue). \texttt{withTimeoutOrNull(timeoutMs)} wraps the LLM coroutine — zero race window vs a \texttt{@Scheduled} cleanup job. Top-level \texttt{try/catch} guarantees topics end in \texttt{ACTIVE} or \texttt{FAILED} — never stranded in \texttt{GENERATING}.
+
+\textbf{File storage}: MinIO (S3-compatible Docker service). \texttt{FileStoragePort} interface — swapping to AWS S3 or Cloudflare R2 is a three-line \texttt{.env} change with zero application code changes.
+
+\textbf{Extraction}: PDFBox 3.x for PDF text (note: breaking API change from 2.x — \texttt{Loader.loadPDF()} not \texttt{PDDocument.load()}); Jsoup for URL text (10-second timeout).
+
+\textbf{Task versioning}: editing a task creates a new \texttt{TaskTemplate} (version++, \texttt{isCurrent=true}); old version soft-deleted. In-progress learners keep their version.
+
+%----------------------------------------------------------------------
+\section{ADR-013 — Learning Flow: Day Progression, Struggle Detection, Caching}
+\label{adr:013}
+\textbf{Status:} Accepted \quad \textbf{Date:} April 2026
+
+\subsection*{Day Progression}
+\texttt{DayIndexCalculator}: \texttt{ChronoUnit.DAYS.between(enrolledLocalDate, todayLocalDate)} in the user's timezone from the \texttt{X-Timezone} header. Calendar days, not 86,400-second intervals. Invalid or absent timezone silently defaults to UTC. Pure Kotlin object — zero dependencies, zero mocking required.
+
+\subsection*{Struggle Detection}
+Threshold: 2 wrong answers on the same \texttt{TaskAssignment}. \texttt{ErrorPatternClassifier}: 4-rule priority chain (TIME\_PRESSURE → READING\_ERROR → PARTIAL\_UNDERSTANDING → WRONG\_CONCEPT). Deterministic, no AI cost. Pattern drives the adaptive prompt strategy.
+
+\subsection*{Caching}
+\texttt{CachePort} interface over Redis Lettuce. All operations wrapped in try/catch — Redis outage = performance degradation, not service outage. Four cache domains with TTLs from 15 minutes to 24 hours. Cache hit ratio tracked per key prefix (\texttt{task}, \texttt{topic}, \texttt{enrollment}, \texttt{template}) via Prometheus counters.
+
+%----------------------------------------------------------------------
+\section{ADR-014 — Peer Review: Cost-Free Assessment Through Collective Correction}
+\label{adr:014}
+\textbf{Status:} Accepted \quad \textbf{Date:} April 2026
+
+\subsection*{Decision}
+Three-verdict majority vote for \texttt{TODO\_ACTION} tasks (learner photographs real-world application). Pedagogical basis: reviewing another learner's work is retrieval practice~\cite{roediger2011retrieval}; distributed assessment is more robust than single-evaluator review~\cite{reily2010two}. Zero marginal AI cost per submission.
+
+\textbf{Reviewer selection}: application-level prioritization (unreviewed → partial → random); not \texttt{ORDER BY RANDOM()} (forces full-table scan). Duplicate-reviewer prevention: application filter + database \texttt{UNIQUE(submission\_assignment\_id, reviewer\_user\_id)}.
+
+\textbf{Finalization}: synchronous on the 3rd verdict (work is bounded — 1 assignment update, at most 4 enrollment updates, milliseconds). No async job needed.
+
+\textbf{Social feedback}: verdict percentage breakdown returned after submission — reviewer sees community consensus after committing their own judgment (anchoring bias prevention by sequencing).
+
+\textbf{Reviewer reward}: 10 points per completed review added to enrollment.
+
+%----------------------------------------------------------------------
+\section{ADR-015 — Observability Strategy: Custom Metrics, Prometheus, Grafana}
+\label{adr:015}
+\textbf{Status:} Accepted \quad \textbf{Date:} April 2026
+
+\subsection*{Decision}
+Direct \texttt{MeterRegistry} injection (not \texttt{@Timed} annotations, which cannot capture domain events or set runtime tags). Six instrumented services (Table~\ref{tab:metrics}).
+
+\textbf{Key design choices}: \texttt{Timer.start(registry)} inside the \texttt{@Async} body (not the call site — measures generation work, not queue wait); \texttt{key\_prefix} tag extracted from cache key (\texttt{substringBefore(":")}) — bounded cardinality (4 values); verdicts tracked with \texttt{finalized} tag to distinguish raw verdict throughput from submission closures.
+
+\textbf{Grafana provisioning}: datasource and dashboard JSON committed to \texttt{infra/grafana/} and loaded automatically on startup — reproducible from \texttt{git clone + docker compose up}.
+
+%----------------------------------------------------------------------
+\section{ADR-016 — Authentication Hardening: Security Audit and Remediation}
+\label{adr:016}
+\textbf{Status:} Accepted \quad \textbf{Date:} April 2026
+
+\subsection*{Context}
+Internal security audit of the Identity bounded context identified 11 gaps (G1–G11) between ADR-011 design intent and actual implementation, discovered by reading every auth file against the ADR specification.
+
+\subsection*{Key Remediations}
+\begin{description}
+    \item[G1 (Security)] Raw magic-link tokens stored in plaintext → fixed: SHA-256 hash stored; raw token only in transit.
+    \item[G2 (Correctness)] TOCTOU race on token claim → fixed: atomic \texttt{UPDATE ... WHERE used=false RETURNING *} CTE.
+    \item[G3 (Security)] Google audience validation skipped when \texttt{GOOGLE\_CLIENT\_ID} blank → fixed: blank key = hard startup error.
+    \item[G5 (Correctness)] Refresh rotation discarded email claim → fixed: load \texttt{User} by PK during refresh.
+    \item[G6 (Correctness)] Logout only invalidated submitted token → fixed: entire token family revoked.
+    \item[G7 (Correctness)] Public routes returned 401 on stale Bearer token → fixed: filter continues chain on parse failure for public routes.
+    \item[G8–G10 (Error handling)] Auth exceptions, 403, and malformed body rejections returned inconsistent shapes → fixed: \texttt{AuthExceptionHandler} returns \texttt{MessageResponse} for all error types.
+    \item[G11 (Operations)] No documented path to create first admin → fixed: \texttt{V10\_\_seed\_initial\_admin.sql} Flyway migration, corrected admin promotion SQL in all documentation.
+    \item[G4 (Deferred)] Facebook OAuth audience validation (\texttt{/debug\_token}) pending \texttt{FACEBOOK\_APP\_ID} configuration.
+\end{description}
+
+\subsection*{Outcome}
+24 unit tests pass (2 new covering family revocation). All auth error responses unified to \texttt{MessageResponse}. No breaking API changes — all fixes are server-internal.
