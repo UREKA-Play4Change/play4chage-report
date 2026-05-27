@@ -1,0 +1,146 @@
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\setcounter {tocdepth}{-1}
+\contentsline {chapter}{Contents}{vii}{chapter*.5}%
+\setcounter {tocdepth}{3}
+\contentsline {chapter}{List of Figures}{xiii}{chapter*.6}%
+\contentsline {chapter}{List of Tables}{xv}{chapter*.7}%
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Context and Motivation}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Problem Statement}{1}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Objectives}{2}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Supervisors}{2}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Report Structure}{2}{section.1.5}%
+\contentsline {chapter}{\numberline {2}Background and State of the Art}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}E-Learning Platforms}{5}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Gamification in Education}{5}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Adaptive Learning and Flow State}{5}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Generative AI and Retrieval-Augmented Generation}{6}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Peer Review as an Assessment Mechanism}{6}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Sustainability Education and the UN SDGs}{6}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Passwordless Authentication}{6}{section.2.7}%
+\contentsline {section}{\numberline {2.8}Cross-Platform Mobile Development}{7}{section.2.8}%
+\contentsline {section}{\numberline {2.9}Typed Error Handling: Railway Oriented Programming}{7}{section.2.9}%
+\contentsline {section}{\numberline {2.10}Backend Technologies}{7}{section.2.10}%
+\contentsline {section}{\numberline {2.11}Architectural Patterns}{7}{section.2.11}%
+\contentsline {subsection}{\numberline {2.11.1}Domain-Driven Design}{7}{subsection.2.11.1}%
+\contentsline {subsection}{\numberline {2.11.2}Hexagonal Architecture}{8}{subsection.2.11.2}%
+\contentsline {subsection}{\numberline {2.11.3}Clean Architecture}{8}{subsection.2.11.3}%
+\contentsline {section}{\numberline {2.12}Observability: Metrics and Monitoring}{8}{section.2.12}%
+\contentsline {section}{\numberline {2.13}Related Work and Gap Analysis}{8}{section.2.13}%
+\contentsline {chapter}{\numberline {3}Play4Change Platform}{9}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Vision and Value Proposition}{9}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Core Features}{9}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}AI-Generated Content}{9}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Adaptive Learning}{10}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Gamification and Peer Review}{10}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}Sustainability Focus}{10}{subsection.3.2.4}%
+\contentsline {section}{\numberline {3.3}User Roles}{10}{section.3.3}%
+\contentsline {section}{\numberline {3.4}The Four-Step Learning Journey}{11}{section.3.4}%
+\contentsline {paragraph}{Step 1 — Educators Create Topics}{11}{section.3.4}%
+\contentsline {paragraph}{Step 2 — Learners Enroll and Start}{11}{section.3.4}%
+\contentsline {paragraph}{Step 3 — Progress Through Challenges}{11}{section.3.4}%
+\contentsline {paragraph}{Step 4 — Earn Achievements and Grow}{11}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Landing Page and Administration}{11}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Platform Constraints and Design Philosophy}{11}{section.3.6}%
+\contentsline {chapter}{\numberline {4}System Architecture}{13}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Overview}{13}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Architectural Principles}{13}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Domain-Driven Design — Bounded Contexts}{14}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Hexagonal Architecture — Ports and Adapters}{14}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Clean Architecture Layering}{14}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Typed Error Handling — Railway Oriented Programming}{14}{subsection.4.2.4}%
+\contentsline {section}{\numberline {4.3}Shared Kotlin Module}{15}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Mobile Client — Kotlin Multiplatform}{15}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Architecture: MVI with BaseComponent}{15}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Navigation with Decompose}{15}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Feature Slices — Domain-Driven Code Organisation}{16}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.4}Dependency Injection: Koin}{16}{subsection.4.4.4}%
+\contentsline {subsection}{\numberline {4.4.5}Data and Network Layer}{16}{subsection.4.4.5}%
+\contentsline {subsection}{\numberline {4.4.6}Internationalisation}{16}{subsection.4.4.6}%
+\contentsline {section}{\numberline {4.5}Backend — Spring Boot with Kotlin}{17}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Technology Stack}{17}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}API Design}{17}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}Docker and Containerization}{17}{subsection.4.5.3}%
+\contentsline {section}{\numberline {4.6}AI Content Pipeline}{17}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Module Boundary: Provider Pattern}{17}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}Batch Generation — Fixed Learning Path}{18}{subsection.4.6.2}%
+\contentsline {subsection}{\numberline {4.6.3}On-Demand Generation — Adaptive Branches}{18}{subsection.4.6.3}%
+\contentsline {subsection}{\numberline {4.6.4}Graceful Degradation}{19}{subsection.4.6.4}%
+\contentsline {subsection}{\numberline {4.6.5}Content Extraction}{19}{subsection.4.6.5}%
+\contentsline {section}{\numberline {4.7}Security Design}{19}{section.4.7}%
+\contentsline {subsection}{\numberline {4.7.1}Passwordless Authentication — Magic Link + OAuth 2.0}{19}{subsection.4.7.1}%
+\contentsline {paragraph}{Magic Link}{19}{subsection.4.7.1}%
+\contentsline {paragraph}{OAuth 2.0}{19}{subsection.4.7.1}%
+\contentsline {paragraph}{Token Lifecycle}{20}{subsection.4.7.1}%
+\contentsline {subsection}{\numberline {4.7.2}Role-Based Access Control}{20}{subsection.4.7.2}%
+\contentsline {subsection}{\numberline {4.7.3}Minimal Data Retention}{20}{subsection.4.7.3}%
+\contentsline {section}{\numberline {4.8}Learning Flow and Day Progression}{20}{section.4.8}%
+\contentsline {subsection}{\numberline {4.8.1}Timezone-Aware Day Index}{20}{subsection.4.8.1}%
+\contentsline {subsection}{\numberline {4.8.2}Struggle Detection and Adaptive Branching}{20}{subsection.4.8.2}%
+\contentsline {section}{\numberline {4.9}Caching Strategy}{21}{section.4.9}%
+\contentsline {section}{\numberline {4.10}Observability}{21}{section.4.10}%
+\contentsline {section}{\numberline {4.11}Infrastructure and Scalability}{21}{section.4.11}%
+\contentsline {subsection}{\numberline {4.11.1}Deployment: Docker Compose}{21}{subsection.4.11.1}%
+\contentsline {subsection}{\numberline {4.11.2}Kubernetes Readiness}{22}{subsection.4.11.2}%
+\contentsline {section}{\numberline {4.12}CI/CD Pipeline}{22}{section.4.12}%
+\contentsline {section}{\numberline {4.13}Testing Strategy}{22}{section.4.13}%
+\contentsline {chapter}{\numberline {5}Implementation and Current State}{23}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Development Status}{23}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Key Implementation Decisions}{23}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Type Safety Across the System Boundary}{23}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Arrow Either — Railway Oriented Programming}{23}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Passwordless Auth Hardening}{23}{subsection.5.2.3}%
+\contentsline {subsection}{\numberline {5.2.4}pgvector for Content Deduplication and Struggle Reuse}{24}{subsection.5.2.4}%
+\contentsline {subsection}{\numberline {5.2.5}Peer Review — Three-Verdict Majority}{24}{subsection.5.2.5}%
+\contentsline {subsection}{\numberline {5.2.6}Adaptive Day Progression}{24}{subsection.5.2.6}%
+\contentsline {section}{\numberline {5.3}Encountered Challenges}{25}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}PDFBox 3.x Breaking API Change}{25}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Mistral Prompt Engineering}{25}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}KMP/iOS Memory Model}{25}{subsection.5.3.3}%
+\contentsline {subsection}{\numberline {5.3.4}Known Gaps (Documented in ADR-007)}{25}{subsection.5.3.4}%
+\contentsline {section}{\numberline {5.4}Project Repository Structure}{25}{section.5.4}%
+\contentsline {chapter}{\numberline {6}Conclusion and Future Work}{29}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Summary of Contributions}{29}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Current Limitations}{30}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Future Work}{30}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Kubernetes Deployment}{30}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}CDN Integration}{30}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Gamification Completion}{30}{subsection.6.3.3}%
+\contentsline {subsection}{\numberline {6.3.4}Advanced Analytics and Reporting}{31}{subsection.6.3.4}%
+\contentsline {subsection}{\numberline {6.3.5}Richer Adaptive Model}{31}{subsection.6.3.5}%
+\contentsline {subsection}{\numberline {6.3.6}Internationalization Extension}{31}{subsection.6.3.6}%
+\contentsline {subsection}{\numberline {6.3.7}Community and Social Features}{31}{subsection.6.3.7}%
+\contentsline {subsection}{\numberline {6.3.8}Apple Sign-In and Additional OAuth Providers}{31}{subsection.6.3.8}%
+\contentsline {section}{\numberline {6.4}Conclusion}{31}{section.6.4}%
+\contentsline {chapter}{References}{33}{chapter*.16}%
+\contentsline {chapter}{\numberline {A}Architecture Diagrams and Supplementary Material}{i}{appendix.A}%
+\contentsline {section}{\numberline {A.1}Complete Technology Stack}{i}{section.A.1}%
+\contentsline {section}{\numberline {A.2}System Component Diagram}{i}{section.A.2}%
+\contentsline {section}{\numberline {A.3}Domain Model}{i}{section.A.3}%
+\contentsline {section}{\numberline {A.4}AI Pipeline Sequence Diagram}{i}{section.A.4}%
+\contentsline {section}{\numberline {A.5}Database Schema (ERD)}{i}{section.A.5}%
+\contentsline {section}{\numberline {A.6}Grafana Dashboard Panels}{iii}{section.A.6}%
+\contentsline {chapter}{\numberline {B}Architecture Decision Records}{v}{appendix.B}%
+\contentsline {section}{\numberline {B.1}ADR Registry}{v}{section.B.1}%
+\contentsline {section}{\numberline {B.2}ADR-001 — Result Type: Custom Implementation → Arrow Either}{vi}{section.B.2}%
+\contentsline {section}{\numberline {B.3}ADR-002 — Communication Architecture: Hybrid REST + gRPC}{vii}{section.B.3}%
+\contentsline {section}{\numberline {B.4}ADR-003 — AI Content Generation: Batch vs On-Demand}{viii}{section.B.4}%
+\contentsline {section}{\numberline {B.5}ADR-004 — Internationalisation Strategy: Hybrid Server + Client}{viii}{section.B.5}%
+\contentsline {section}{\numberline {B.6}ADR-005 — Adaptive Learning Path Architecture}{ix}{section.B.6}%
+\contentsline {section}{\numberline {B.7}ADR-006 — AI Agent: gRPC Service → Gradle Module Boundary}{ix}{section.B.7}%
+\contentsline {section}{\numberline {B.8}ADR-007 — AI Content Generation Pipeline}{x}{section.B.8}%
+\contentsline {section}{\numberline {B.9}ADR-008 — Client Architecture: Decompose + MVI + DDD Feature Slices}{x}{section.B.9}%
+\contentsline {section}{\numberline {B.10}ADR-009 — Deployment: Docker Compose over Kubernetes + AWS}{xi}{section.B.10}%
+\contentsline {section}{\numberline {B.11}ADR-010 — BaseView Scaffold: Edge-to-Edge Insets + Navigation Drawer}{xii}{section.B.11}%
+\contentsline {section}{\numberline {B.12}ADR-011 — Passwordless Authentication: Magic Link + OAuth 2.0}{xii}{section.B.12}%
+\contentsline {section}{\numberline {B.13}ADR-012 — Topic Content Pipeline: Async Generation, MinIO, Extraction}{xiii}{section.B.13}%
+\contentsline {section}{\numberline {B.14}ADR-013 — Learning Flow: Day Progression, Struggle Detection, Caching}{xiii}{section.B.14}%
+\contentsline {section}{\numberline {B.15}ADR-014 — Peer Review: Cost-Free Assessment Through Collective Correction}{xiv}{section.B.15}%
+\contentsline {section}{\numberline {B.16}ADR-015 — Observability Strategy: Custom Metrics, Prometheus, Grafana}{xv}{section.B.16}%
+\contentsline {section}{\numberline {B.17}ADR-016 — Authentication Hardening: Security Audit and Remediation}{xv}{section.B.17}%
