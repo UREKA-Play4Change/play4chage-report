@@ -1,0 +1,399 @@
+%
+%  chapter4.tex — System Architecture
+%
+\chapter{System Architecture}
+\label{cha:architecture}
+
+\section{Overview}
+\label{sec:arch_overview}
+
+The Play4Change system is composed of four primary components (Figure~\ref{fig:system_overview}):
+
+\begin{enumerate}
+    \item \textbf{Mobile Client} — Kotlin Multiplatform application for iOS and Android.
+    \item \textbf{Backend Server} — Spring Boot 3 application on Kotlin/JVM, running in Docker.
+    \item \textbf{Shared Kotlin Module} — type-safe API contracts and domain models shared between client and server.
+    \item \textbf{Landing Page \& Admin Panel} — TypeScript/React web application.
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{2cm}\textit{[System Overview Diagram — to be inserted]}\vspace{2cm}}}
+    \caption{High-level system overview of Play4Change.}
+    \label{fig:system_overview}
+\end{figure}
+
+All architectural decisions are documented as Architecture Decision Records (ADRs) in Appendix~\ref{app:adrs}. This chapter presents the resulting architecture; the ADRs document the reasoning and alternatives considered.
+
+\section{Architectural Principles}
+\label{sec:arch_principles}
+
+Every component follows the same three-layer architectural philosophy.
+
+\subsection{Domain-Driven Design — Bounded Contexts}
+\label{ssec:ddd_impl}
+
+The domain is decomposed into five bounded contexts, each with its own aggregate roots, value objects, repositories, and domain events:
+
+\begin{itemize}
+    \item \textbf{Identity}: user accounts, passwordless authentication, session tokens, roles.
+    \item \textbf{Content}: topics, educator materials, AI-generated task templates.
+    \item \textbf{Learning}: enrollments, daily challenge delivery, adaptive difficulty, day progression.
+    \item \textbf{Gamification}: streaks, badges, leaderboards, experience points.
+    \item \textbf{Peer Review}: open-ended task submission, reviewer assignment, verdict aggregation.
+\end{itemize}
+
+Bounded contexts communicate through domain events where possible, ensuring loose coupling.
+
+\subsection{Hexagonal Architecture — Ports and Adapters}
+\label{ssec:hex_impl}
+
+Each bounded context defines \emph{input ports} (use case interfaces) and \emph{output ports} (repository and external service interfaces). Adapters implement output ports for concrete technologies: JPA for relational persistence, Redis for caching, an HTTP adapter for Mistral AI, MinIO for file storage, and Resend for transactional email. Spring annotations, JPA annotations, and external SDK calls live exclusively in infrastructure adapters — the domain and application layers contain no framework imports.
+
+\subsection{Clean Architecture Layering}
+\label{ssec:clean_impl}
+
+The dependency rule is strictly enforced in the server codebase:
+
+\begin{enumerate}
+    \item \textbf{Domain}: entities, value objects, domain events, domain services — zero external dependencies.
+    \item \textbf{Application}: use cases, command/query handlers — depends only on domain and port interfaces.
+    \item \textbf{Infrastructure}: JPA adapters, MinIO adapter, Mistral adapter, Redis adapter, email adapter.
+    \item \textbf{Presentation}: REST controllers, request/response DTOs — depends only on application use cases.
+\end{enumerate}
+
+\subsection{Typed Error Handling — Railway Oriented Programming}
+\label{ssec:errors}
+
+All use case and service methods return \texttt{Either<AppError, T>} from the \textbf{Arrow} library~\cite{arrowkt2024} rather than throwing exceptions for expected domain failures. The \texttt{Raise<E>} DSL enables Railway Oriented Programming~\cite{wlaschin2014rop}: each step either propagates on the right track (success) or short-circuits on the left (typed error). The \texttt{AppError} sealed class hierarchy and its HTTP status mappings are domain-specific; Arrow provides the combinators. REST controllers call \texttt{.getOrThrow()} which bridges to Spring's \texttt{GlobalExceptionHandler}. See Appendix~\ref{app:adrs}, ADR-001 for full rationale.
+
+\section{Shared Kotlin Module}
+\label{sec:shared_module}
+
+The shared module is a Kotlin Multiplatform library compiled for both the JVM (server) and Kotlin/Native (iOS client). It contains:
+
+\begin{itemize}
+    \item \textbf{API contracts}: \texttt{@Serializable} Kotlin data classes for all HTTP request and response bodies. Both Ktor (mobile) and Spring Boot (server) use the same classes — a schema change that is not reflected in the shared module produces a compile-time error.
+    \item \textbf{Domain value objects}: typed identifiers, enumerations, and shared constraints.
+    \item \textbf{Validation logic}: field-level rules that execute identically on client and server.
+\end{itemize}
+
+This module eliminates an entire class of client-server integration bugs. It is the primary mechanism for \emph{type safety across the system boundary}.
+
+\section{Mobile Client — Kotlin Multiplatform}
+\label{sec:kmp_client}
+
+\subsection{Architecture: MVI with BaseComponent}
+\label{ssec:kmp_arch}
+
+The client follows a three-layer architecture per feature slice (see Section~\ref{sec:feature_slices}). State management uses the \textbf{Model-View-Intent (MVI)} pattern implemented through a \texttt{BaseComponent<S, E>} base class (ADR-008):
+
+\begin{itemize}
+    \item \textbf{State} (\texttt{S : ComponentState}): an immutable data class held in Decompose's \texttt{MutableValue<S>}, which integrates with the component lifecycle directly without requiring a coroutine collector.
+    \item \textbf{Events} (\texttt{E : ComponentEvents}): a sealed class representing all possible user interactions. Screens are pure composables that receive \texttt{(state, onEvent)} — no logic lives in UI code.
+    \item \textbf{Effects}: one-time navigation or toast signals emitted via a \texttt{Channel<Effect>} and collected with \texttt{LaunchedEffect}. Navigation is always an effect, never a state field — this prevents re-triggering on recomposition.
+\end{itemize}
+
+\subsection{Navigation with Decompose}
+\label{ssec:decompose}
+
+Navigation and lifecycle management use \textbf{Decompose}~\cite{decompose2024}. Each screen is a \emph{component} with its own lifecycle and back stack managed by \texttt{ChildStack}. \texttt{DefaultRootComponent} is the single point where \texttt{navigation.push()} and \texttt{navigation.replaceAll()} are called — composables never invoke navigation APIs directly.
+
+Key navigation invariants:
+\begin{itemize}
+    \item \texttt{navigateToHome()} and \texttt{navigateToLogin()} use \texttt{replaceAll} — the back stack is cleared and cannot loop back to a previous auth flow.
+    \item Modal screens use \texttt{push} with a guard against duplicate stack entries.
+    \item Transition direction is derived from stack size comparison, not a global flag.
+\end{itemize}
+
+Decompose's \texttt{@Serializable Config} sealed interface means the back stack survives Android process death and is restored automatically.
+
+\subsection{Feature Slices — Domain-Driven Code Organisation}
+\label{sec:feature_slices}
+
+Every feature is a self-contained vertical slice under \texttt{features/<feature>/}:
+
+\begin{verbatim}
+features/<feature>/
+  domain/model/       — pure Kotlin data classes
+  domain/repository/  — interfaces only
+  data/mock/          — deterministic fake implementations
+  presentation/       — State, Events, Effect, Component interface
+                        DefaultXxxComponent (extends BaseComponent)
+  ui/                 — @Composable only (state, onEvent) — no logic
+\end{verbatim}
+
+Features never import from each other. Shared types live in \texttt{core/}. Production repository implementations in \texttt{data/network/} replace mock bindings via a one-line Koin configuration change — zero changes to screens, components, or domain models.
+
+\subsection{Dependency Injection: Koin}
+\label{ssec:koin}
+
+\textbf{Koin}~\cite{koin2024} is the DI framework. Hilt and Dagger are excluded because kapt (annotation processing) is not available on Kotlin/Native (iOS target). Koin's runtime verification risk is mitigated by integration tests that boot the full Koin module graph and verify all bindings resolve.
+
+\subsection{Data and Network Layer}
+\label{ssec:client_data}
+
+\begin{itemize}
+    \item \textbf{Ktor}~\cite{ktor2024}: HTTP client for all API communication (shared in \texttt{commonMain}).
+    \item \textbf{SQLDelight}~\cite{sqldelight2024}: type-safe, KMP-compatible local persistence for challenge caching and offline access.
+    \item \textbf{Kotlinx.serialization}: JSON marshaling using the same classes as the shared module.
+\end{itemize}
+
+\subsection{Internationalisation}
+\label{ssec:i18n_client}
+
+All UI strings use \texttt{stringResource(Res.string.key)} via the Compose Multiplatform resources system. Hardcoded strings are treated as build violations. Resource files in \texttt{commonMain/composeResources/} cover English (default), Portuguese, and French. API error messages are translated server-side via Spring \texttt{MessageSource} using the \texttt{Accept-Language} header — no per-platform duplication of error strings (ADR-004).
+
+\section{Backend — Spring Boot with Kotlin}
+\label{sec:backend_arch}
+
+\subsection{Technology Stack}
+\label{ssec:backend_stack}
+
+\begin{table}[ht]
+    \caption{Backend technology stack.}
+    \label{tab:backend_stack}
+    \vskip0.5em
+    \centering
+    \begin{tabular}{ll}
+    \toprule
+    Component & Technology \\
+    \midrule
+    Language            & Kotlin (JVM 21) \\
+    Framework           & Spring Boot 3.x \\
+    HTTP API            & Spring Web MVC (REST/JSON) \\
+    Persistence         & Spring Data JPA + PostgreSQL \\
+    Vector Search       & pgvector (PostgreSQL extension) \\
+    Error handling      & Arrow \texttt{Either<AppError, T>} \\
+    Caching             & Redis (Spring Data Redis + Lettuce) \\
+    File storage        & MinIO (S3-compatible, Docker Compose service) \\
+    Email               & Resend REST API (magic link delivery) \\
+    AI integration      & LangChain4j + Mistral API \\
+    Containerization    & Docker / Docker Compose \\
+    Observability       & Micrometer + Prometheus + Grafana \\
+    Auth                & Passwordless (magic link + OAuth 2.0) \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{API Design}
+\label{ssec:api_design}
+
+The backend exposes a versioned REST JSON API (\texttt{/api/v1/...}) consumed by both the mobile client and the admin panel. All endpoints are documented with OpenAPI (Springdoc). API versioning and all endpoint definitions are documented in Appendix~\ref{app:diagrams}.
+
+\subsection{Docker and Containerization}
+\label{ssec:docker}
+
+A \texttt{docker-compose.yml} orchestrates the full environment: the Spring Boot application, PostgreSQL with pgvector extension, Redis, MinIO, Prometheus, and Grafana. This ensures environment parity between development, CI, and production, and means the entire platform — including observability — starts with a single \texttt{docker compose up -d}.
+
+\section{AI Content Pipeline}
+\label{sec:ai_module}
+
+\subsection{Module Boundary: Provider Pattern}
+\label{ssec:ai_module_boundary}
+
+The AI integration is split across two Gradle modules to decouple the server from any specific LLM provider (ADR-006):
+
+\begin{itemize}
+    \item \texttt{:ai-agent:api} — interfaces and data models only; no LangChain4j.
+    \item \texttt{:ai-agent:langchain} — LangChain4j + Mistral implementation.
+    \item \texttt{:server} — depends only on \texttt{:ai-agent:api}.
+\end{itemize}
+
+The \texttt{TaskGenerationPort} interface is the contract:
+
+\begin{verbatim}
+interface TaskGenerationPort {
+    suspend fun generateTasks(request: GenerationRequest)
+                : Either<AppError, GenerationResult>
+    suspend fun generateAdaptiveBranch(context: StruggleContext)
+                : Either<AppError, AdaptiveBranch>
+    suspend fun healthCheck(): Boolean
+}
+\end{verbatim}
+
+Switching from Mistral to another provider requires only a new module implementing this interface and one Spring bean swap — zero changes in \texttt{:server}.
+
+\subsection{Batch Generation — Fixed Learning Path}
+\label{ssec:batch_generation}
+
+Fixed-path tasks are pre-generated nightly (ADR-003). A Spring \texttt{@Scheduled(cron = "0 0 2 * * *")} job generates tasks for all active topics. Key design properties:
+
+\begin{itemize}
+    \item \textbf{Prompt architecture}: two static objects, \texttt{TaskGenerationPrompt.system()} and \texttt{TaskGenerationPrompt.user(request)}, compose the Mistral prompt. Both are pure Kotlin — independently testable without LangChain4j.
+    \item \textbf{Resilience}: \texttt{@Retryable} (3 attempts, exponential back-off) and Resilience4j circuit breaker wrap LLM calls; a static fallback task library is always available.
+    \item \textbf{Deduplication}: after generation, each task is embedded and compared against existing embeddings using pgvector's cosine distance operator (\texttt{<=>}). Tasks above a 0.90 similarity threshold are discarded to prevent content fatigue.
+    \item \textbf{Cost curve}: batch generation scales with domains, not users. At 10,000 users across 5 topics, ~50 LLM calls are made per night.
+\end{itemize}
+
+\subsection{On-Demand Generation — Adaptive Branches}
+\label{ssec:adaptive_generation}
+
+When a learner's struggle is detected (Section~\ref{sec:struggle_detect}), an adaptive branch is generated on-demand. Before calling Mistral, the system queries pgvector for similar past struggle embeddings:
+
+\begin{itemize}
+    \item Similarity $> 0.90$ → reuse existing branch entirely (zero LLM cost).
+    \item Similarity $\in (0.65, 0.90]$ → merge existing tasks with a generated complement.
+    \item Similarity $< 0.65$ → generate fresh branch; store embedding for future reuse.
+\end{itemize}
+
+This means the adaptive generation cost decreases over time as the pattern library grows. The prompt strategy uses \texttt{StruggleAnalysisPrompt} — an ``adaptive learning coach'' persona rather than a content designer — directing the model toward scaffolded remediation based on the classified error pattern.
+
+\subsection{Graceful Degradation}
+\label{ssec:ai_degradation}
+
+Three layers ensure the application runs without an active LLM:
+\begin{enumerate}
+    \item \texttt{LangChain4jConfig} is \texttt{@ConditionalOnExpression} — if \texttt{ai.mistral.api-key} is absent, the entire LangChain4j bean graph is not loaded.
+    \item \texttt{NoOpTaskGenerationAdapter} activates automatically (\texttt{@ConditionalOnMissingBean}) and returns \texttt{ServiceUnavailable} for every call.
+    \item \texttt{CourseService} folds on \texttt{Either.Left} from the AI port and substitutes pre-authored mock tasks, keeping course creation functional. Mock tasks are replaced on the next successful batch run.
+\end{enumerate}
+
+\subsection{Content Extraction}
+\label{ssec:content_extraction}
+
+Educator-supplied materials are processed by \texttt{ContentExtractorPort}:
+\begin{itemize}
+    \item \textbf{PDF}: Apache PDFBox 3.x extracts plain text page by page. Files are stored in MinIO (\texttt{topics/\{topicId\}/source.pdf}).
+    \item \textbf{URL}: Jsoup fetches the HTML page and strips markup to yield article text (10-second timeout).
+\end{itemize}
+
+Topic creation is fully asynchronous: the HTTP response is returned immediately (status \texttt{GENERATING}), and \texttt{@Async} drives the extraction → embedding → generation → \texttt{ACTIVE} pipeline in a bounded thread pool. A top-level \texttt{try/catch} and \texttt{withTimeoutOrNull} guarantee the topic always ends in \texttt{ACTIVE} or \texttt{FAILED} — never stranded in \texttt{GENERATING} (ADR-012).
+
+\section{Security Design}
+\label{sec:security}
+
+\subsection{Passwordless Authentication — Magic Link + OAuth 2.0}
+\label{ssec:auth_impl}
+
+Play4Change supports two passwordless flows, both converging at a \texttt{TokenPair} (access token + refresh token) issued by the Play4Change server (ADR-011):
+
+\paragraph{Magic Link} The user provides their email. The server generates a 32-byte cryptographically random token, hashes it with SHA-256, stores only the hash, and emails the raw token in a one-time link via the Resend API~\cite{resend2024}. On link click, the server validates the hash, marks it used atomically (single-statement CTE — no TOCTOU race), and issues a \texttt{TokenPair}. A \texttt{ConsoleEmailAdapter} fallback prints links to stdout in local development.
+
+\paragraph{OAuth 2.0} For Google: the mobile OS authenticates the user with Google and returns a signed ID token. The server verifies the token signature locally using Google's JWKS endpoint (cached hourly — no per-login network call to Google). The \texttt{aud} claim must match the configured \texttt{GOOGLE\_CLIENT\_ID}. For Facebook: the server calls the Graph API \texttt{/me} endpoint to verify the access token.
+
+\paragraph{Token Lifecycle} Access tokens are JWTs (15-minute expiry, not stored). Refresh tokens are stored as SHA-256 hashes (7-day expiry). On refresh, the old token is marked used and a new pair is issued. If a used refresh token is re-presented, the entire token family is revoked (theft detection). Logout also revokes the full family, terminating all sessions derived from the same login event.
+
+\subsection{Role-Based Access Control}
+\label{ssec:rbac}
+
+Two roles: \texttt{USER} and \texttt{ADMIN}. The role is embedded in every JWT as a claim and propagated through refresh rotation — no database lookup per request. Admin routes are protected by Spring Security (\texttt{.requestMatchers("/admin/**").hasRole("ADMIN")}). Admin status is granted by a direct database update — there is no self-service admin registration endpoint by design.
+
+\subsection{Minimal Data Retention}
+\label{ssec:data_minimization}
+
+No password hashes, no payment data, no third-party tracking. Challenge response data is retained only for personalization. Users may request full data deletion (GDPR Article 17).
+
+\section{Learning Flow and Day Progression}
+\label{sec:learning_flow}
+
+\subsection{Timezone-Aware Day Index}
+\label{ssec:timezone}
+
+``One task per day'' means \emph{calendar days in the user's local timezone} (ADR-013). The \texttt{X-Timezone} header (e.g., \texttt{Europe/Lisbon}) is parsed on every request. \texttt{DayIndexCalculator} uses \texttt{ChronoUnit.DAYS.between(LocalDate, LocalDate)} — counting calendar days, not 86,400-second intervals — to compute how many days have elapsed since enrollment. An absent or invalid timezone silently defaults to UTC.
+
+\subsection{Struggle Detection and Adaptive Branching}
+\label{sec:struggle_detect}
+
+The adaptive branch opens after 2 wrong answers on the same task assignment. The threshold is chosen deliberately: 1 wrong answer is normal; 3 means the learner has already spent too long without help. On the second failure, \texttt{ErrorPatternClassifier} applies a deterministic 4-rule priority chain (no AI cost) to classify the struggle:
+
+\begin{description}
+    \item[\texttt{TIME\_PRESSURE}] Answer submitted after the 24-hour task window.
+    \item[\texttt{READING\_ERROR}] Selected option is adjacent to the correct answer in the original (unshuffled) order.
+    \item[\texttt{PARTIAL\_UNDERSTANDING}] User selected two different wrong options across two attempts.
+    \item[\texttt{WRONG\_CONCEPT}] Default — consistent, confident incorrect answer.
+\end{description}
+
+The classified pattern drives the adaptive prompt strategy. The adaptive branch is generated asynchronously and inserted into the learner's roadmap after the current day's task. After completing all adaptive tasks, the learner resumes the fixed path — no retry of the original task (ADR-005, ADR-013).
+
+\section{Caching Strategy}
+\label{sec:caching}
+
+Redis is used as a multi-level cache via \texttt{CachePort}. All Redis operations are wrapped in try/catch — a Redis outage degrades performance (cache misses) but never breaks correctness; the database remains the source of truth (ADR-013).
+
+\begin{table}[ht]
+    \caption{Cache key patterns and TTLs.}
+    \label{tab:cache_ttls}
+    \vskip0.5em
+    \centering
+    \begin{tabular}{llll}
+    \toprule
+    What & Key pattern & TTL & Invalidated on \\
+    \midrule
+    Today's task      & \texttt{task:\{userId\}:\{topicId\}:\{day\}} & 24h & Submission \\
+    Topic metadata    & \texttt{topic:\{topicId\}} & 1h  & Admin update \\
+    Enrollment state  & \texttt{enrollment:\{userId\}:\{topicId\}} & 15m & Any progress update \\
+    Task template     & \texttt{template:\{id\}:\{version\}} & 6h  & New version created \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Observability}
+\label{sec:observability}
+
+The server is instrumented with \textbf{Micrometer}~\cite{micrometer2024} using direct \texttt{MeterRegistry} injection (not \texttt{@Timed} annotations, which cannot capture domain-specific events). Six custom domain metrics are collected (ADR-015):
+
+\begin{table}[ht]
+    \caption{Custom domain metrics.}
+    \label{tab:metrics}
+    \vskip0.5em
+    \centering
+    \begin{tabular}{lll}
+    \toprule
+    Metric & Type & Tags \\
+    \midrule
+    \texttt{task\_generation\_duration\_seconds} & Timer & \texttt{status} (success/failed/timeout) \\
+    \texttt{struggle\_sessions\_total} & Counter & \texttt{error\_pattern} \\
+    \texttt{cache\_requests\_total} & Counter & \texttt{key\_prefix} \\
+    \texttt{cache\_hits\_total} & Counter & \texttt{key\_prefix} \\
+    \texttt{topic\_enrollments\_total} & Counter & — \\
+    \texttt{task\_submissions\_total} & Counter & \texttt{outcome}, \texttt{task\_type} \\
+    \texttt{peer\_reviews\_completed\_total} & Counter & \texttt{finalized} \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+Prometheus scrapes \texttt{/actuator/prometheus} every 15 seconds. A provisioned Grafana dashboard (9 panels) visualises task generation P95 latency, cache hit ratio by data type, struggle patterns by error category, submission outcomes, JVM heap, and HTTP request rate. All provisioning files are committed to the repository — \texttt{docker compose up} delivers a fully instrumented platform with no manual setup.
+
+\section{Infrastructure and Scalability}
+\label{sec:infra}
+
+\subsection{Deployment: Docker Compose}
+\label{ssec:deployment}
+
+The initial deployment uses Docker Compose on a single VPS (ADR-009). Every service maps directly to a future Kubernetes \texttt{Deployment} or \texttt{StatefulSet}. The nightly batch job maps to a Kubernetes \texttt{CronJob}. The \texttt{TaskGenerationPort} module boundary is already the correct seam for extracting the AI agent into an independent deployable service when scale demands it.
+
+\subsection{Kubernetes Readiness}
+\label{ssec:k8s}
+
+The system is Kubernetes-ready by design:
+\begin{itemize}
+    \item All services are stateless; state lives in PostgreSQL, Redis, and MinIO.
+    \item Health endpoints (\texttt{/actuator/health}) are exposed for liveness and readiness probes.
+    \item Configuration is externalized via environment variables (12-factor app).
+    \item Horizontal Pod Autoscaling can be applied to API and AI pipeline services independently.
+\end{itemize}
+
+Migration triggers are explicitly defined in ADR-009: resource contention between batch and serving, multi-institution data residency requirements, zero-downtime deployment SLA, or LLM inference becoming a latency bottleneck.
+
+\section{CI/CD Pipeline}
+\label{sec:cicd}
+
+The CI pipeline enforces quality gates on every pull request:
+\begin{enumerate}
+    \item Detekt (Kotlin) and ESLint (TypeScript) static analysis.
+    \item Full test suite (unit, integration via Testcontainers, KMP shared module tests on JVM and Native).
+    \item Docker image build and tag.
+    \item Deployment to staging environment on merge to \texttt{main}.
+\end{enumerate}
+
+\section{Testing Strategy}
+\label{sec:testing}
+
+The test pyramid is enforced:
+\begin{itemize}
+    \item \textbf{Unit tests}: domain logic and use cases are tested with plain Kotlin — no mocking of domain objects. \texttt{DayIndexCalculator} and \texttt{ErrorPatternClassifier} are pure objects testable with literal parameters.
+    \item \textbf{Integration tests}: JPA adapters are tested against a real PostgreSQL+pgvector instance via Testcontainers. \texttt{PeerReviewService} and \texttt{PgVectorDeduplicationService} require real database instances and are covered at this layer.
+    \item \textbf{End-to-end tests}: critical user journeys (enrollment, challenge submission, peer review finalization) are tested against the deployed staging environment.
+    \item \textbf{KMP tests}: shared module logic runs in both JVM and Kotlin/Native execution environments.
+\end{itemize}

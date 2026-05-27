@@ -1,0 +1,120 @@
+%
+%  appendix1.tex — Architecture Diagrams and Technology Stack
+%
+\chapter{Architecture Diagrams and Supplementary Material}
+\label{app:diagrams}
+
+\section{Complete Technology Stack}
+\label{app:tech_stack}
+
+\begin{table}[ht]
+    \caption{Complete Play4Change technology stack.}
+    \label{tab:app_tech_stack}
+    \vskip0.5em
+    \centering
+    \begin{tabular}{lll}
+    \toprule
+    Layer & Technology & Notes \\
+    \midrule
+    \multicolumn{3}{l}{\textit{Mobile Client}} \\
+    Shared logic & Kotlin Multiplatform (KMP) & Business logic, API contracts \\
+    Android UI   & Jetpack Compose & Native UI \\
+    iOS UI       & SwiftUI & Native UI \\
+    Navigation   & Decompose & Lifecycle-aware, shared \\
+    State mgmt   & MVI via BaseComponent & Unidirectional data flow \\
+    DI           & Koin & KMP-compatible, runtime-verified \\
+    Local DB     & SQLDelight & Type-safe KMP persistence \\
+    HTTP Client  & Ktor & KMP, shared module \\
+    Serialization & Kotlinx.serialization & Shared with server \\
+    \midrule
+    \multicolumn{3}{l}{\textit{Backend Server}} \\
+    Framework    & Spring Boot 3.x / Kotlin & JVM 21 \\
+    Error handling & Arrow \texttt{Either} & Railway Oriented Programming \\
+    Database     & PostgreSQL + pgvector & Primary store + vector search \\
+    Cache        & Redis (Lettuce) & Silent fallback on unavailability \\
+    File storage & MinIO & S3-compatible, Docker service \\
+    Email        & Resend REST API & Magic link delivery \\
+    AI model     & Mistral (via LangChain4j) & Generative AI \\
+    Containerization & Docker / Compose & Dev, staging, production \\
+    \midrule
+    \multicolumn{3}{l}{\textit{AI Module}} \\
+    Integration  & LangChain4j & JVM-native LLM framework \\
+    Port API     & \texttt{TaskGenerationPort} & Provider-agnostic interface \\
+    Resilience   & Resilience4j circuit breaker & Protects against LLM unavailability \\
+    \midrule
+    \multicolumn{3}{l}{\textit{Infrastructure}} \\
+    Orchestration (planned) & Kubernetes & Production scaling \\
+    CDN (planned) & TBD & Static assets, media \\
+    CI/CD        & GitHub Actions (planned) & Lint, test, build, deploy \\
+    Auth         & Passwordless (magic link + OAuth) & No password hashes stored \\
+    \midrule
+    \multicolumn{3}{l}{\textit{Observability}} \\
+    Metrics      & Micrometer & Provider-agnostic façade \\
+    Scraping     & Prometheus & Time-series database \\
+    Dashboards   & Grafana & Provisioned from source \\
+    \midrule
+    \multicolumn{3}{l}{\textit{Web Frontend}} \\
+    Language     & TypeScript & \\
+    Framework    & React & Landing page, admin panel \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{System Component Diagram}
+\label{app:component_diagram}
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{[C4 Level 2 Component Diagram — to be inserted]}\vspace{2.5cm}}}
+    \caption{Play4Change system component diagram.}
+    \label{fig:app_component}
+\end{figure}
+
+\section{Domain Model}
+\label{app:domain_model}
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{[Bounded context and aggregate diagram — to be inserted]}\vspace{2.5cm}}}
+    \caption{Play4Change domain model — bounded contexts and key aggregates.}
+    \label{fig:app_domain}
+\end{figure}
+
+\section{AI Pipeline Sequence Diagram}
+\label{app:ai_sequence}
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{[Batch generation and adaptive branch sequence diagrams — to be inserted]}\vspace{2.5cm}}}
+    \caption{AI content pipeline: batch ingestion, pgvector deduplication, adaptive reuse.}
+    \label{fig:app_ai_pipeline}
+\end{figure}
+
+\section{Database Schema (ERD)}
+\label{app:erd}
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}\textit{[Entity-Relationship Diagram — to be inserted]}\vspace{2.5cm}}}
+    \caption{Play4Change relational schema.}
+    \label{fig:app_erd}
+\end{figure}
+
+Key tables: \texttt{users}, \texttt{magic\_link\_tokens}, \texttt{refresh\_tokens}, \texttt{topics}, \texttt{topic\_modules}, \texttt{task\_templates} (with vector column), \texttt{user\_enrollments}, \texttt{task\_assignments}, \texttt{struggle\_events} (with vector column), \texttt{adaptive\_branches}, \texttt{adaptive\_tasks}, \texttt{peer\_reviews}.
+
+\section{Grafana Dashboard Panels}
+\label{app:grafana}
+
+The provisioned Grafana dashboard contains 9 panels (ADR-015):
+
+\begin{enumerate}
+    \item Task Generation P95 Duration — \texttt{histogram\_quantile(0.95, rate(task\_generation\_duration\_seconds\_bucket[5m]))}
+    \item Task Generation Success Rate — ratio of \texttt{status="success"} to total
+    \item Struggle Sessions by Error Pattern — bar chart, 1-hour window
+    \item Cache Hit Ratio by Key Prefix — \texttt{cache\_hits\_total / cache\_requests\_total}
+    \item Enrollments Over Time — hourly increase
+    \item Task Submission Outcomes — pie chart by \texttt{outcome} tag
+    \item Peer Review Verdict Rate — rate per minute by \texttt{finalized} tag
+    \item JVM Heap Usage — \texttt{jvm\_memory\_used\_bytes\{area="heap"\}}
+    \item HTTP Request Rate — \texttt{rate(http\_server\_requests\_seconds\_count[5m])}
+\end{enumerate}
