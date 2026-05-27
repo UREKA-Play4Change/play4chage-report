@@ -1,0 +1,20 @@
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces High-level system overview of Play4Change.}}{13}{figure.caption.10}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {A.1}{\ignorespaces Play4Change system component diagram.}}{i}{figure.caption.18}%
+\contentsline {figure}{\numberline {A.2}{\ignorespaces Play4Change domain model — bounded contexts and key aggregates.}}{ii}{figure.caption.19}%
+\contentsline {figure}{\numberline {A.3}{\ignorespaces AI content pipeline: batch ingestion, pgvector deduplication, adaptive reuse.}}{ii}{figure.caption.20}%
+\contentsline {figure}{\numberline {A.4}{\ignorespaces Play4Change relational schema.}}{ii}{figure.caption.21}%
+\addvspace {10\p@ }
