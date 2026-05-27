@@ -1,0 +1,770 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated as
+% required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+\datalist[entry]{debug/global//global/global/global}
+  \entry{arrowkt2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=A}{%
+         family={{Arrow Contributors}},
+         familyi={A\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{A1}
+    \strng{fullhash}{A1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{A}
+    \field{sortinithash}{A}
+    \field{title}{Arrow: Functional companion to Kotlin's Standard Library}
+    \verb{url}
+    \verb https://arrow-kt.io/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{cockburn2005hexagonal}{article}{}{}
+    \name{author}{1}{}{%
+      {{hash=CA}{%
+         family={Cockburn},
+         familyi={C\bibinitperiod},
+         given={Alistair},
+         giveni={A\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{CA1}
+    \strng{fullhash}{CA1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{C}
+    \field{sortinithash}{C}
+    \field{title}{Hexagonal Architecture}
+    \verb{url}
+    \verb https://alistair.cockburn.us/hexagonal-architecture/
+    \endverb
+    \field{journaltitle}{Alistair Cockburn's Blog}
+    \field{year}{2005}
+  \endentry
+
+  \entry{csikszentmihalyi1990flow}{book}{}{}
+    \name{author}{1}{}{%
+      {{hash=CM}{%
+         family={Csikszentmihalyi},
+         familyi={C\bibinitperiod},
+         given={Mihaly},
+         giveni={M\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{2}{%
+      {Harper}%
+      {Row}%
+    }
+    \strng{namehash}{CM1}
+    \strng{fullhash}{CM1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{C}
+    \field{sortinithash}{C}
+    \field{title}{Flow: The Psychology of Optimal Experience}
+    \field{year}{1990}
+  \endentry
+
+  \entry{decompose2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=KA}{%
+         family={Kopylov},
+         familyi={K\bibinitperiod},
+         given={Arkadii},
+         giveni={A\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{KA1}
+    \strng{fullhash}{KA1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{D}
+    \field{sortinithash}{D}
+    \field{title}{Decompose: Lifecycle-aware Business Logic and Navigation}
+    \verb{url}
+    \verb https://arkivanov.github.io/Decompose/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{deterding2011game}{inproceedings}{}{}
+    \name{author}{4}{}{%
+      {{hash=DS}{%
+         family={Deterding},
+         familyi={D\bibinitperiod},
+         given={Sebastian},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=DD}{%
+         family={Dixon},
+         familyi={D\bibinitperiod},
+         given={Dan},
+         giveni={D\bibinitperiod},
+      }}%
+      {{hash=KR}{%
+         family={Khaled},
+         familyi={K\bibinitperiod},
+         given={Rilla},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=NL}{%
+         family={Nacke},
+         familyi={N\bibinitperiod},
+         given={Lennart},
+         giveni={L\bibinitperiod},
+      }}%
+    }
+    \list{organization}{1}{%
+      {ACM}%
+    }
+    \strng{namehash}{DS+1}
+    \strng{fullhash}{DSDDKRNL1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{D}
+    \field{sortinithash}{D}
+    \field{booktitle}{Proceedings of the 15th International Academic MindTrek Conference}
+    \field{pages}{9\bibrangedash 15}
+    \field{title}{From game design elements to gamefulness: defining gamification}
+    \field{year}{2011}
+  \endentry
+
+  \entry{evans2003domain}{book}{}{}
+    \name{author}{1}{}{%
+      {{hash=EE}{%
+         family={Evans},
+         familyi={E\bibinitperiod},
+         given={Eric},
+         giveni={E\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {Addison-Wesley}%
+    }
+    \strng{namehash}{EE1}
+    \strng{fullhash}{EE1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{E}
+    \field{sortinithash}{E}
+    \field{title}{Domain-Driven Design: Tackling Complexity in the Heart of Software}
+    \field{year}{2003}
+  \endentry
+
+  \entry{fido2}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=F}{%
+         family={{FIDO Alliance}},
+         familyi={F\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{F1}
+    \strng{fullhash}{F1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{F}
+    \field{sortinithash}{F}
+    \field{title}{{FIDO2}: Web Authentication ({WebAuthn})}
+    \verb{url}
+    \verb https://fidoalliance.org/fido2/
+    \endverb
+    \field{year}{2023}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{grafana2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=G}{%
+         family={{Grafana Labs}},
+         familyi={G\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{G1}
+    \strng{fullhash}{G1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{G}
+    \field{sortinithash}{G}
+    \field{title}{Grafana: Operational Dashboards}
+    \verb{url}
+    \verb https://grafana.com/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{jordan2014initial}{article}{}{}
+    \name{author}{1}{}{%
+      {{hash=JK}{%
+         family={Jordan},
+         familyi={J\bibinitperiod},
+         given={Katy},
+         giveni={K\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{JK1}
+    \strng{fullhash}{JK1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{J}
+    \field{sortinithash}{J}
+    \field{number}{1}
+    \field{pages}{133\bibrangedash 160}
+    \field{title}{Initial trends in enrolment and completion of massive open online courses}
+    \field{volume}{15}
+    \field{journaltitle}{International Review of Research in Open and Distributed Learning}
+    \field{year}{2014}
+  \endentry
+
+  \entry{koin2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=K}{%
+         family={{Kotzilla}},
+         familyi={K\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{K1}
+    \strng{fullhash}{K1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{K}
+    \field{sortinithash}{K}
+    \field{title}{Koin: The Kotlin Dependency Injection Framework}
+    \verb{url}
+    \verb https://insert-koin.io/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{kotlinmultiplatform2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=J}{%
+         family={{JetBrains}},
+         familyi={J\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{J1}
+    \strng{fullhash}{J1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{K}
+    \field{sortinithash}{K}
+    \field{title}{Kotlin Multiplatform}
+    \verb{url}
+    \verb https://www.jetbrains.com/kotlin-multiplatform/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{ktor2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=J}{%
+         family={{JetBrains}},
+         familyi={J\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{J1}
+    \strng{fullhash}{J1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{K}
+    \field{sortinithash}{K}
+    \field{title}{Ktor: Asynchronous Framework for Connected Applications}
+    \verb{url}
+    \verb https://ktor.io/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{langchain4j2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=L}{%
+         family={{LangChain4j Contributors}},
+         familyi={L\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{L1}
+    \strng{fullhash}{L1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{L}
+    \field{sortinithash}{L}
+    \field{title}{{LangChain4j}: Java/Kotlin LLM Integration Framework}
+    \verb{url}
+    \verb https://docs.langchain4j.dev
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{lewis2020retrieval}{article}{}{}
+    \true{moreauthor}
+    \true{morelabelname}
+    \name{author}{10}{}{%
+      {{hash=LP}{%
+         family={Lewis},
+         familyi={L\bibinitperiod},
+         given={Patrick},
+         giveni={P\bibinitperiod},
+      }}%
+      {{hash=PE}{%
+         family={Perez},
+         familyi={P\bibinitperiod},
+         given={Ethan},
+         giveni={E\bibinitperiod},
+      }}%
+      {{hash=PA}{%
+         family={Piktus},
+         familyi={P\bibinitperiod},
+         given={Aleksandra},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=PF}{%
+         family={Petroni},
+         familyi={P\bibinitperiod},
+         given={Fabio},
+         giveni={F\bibinitperiod},
+      }}%
+      {{hash=KV}{%
+         family={Karpukhin},
+         familyi={K\bibinitperiod},
+         given={Vladimir},
+         giveni={V\bibinitperiod},
+      }}%
+      {{hash=GN}{%
+         family={Goyal},
+         familyi={G\bibinitperiod},
+         given={Naman},
+         giveni={N\bibinitperiod},
+      }}%
+      {{hash=KH}{%
+         family={K{\"u}ttler},
+         familyi={K\bibinitperiod},
+         given={Heinrich},
+         giveni={H\bibinitperiod},
+      }}%
+      {{hash=LM}{%
+         family={Lewis},
+         familyi={L\bibinitperiod},
+         given={Mike},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=YWt}{%
+         family={Yih},
+         familyi={Y\bibinitperiod},
+         given={Wen-tau},
+         giveni={W\bibinithyphendelim t\bibinitperiod},
+      }}%
+      {{hash=RT}{%
+         family={Rockt{\"a}schel},
+         familyi={R\bibinitperiod},
+         given={Tim},
+         giveni={T\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{LP+1}
+    \strng{fullhash}{LPPEPAPFKVGNKHLMYWtRT+1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{L}
+    \field{sortinithash}{L}
+    \field{pages}{9459\bibrangedash 9474}
+    \field{title}{Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks}
+    \field{volume}{33}
+    \field{journaltitle}{Advances in Neural Information Processing Systems}
+    \field{year}{2020}
+  \endentry
+
+  \entry{martin2017clean}{book}{}{}
+    \name{author}{1}{}{%
+      {{hash=MRC}{%
+         family={Martin},
+         familyi={M\bibinitperiod},
+         given={Robert\bibnamedelima C.},
+         giveni={R\bibinitperiod\bibinitdelim C\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {Prentice Hall}%
+    }
+    \strng{namehash}{MRC1}
+    \strng{fullhash}{MRC1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{M}
+    \field{sortinithash}{M}
+    \field{title}{Clean Architecture: A Craftsman's Guide to Software Structure and Design}
+    \field{year}{2017}
+  \endentry
+
+  \entry{micrometer2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=B}{%
+         family={{Broadcom Inc.}},
+         familyi={B\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{B1}
+    \strng{fullhash}{B1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{M}
+    \field{sortinithash}{M}
+    \field{title}{Micrometer: Application Observability Facade}
+    \verb{url}
+    \verb https://micrometer.io/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{minio2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=M}{%
+         family={{MinIO, Inc.}},
+         familyi={M\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{M1}
+    \strng{fullhash}{M1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{M}
+    \field{sortinithash}{M}
+    \field{title}{MinIO: High Performance Object Storage}
+    \verb{url}
+    \verb https://min.io/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{mistral2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=M}{%
+         family={{Mistral AI}},
+         familyi={M\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{M2}
+    \strng{fullhash}{M2}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{M}
+    \field{sortinithash}{M}
+    \field{title}{Mistral AI: Frontier AI in Your Hands}
+    \verb{url}
+    \verb https://mistral.ai/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{prometheus2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=P}{%
+         family={{Prometheus Authors}},
+         familyi={P\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{P1}
+    \strng{fullhash}{P1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{P}
+    \field{sortinithash}{P}
+    \field{title}{Prometheus: Monitoring System and Time Series Database}
+    \verb{url}
+    \verb https://prometheus.io/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{reily2010two}{inproceedings}{}{}
+    \name{author}{3}{}{%
+      {{hash=RK}{%
+         family={Reily},
+         familyi={R\bibinitperiod},
+         given={Kevin},
+         giveni={K\bibinitperiod},
+      }}%
+      {{hash=LFP}{%
+         family={Ludford\bibnamedelima Finnerty},
+         familyi={L\bibinitperiod\bibinitdelim F\bibinitperiod},
+         given={Patricia},
+         giveni={P\bibinitperiod},
+      }}%
+      {{hash=TL}{%
+         family={Terveen},
+         familyi={T\bibinitperiod},
+         given={Loren},
+         giveni={L\bibinitperiod},
+      }}%
+    }
+    \list{organization}{1}{%
+      {ACM}%
+    }
+    \strng{namehash}{RKLFPTL1}
+    \strng{fullhash}{RKLFPTL1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{R}
+    \field{sortinithash}{R}
+    \field{booktitle}{Proceedings of the 2010 ACM conference on Computer Supported Cooperative Work}
+    \field{pages}{115\bibrangedash 124}
+    \field{title}{Two peers are better than one: aggregating peer reviews for computing assignments is surprisingly accurate}
+    \field{year}{2010}
+  \endentry
+
+  \entry{resend2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=R}{%
+         family={{Resend}},
+         familyi={R\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{R1}
+    \strng{fullhash}{R1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{R}
+    \field{sortinithash}{R}
+    \field{title}{Resend: Email API for Developers}
+    \verb{url}
+    \verb https://resend.com/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{roediger2011retrieval}{article}{}{}
+    \name{author}{2}{}{%
+      {{hash=RHL}{%
+         family={Roediger},
+         familyi={R\bibinitperiod},
+         given={Henry\bibnamedelima L.},
+         giveni={H\bibinitperiod\bibinitdelim L\bibinitperiod},
+      }}%
+      {{hash=BAC}{%
+         family={Butler},
+         familyi={B\bibinitperiod},
+         given={Andrew\bibnamedelima C.},
+         giveni={A\bibinitperiod\bibinitdelim C\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {Elsevier}%
+    }
+    \strng{namehash}{RHLBAC1}
+    \strng{fullhash}{RHLBAC1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{R}
+    \field{sortinithash}{R}
+    \field{number}{1}
+    \field{pages}{20\bibrangedash 27}
+    \field{title}{The critical role of retrieval practice in long-term retention}
+    \field{volume}{15}
+    \field{journaltitle}{Trends in Cognitive Sciences}
+    \field{year}{2011}
+  \endentry
+
+  \entry{springboot2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=V}{%
+         family={{VMware Inc.}},
+         familyi={V\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{V1}
+    \strng{fullhash}{V1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{S}
+    \field{sortinithash}{S}
+    \field{title}{Spring Boot Reference Documentation}
+    \verb{url}
+    \verb https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{sqldelight2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=C}{%
+         family={{Cash App Contributors}},
+         familyi={C\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{C1}
+    \strng{fullhash}{C1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{S}
+    \field{sortinithash}{S}
+    \field{title}{SQLDelight: Generates typesafe Kotlin APIs from SQL}
+    \verb{url}
+    \verb https://cashapp.github.io/sqldelight/
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{unsdgs2015}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=U}{%
+         family={{United Nations}},
+         familyi={U\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{U1}
+    \strng{fullhash}{U1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{U}
+    \field{sortinithash}{U}
+    \field{title}{Transforming Our World: The 2030 Agenda for Sustainable Development}
+    \verb{url}
+    \verb https://sdgs.un.org/goals
+    \endverb
+    \field{year}{2015}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{vanlehn2011relative}{article}{}{}
+    \name{author}{1}{}{%
+      {{hash=VK}{%
+         family={VanLehn},
+         familyi={V\bibinitperiod},
+         given={Kurt},
+         giveni={K\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {Taylor \& Francis}%
+    }
+    \strng{namehash}{VK1}
+    \strng{fullhash}{VK1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{V}
+    \field{sortinithash}{V}
+    \field{number}{4}
+    \field{pages}{197\bibrangedash 221}
+    \field{title}{The relative effectiveness of human tutoring, intelligent tutoring systems, and other tutoring systems}
+    \field{volume}{46}
+    \field{journaltitle}{Educational Psychologist}
+    \field{year}{2011}
+  \endentry
+
+  \entry{vesselinov2012duolingo}{article}{}{}
+    \name{author}{2}{}{%
+      {{hash=VR}{%
+         family={Vesselinov},
+         familyi={V\bibinitperiod},
+         given={Roumen},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=GJ}{%
+         family={Grego},
+         familyi={G\bibinitperiod},
+         given={John},
+         giveni={J\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{VRGJ1}
+    \strng{fullhash}{VRGJ1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{V}
+    \field{sortinithash}{V}
+    \field{pages}{1\bibrangedash 25}
+    \field{title}{Duolingo effectiveness study}
+    \field{volume}{28}
+    \field{journaltitle}{City University of New York}
+    \field{year}{2012}
+  \endentry
+
+  \entry{wlaschin2014rop}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=WS}{%
+         family={Wlaschin},
+         familyi={W\bibinitperiod},
+         given={Scott},
+         giveni={S\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{WS1}
+    \strng{fullhash}{WS1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{W}
+    \field{sortinithash}{W}
+    \field{title}{Railway Oriented Programming}
+    \verb{url}
+    \verb https://fsharpforfunandprofit.com/rop/
+    \endverb
+    \field{year}{2014}
+    \field{urlday}{01}
+    \field{urlmonth}{04}
+    \field{urlyear}{2026}
+  \endentry
+\enddatalist
+\endinput
