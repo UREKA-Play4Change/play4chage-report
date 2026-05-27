@@ -1,0 +1,50 @@
+%
+%  chapter1.tex — Introdução
+%
+\chapter{Introdução}
+\label{cha:introducao}
+
+\section{Contexto e Motivação}
+\label{sec:contexto}
+
+A transição para cidades inteligentes constitui um dos maiores desafios socioeconómicos da atualidade. Este processo exige não apenas infraestruturas tecnológicas avançadas, mas também cidadãos informados, capacitados e participativos. A Aliança U!REKA, no âmbito da qual o presente projeto se insere, tem como missão acelerar precisamente essa transição, promovendo soluções inovadoras que articulem tecnologia, sustentabilidade e educação~\cite{ureka2024}.
+
+Neste quadro, a educação digital emerge como alavanca fundamental. A capacidade de os cidadãos adquirirem novas competências de forma contínua e acessível representa um vetor estratégico para a coesão social e para a adaptação às exigências de uma sociedade em permanente transformação. Este imperativo encontra enquadramento direto nos Objetivos de Desenvolvimento Sustentável (ODS) das Nações Unidas, nomeadamente no ODS~11 (\textit{Cidades e Comunidades Sustentáveis}) e no ODS~13 (\textit{Ação Climática}), que apelam à participação ativa dos cidadãos na construção de sociedades mais resilientes e sustentáveis~\cite{un2015sdg}.
+
+A motivação central do \textit{Play4Change} assenta na premissa de que a mudança genuína começa pelo conhecimento. Uma plataforma de aprendizagem acessível, personalizada e gamificada pode capacitar os cidadãos para agirem como agentes de transformação nas suas comunidades, alinhando educação digital com os objetivos de sustentabilidade globais.
+
+\section{Problema}
+\label{sec:problema}
+
+Apesar da proliferação de plataformas de aprendizagem online, persistem lacunas significativas no que respeita à educação cívica contextualizada e à promoção de competências direcionadas para a sustentabilidade urbana. As soluções existentes carecem frequentemente de: (i)~mecanismos de personalização efetivos que respondam às dificuldades individuais de cada aprendente; (ii)~modelos de reconhecimento de competências que sejam simultaneamente granulares e verificáveis; e (iii)~integração com os desafios específicos das cidades inteligentes.
+
+Adicionalmente, a motivação intrínseca para a aprendizagem continuada representa um obstáculo recorrente em contextos de educação informal. A ausência de elementos de \textit{engagement} e reconhecimento progressivo contribui para taxas de abandono elevadas nas plataformas convencionais.
+
+\section{Objetivos}
+\label{sec:objetivos}
+
+O presente trabalho tem como objetivo principal conceber, implementar e avaliar o \textit{Play4Change}, uma plataforma de aprendizagem adaptativa e gamificada orientada para cidadãos, no âmbito da missão U!REKA.
+
+Os objetivos específicos são:
+\begin{enumerate}
+  \item Desenvolver um cliente móvel que permita aos cidadãos realizar tarefas de aprendizagem diárias de forma gamificada, adquirindo microcompetências progressivas reconhecidas por \textit{badges};
+  \item Implementar um portal de administração web que habilite gestores a criar e gerir tópicos formativos;
+  \item Construir um servidor \textit{stateless} que coordene todos os componentes da plataforma de forma escalável;
+  \item Integrar um agente de inteligência artificial capaz de gerar conteúdo formativo automaticamente, detetar dificuldades de aprendizagem em tempo real e propor percursos alternativos personalizados;
+  \item Implementar um mecanismo de reutilização de percursos adaptativos entre cidadãos com perfis de dificuldade semelhantes, potenciando a eficácia coletiva do sistema.
+\end{enumerate}
+
+\section{Contribuições}
+\label{sec:contribuicoes}
+
+As principais contribuições deste trabalho são:
+\begin{itemize}
+  \item Uma arquitetura de plataforma de aprendizagem adaptativa integrando geração de conteúdo por IA e deteção automática de dificuldades;
+  \item Um modelo de microcompetências gamificado aplicado ao domínio das cidades inteligentes e da sustentabilidade;
+  \item Um mecanismo de reutilização de percursos adaptativos que aproveita padrões de dificuldade coletivos para beneficiar aprendentes futuros.
+\end{itemize}
+
+\section{Estrutura do Documento}
+\label{sec:estrutura}
+
+O presente documento encontra-se organizado da seguinte forma. O Capítulo~\ref{cha:enquadramento} apresenta o enquadramento teórico e o estado da arte, contextualizando o projeto face às soluções e tecnologias existentes. O Capítulo~\ref{cha:solucao} descreve a solução proposta, detalhando a arquitetura e os componentes principais da plataforma. O Capítulo~\ref{cha:implementacao} descreve as decisões de implementação mais relevantes e o \textit{stack} tecnológico adotado. O Capítulo~\ref{cha:avaliacao} apresenta a metodologia de avaliação e os resultados obtidos. Por fim, o Capítulo~\ref{cha:conclusoes} sintetiza as conclusões do trabalho e aponta direções para investigação futura.

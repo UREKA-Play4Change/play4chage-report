@@ -1,0 +1,73 @@
+%
+%  chapter2.tex — Enquadramento e Estado da Arte
+%
+\chapter{Enquadramento e Estado da Arte}
+\label{cha:enquadramento}
+
+\section{Cidades Inteligentes e Sustentabilidade}
+\label{sec:smart_cities}
+
+O conceito de cidade inteligente (\textit{smart city}) refere-se a um ecossistema urbano que integra tecnologias de informação e comunicação com o objetivo de melhorar a qualidade de vida dos seus habitantes, otimizar a gestão de recursos e promover a participação cívica~\cite{neirotti2014current}. A transição para este modelo exige não apenas investimento em infraestrutura, mas também o desenvolvimento de literacia digital e ambiental por parte dos cidadãos.
+
+Os ODS~11 e~13 das Nações Unidas estabelecem metas concretas neste domínio: o primeiro apela à criação de cidades e comunidades sustentáveis e inclusivas; o segundo à adoção de medidas urgentes para combater as alterações climáticas. Ambos reconhecem o papel central da educação e da sensibilização cidadã como instrumentos de mudança~\cite{un2015sdg}.
+
+A Aliança U!REKA (\textit{University Research and Knowledge Alliance}) posiciona-se neste contexto como catalisadora de soluções inovadoras que articulem investigação académica, tecnologia e necessidades das comunidades urbanas, promovendo a transição inteligente e sustentável das cidades europeias~\cite{ureka2024}.
+
+\section{Aprendizagem Adaptativa}
+\label{sec:adaptive_learning}
+
+A aprendizagem adaptativa (\textit{adaptive learning}) caracteriza-se pela capacidade de um sistema formativo ajustar dinamicamente o conteúdo, o ritmo e a sequência de aprendizagem com base no desempenho e nas dificuldades individuais de cada aprendente~\cite{vanlehn2011relative}. Esta abordagem tem demonstrado resultados superiores às metodologias de ensino uniformizadas, nomeadamente em contextos de aprendizagem informal e \textit{e-learning}.
+
+Os sistemas de tutoria inteligente (\textit{Intelligent Tutoring Systems} --- ITS) constituem o paradigma clássico desta abordagem, modelando o conhecimento do aluno e intervindo proativamente quando são detetadas lacunas~\cite{bloom1984sigma}. Com o advento dos modelos de linguagem de grande dimensão (\textit{Large Language Models} --- LLMs), a geração automática de conteúdo pedagógico personalizado tornou-se acessível a plataformas de menor escala~\cite{kasneci2023chatgpt}.
+
+\section{Gamificação na Educação}
+\label{sec:gamification}
+
+A gamificação consiste na aplicação de elementos e mecânicas de jogo em contextos não lúdicos, com o objetivo de aumentar o \textit{engagement}, a motivação e a retenção de comportamentos~\cite{deterding2011game}. Em contextos educativos, os elementos mais frequentemente utilizados incluem pontos, \textit{badges}, tabelas de classificação (\textit{leaderboards}), desafios progressivos e sistemas de recompensa~\cite{hamari2014does}.
+
+Estudos recentes demonstram que a gamificação, quando bem integrada na estrutura pedagógica, pode aumentar significativamente a motivação intrínseca dos aprendentes e reduzir as taxas de abandono em plataformas de \textit{e-learning}~\cite{hamari2014does}. Contudo, a eficácia desta abordagem depende criticamente do alinhamento entre as mecânicas de jogo e os objetivos de aprendizagem.
+
+\section{Microcompetências}
+\label{sec:microcompetencias}
+
+O conceito de microcompetência (\textit{micro-credential}) refere-se a uma unidade mínima de aprendizagem verificável, com um escopo temático bem delimitado e associada a um processo de validação formal~\cite{eur2022micro}. As microcompetências permitem modularizar o percurso formativo, tornando-o mais flexível, acessível e adaptado às necessidades de cada indivíduo.
+
+A Comissão Europeia tem promovido ativamente a adoção de microcompetências no espaço europeu de educação, reconhecendo o seu potencial para responder às necessidades de requalificação (\textit{upskilling} e \textit{reskilling}) num mercado de trabalho em rápida transformação~\cite{eur2022micro}. No contexto do \textit{Play4Change}, as microcompetências constituem a unidade fundamental de progressão do aprendente, reconhecida através da atribuição de \textit{badges}.
+
+\section{Estado da Arte}
+\label{sec:estado_arte}
+
+Nesta secção apresenta-se uma análise das principais plataformas de aprendizagem existentes, avaliando a sua adequação ao contexto do presente projeto.
+
+\textbf{Duolingo}~\cite{duolingo2024} constitui um caso de referência na gamificação da aprendizagem linguística, com mecanismos de \textit{streaks}, \textit{XP} e \textit{leagues} que promovem a regularidade e o \textit{engagement}. Contudo, o modelo é essencialmente estático no que respeita à adaptação de conteúdo e não aborda o domínio das cidades inteligentes ou da sustentabilidade.
+
+\textbf{Khan Academy}~\cite{khanacademy2024} oferece um vasto repositório de conteúdo educativo de acesso livre, com alguns mecanismos de personalização baseados no desempenho. No entanto, a plataforma não dispõe de geração automática de conteúdo por IA nem de mecanismos de deteção de dificuldades em tempo real.
+
+\textbf{Coursera} e \textbf{edX}~\cite{coursera2024,edx2024} são plataformas de \textit{MOOC} (\textit{Massive Open Online Courses}) com certificação reconhecida, mas orientadas para percursos formativos longos e estruturados, sem gamificação significativa nem adaptação em tempo real ao aprendente.
+
+\textbf{Kahoot!}~\cite{kahoot2024} explora a dimensão lúdica da aprendizagem através de \textit{quizzes} competitivos, mas não dispõe de mecanismos de adaptação individual nem de reconhecimento formal de competências.
+
+\subsection{Análise Comparativa}
+\label{ssec:comparativa}
+
+A Tabela~\ref{tab:comparativa} sintetiza a análise comparativa das plataformas identificadas face às características-chave do \textit{Play4Change}.
+
+\begin{table}[ht]
+  \caption{Análise comparativa de plataformas de aprendizagem}
+  \label{tab:comparativa}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Plataforma} & \textbf{Gamificação} & \textbf{IA Adaptativa} & \textbf{Microcompetências} & \textbf{Cidades Inteligentes} \\
+    \midrule
+    Duolingo       & \checkmark & Parcial & $\times$ & $\times$ \\
+    Khan Academy   & Parcial    & Parcial & $\times$ & $\times$ \\
+    Coursera / edX & $\times$   & $\times$ & Parcial & $\times$ \\
+    Kahoot!        & \checkmark & $\times$ & $\times$ & $\times$ \\
+    \textbf{Play4Change} & \checkmark & \checkmark & \checkmark & \checkmark \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Da análise comparativa resulta evidente que nenhuma das plataformas existentes reúne simultaneamente os quatro atributos identificados como essenciais: gamificação efetiva, adaptação por inteligência artificial, reconhecimento de microcompetências e orientação para o domínio das cidades inteligentes. O \textit{Play4Change} posiciona-se assim como uma solução inovadora e diferenciada no panorama atual.

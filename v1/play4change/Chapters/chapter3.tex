@@ -1,0 +1,82 @@
+%
+%  chapter3.tex — Solução Proposta
+%
+\chapter{Solução Proposta}
+\label{cha:solucao}
+
+\section{Visão Geral}
+\label{sec:visao_geral}
+
+O \textit{Play4Change} é uma plataforma de aprendizagem adaptativa e gamificada composta por quatro componentes principais: (i)~um cliente móvel destinado aos cidadãos; (ii)~um cliente web com \textit{landing page} e portal de administração; (iii)~um servidor \textit{stateless} que coordena toda a lógica de negócio; e (iv)~um agente de inteligência artificial responsável pela geração e adaptação de conteúdo pedagógico.
+
+% TODO: Inserir diagrama de arquitetura de alto nível
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.85\textwidth]{arquitetura_geral}
+%   \caption{Arquitetura de alto nível do Play4Change}
+%   \label{fig:arquitetura_geral}
+% \end{figure}
+
+A separação de responsabilidades entre os componentes foi um princípio arquitetural central no design do sistema. O servidor é \textit{stateless}, o que permite escalabilidade horizontal e simplifica a gestão de sessões. O agente de IA funciona de forma assíncrona, não bloqueando o fluxo principal de interação do utilizador.
+
+\section{Cliente Móvel}
+\label{sec:cliente_movel}
+
+O cliente móvel é o ponto de entrada principal para os cidadãos. A aplicação apresenta diariamente um conjunto de tarefas de aprendizagem relacionadas com tópicos de cidades inteligentes e sustentabilidade. Cada tarefa contribui para a progressão numa ou mais microcompetências, que, quando completadas, são reconhecidas através da atribuição de um \textit{badge}.
+
+A experiência do utilizador é gamificada: o progresso é visualizado de forma contínua, existem sequências diárias (\textit{streaks}) que incentivam a regularidade, e os \textit{badges} obtidos são visíveis no perfil pessoal do cidadão. O design da aplicação segue os princípios de \textit{Mobile First} e de acessibilidade, garantindo usabilidade a uma audiência diversificada.
+
+Quando o agente de IA deteta dificuldades no desempenho de um cidadão numa determinada tarefa, é proposto automaticamente um percurso alternativo --- denominado \textit{ramo adaptativo} --- que aborda o mesmo tópico de forma diferente, com maior suporte ou granularidade.
+
+\section{Cliente Web}
+\label{sec:cliente_web}
+
+O cliente web serve dois propósitos distintos: uma \textit{landing page} pública, que comunica a proposta de valor da plataforma e facilita o acesso de novos utilizadores; e um portal de administração, de acesso restrito a gestores autorizados.
+
+No portal de administração, os administradores podem:
+\begin{itemize}
+  \item Criar e gerir tópicos de aprendizagem, definindo os objetivos pedagógicos associados;
+  \item Configurar as microcompetências e os \textit{badges} correspondentes;
+  \item Monitorizar métricas de utilização e desempenho agregado dos cidadãos;
+  \item Aprovar ou rever conteúdo gerado pelo agente de IA.
+\end{itemize}
+
+\section{Servidor}
+\label{sec:servidor}
+
+O servidor constitui o núcleo da plataforma, implementando a lógica de negócio, a gestão de utilizadores, a persistência de dados e a orquestração entre os restantes componentes. Foi concebido como um serviço \textit{stateless}, em conformidade com os princípios da arquitetura REST~\cite{fielding2000rest}, o que confere ao sistema flexibilidade para escalar horizontalmente em função da procura.
+
+A autenticação é suportada por múltiplos mecanismos: \textit{magic link} (com \textit{hashing} SHA-256 e envio por email através da API Resend), Google OAuth (verificação local via JWKS) e Facebook OAuth (validação via Graph API). Esta diversidade de meios de acesso visa maximizar a acessibilidade para diferentes perfis de utilizadores.
+
+A persistência de dados inclui, para além dos dados estruturados da plataforma, um armazenamento vetorial baseado em \textit{pgvector} (extensão PostgreSQL), utilizado pelo agente de IA para recuperação semântica de conteúdo e deteção de padrões de dificuldade.
+
+\section{Agente de Inteligência Artificial}
+\label{sec:agente_ia}
+
+O agente de inteligência artificial é o componente diferenciador do \textit{Play4Change}. As suas responsabilidades abrangem três domínios funcionais:
+
+\subsection{Geração de Conteúdo}
+\label{ssec:geracao_conteudo}
+
+O agente é responsável pela geração automática de tarefas de aprendizagem, questões e explicações associadas a cada tópico. Utiliza um LLM (\textit{Large Language Model}) através da \textit{framework} LangChain4j com o modelo Mistral, o que permite produzir conteúdo pedagógico diversificado e contextualizado sem intervenção manual dos administradores para cada unidade de conteúdo.
+
+\subsection{Deteção de Dificuldades e Adaptação}
+\label{ssec:detecao_dificuldades}
+
+O sistema monitoriza continuamente o desempenho dos cidadãos durante a realização das tarefas. Quando são identificados padrões indicadores de dificuldade --- tais como respostas incorretas repetidas, tempo de resposta elevado ou abandono da tarefa --- o agente propõe um \textit{ramo adaptativo}: uma sequência alternativa de conteúdo que aborda o mesmo tópico com uma abordagem diferente, mais acessível ou mais detalhada.
+
+Esta deteção é realizada com base em embeddings semânticos armazenados em \textit{pgvector}, que permitem identificar semelhanças entre o perfil de dificuldade atual e casos anteriores já resolvidos.
+
+\subsection{Reutilização de Percursos Adaptativos}
+\label{ssec:reutilizacao}
+
+Um elemento inovador da arquitetura reside na reutilização de percursos adaptativos. Quando um cidadão supera uma dificuldade através de um \textit{ramo adaptativo}, esse percurso é armazenado na biblioteca de conteúdo adaptativo. Perante um novo cidadão com um perfil de dificuldade semelhante, o sistema recupera e reutiliza o percurso já validado, em vez de gerar conteúdo novo de raiz. Este mecanismo reduz a latência na resposta adaptativa e melhora progressivamente a eficácia do sistema com o crescimento da base de utilizadores.
+
+\section{Microcompetências e Sistema de Badges}
+\label{sec:microcompetencias_badges}
+
+As microcompetências constituem a unidade atómica de progressão no \textit{Play4Change}. Cada microcompetência é definida por: (i)~um conjunto de objetivos de aprendizagem verificáveis; (ii)~um limiar de desempenho mínimo para a sua conclusão; e (iii)~um \textit{badge} associado, visualmente representativo da competência adquirida.
+
+Os \textit{badges} são atribuídos ao término de um ciclo de tarefas bem-sucedidas, funcionando como certificado informal de aquisição da microcompetência. O perfil do cidadão agrega todos os \textit{badges} obtidos, construindo assim um portfólio de competências progressivo.
+
+A progressão entre microcompetências segue uma estrutura de grafo dirigido acíclico (\textit{DAG}), onde determinadas competências constituem pré-requisitos de outras de nível superior. Esta estrutura permite ao sistema recomendar percursos de aprendizagem coerentes e pedagogicamente fundamentados.
