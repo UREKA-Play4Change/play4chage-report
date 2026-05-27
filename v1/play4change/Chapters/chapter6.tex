@@ -1,0 +1,48 @@
+%
+%  chapter6.tex — Conclusões e Trabalho Futuro
+%
+\chapter{Conclusões e Trabalho Futuro}
+\label{cha:conclusoes}
+
+\section{Síntese}
+\label{sec:sintese}
+
+O presente trabalho propôs e desenvolveu o \textit{Play4Change}, uma plataforma de aprendizagem adaptativa e gamificada orientada para cidadãos, no contexto da missão U!REKA de transição para cidades inteligentes e sustentáveis. A plataforma responde a uma lacuna identificada no panorama das soluções de \textit{e-learning} existentes: a ausência de uma plataforma que reúna simultaneamente gamificação efetiva, adaptação por inteligência artificial, reconhecimento formal de microcompetências e orientação para o domínio da sustentabilidade urbana.
+
+A arquitetura desenvolvida integra quatro componentes principais — cliente móvel, portal de administração web, servidor \textit{stateless} e agente de IA --- que trabalham de forma coordenada para proporcionar uma experiência de aprendizagem personalizada, motivante e pedagogicamente fundamentada. O agente de IA constitui o elemento diferenciador da plataforma, sendo responsável pela geração automática de conteúdo, pela deteção de dificuldades em tempo real e pela proposta de percursos alternativos personalizados.
+
+O mecanismo de reutilização de percursos adaptativos representa uma contribuição inovadora, ao transformar as dificuldades individuais dos aprendentes em conhecimento coletivo reutilizável, melhorando progressivamente a eficácia do sistema à medida que a base de utilizadores cresce.
+
+\section{Contribuições}
+\label{sec:contribuicoes_conclusao}
+
+As contribuições principais deste trabalho são:
+
+\begin{enumerate}
+  \item \textbf{Plataforma Play4Change}: uma solução completa de aprendizagem adaptativa e gamificada, alinhada com os ODS~11 e~13 e com a missão U!REKA;
+  \item \textbf{Arquitetura de geração adaptativa de conteúdo}: integração de LLM (Mistral via LangChain4j) com armazenamento vetorial (pgvector) para geração e recuperação semântica de conteúdo pedagógico;
+  \item \textbf{Mecanismo de reutilização de percursos adaptativos}: abordagem inovadora que capitaliza padrões de dificuldade coletivos para beneficiar aprendentes futuros;
+  \item \textbf{Modelo de microcompetências gamificado}: estruturação do percurso formativo em unidades atómicas verificáveis, reconhecidas por \textit{badges}, aplicadas ao domínio das cidades inteligentes;
+  \item \textbf{Conjunto de ADRs}: dezasseis registos de decisão arquitetural que documentam formalmente as escolhas de design, constituindo um ativo de conhecimento para a evolução futura do sistema.
+\end{enumerate}
+
+\section{Limitações}
+\label{sec:limitacoes}
+
+O trabalho desenvolvido apresenta algumas limitações que importa reconhecer. Em primeiro lugar, a avaliação com utilizadores foi conduzida com uma amostra limitada, o que condiciona a generalização dos resultados de usabilidade e de eficácia adaptativa. Em segundo lugar, a biblioteca de percursos adaptativos requer uma massa crítica de utilizadores para manifestar plenamente o seu potencial de reutilização --- esta é, por natureza, uma característica que melhora progressivamente com a escala. Por fim, a lacuna de segurança G4 (validação de audiência no fluxo Facebook OAuth) permanece por resolver e deverá ser endereçada prioritariamente antes de uma eventual implantação em produção.
+
+\section{Trabalho Futuro}
+\label{sec:trabalho_futuro}
+
+Com base nos resultados e limitações identificados, propõem-se as seguintes direções para trabalho futuro:
+
+\begin{enumerate}
+  \item \textbf{Avaliação em escala}: conduzir uma avaliação longitudinal com uma amostra representativa de cidadãos, permitindo aferir a eficácia pedagógica do mecanismo adaptativo a longo prazo;
+  \item \textbf{Persistência de embeddings adaptativos}: resolver a lacuna identificada no ADR-007, garantindo que os embeddings dos \textit{ramos adaptativos} gerados são sempre persistidos, alimentando continuamente a biblioteca de percursos reutilizáveis;
+  \item \textbf{Migração para produção}: migrar a infraestrutura de Docker Compose/VPS para Kubernetes, de acordo com os critérios definidos no ADR-009, e substituir MinIO por AWS S3;
+  \item \textbf{Expansão do domínio}: estender o catálogo de microcompetências para abranger outros domínios relevantes para as cidades inteligentes (e.g., mobilidade sustentável, eficiência energética, literacia ambiental);
+  \item \textbf{Integração com sistemas de reconhecimento formais}: explorar a interoperabilidade dos \textit{badges} com padrões de reconhecimento de microcompetências estabelecidos a nível europeu (e.g., Open Badges, iniciativas da Comissão Europeia);
+  \item \textbf{Resolução da lacuna G4}: implementar a validação de audiência no fluxo de autenticação Facebook OAuth.
+\end{enumerate}
+
+Em síntese, o \textit{Play4Change} demonstra que é possível conceber uma plataforma de aprendizagem que coloca o cidadão no centro, que aprende com ele e que, ao fazê-lo, contribui para a construção de cidades mais inteligentes, mais sustentáveis e mais humanas --- em linha com a visão que inspira tanto a missão U!REKA como os Objetivos de Desenvolvimento Sustentável das Nações Unidas.

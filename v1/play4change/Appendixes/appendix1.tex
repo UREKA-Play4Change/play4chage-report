@@ -1,0 +1,34 @@
+%
+%  appendix1.tex — Architecture Decision Records (ADRs)
+%
+\chapter{Registos de Decisão Arquitetural (ADRs)}
+\label{cha:adrs}
+
+Este apêndice sintetiza os principais Registos de Decisão Arquitetural (\textit{Architecture Decision Records} --- ADRs) produzidos no âmbito do desenvolvimento do \textit{Play4Change}. Cada ADR documenta o contexto da decisão, as alternativas consideradas, a decisão tomada e as suas implicações.
+
+\section*{ADR-001: Gestão de Erros com Arrow Either}
+Adoção do padrão \textit{Arrow Either} com DSL \textit{Raise} para modelar explicitamente os ramos de sucesso e erro no domínio da aplicação, substituindo uma implementação prévia baseada num tipo \textit{Result} customizado. Esta decisão promove a expressividade do código de domínio e elimina o uso de exceções para controlo de fluxo esperado.
+
+\section*{ADR-006/007: Framework de IA e Armazenamento Vetorial}
+Adoção de LangChain4j com o modelo Mistral para orquestração das interações com o LLM, via módulo Gradle dedicado (\texttt{:ai-agent:langchain}). Para armazenamento vetorial, optou-se pela extensão \textit{pgvector} sobre PostgreSQL, evitando a introdução de um serviço adicional (e.g., Qdrant, Weaviate) e simplificando a infraestrutura.
+
+\section*{ADR-008: Estado no Cliente Móvel com MVI e Decompose}
+Adoção do padrão MVI (\textit{Model-View-Intent}) implementado via \textit{BaseComponent} e \textit{Decompose MutableValue}, em detrimento de \textit{StateFlow}. Esta decisão assegura compatibilidade com a arquitetura de navegação Decompose e separa claramente a lógica de estado da camada de apresentação.
+
+\section*{ADR-009: Implantação com Docker Compose}
+A implantação inicial recorre a Docker Compose sobre VPS, com critérios explícitos e documentados de migração para Kubernetes: número de serviços, requisitos de escalabilidade e disponibilidade. Esta decisão equilibra a simplicidade operacional na fase atual com a preparação para crescimento futuro.
+
+\section*{ADR-011: Estratégia de Autenticação Multimodal}
+Implementação de três mecanismos de autenticação: \textit{magic link} (SHA-256, Resend API), Google OAuth (verificação local JWKS) e Facebook OAuth (Graph API). A diversidade de meios de acesso visa maximizar a acessibilidade e reduzir a fricção de \textit{onboarding} para diferentes perfis de utilizadores.
+
+\section*{ADR-012: Armazenamento de Ficheiros com MinIO}
+Adoção de MinIO (serviço Docker compatível com S3) para armazenamento de ficheiros, com migração prevista para AWS S3 em fases de produção. Esta decisão permite desenvolver e testar a integração S3 localmente, sem incorrer em custos de infraestrutura na nuvem durante o desenvolvimento.
+
+\section*{ADR-014: Revisão por Pares}
+Implementação de um sistema de revisão por pares baseado em três veredictos por maioria, com finalização síncrona e anonimato dos revisores. Este modelo assegura a qualidade do conteúdo gerado pela IA sem sobrecarregar o processo de publicação.
+
+\section*{ADR-015: Observabilidade com Micrometer, Prometheus e Grafana}
+Integração de Micrometer como fachada de métricas, com exportação para Prometheus e visualização em Grafana. Foram definidas sete métricas de domínio personalizadas. Os \textit{dashboards} Grafana são provisionados a partir do código-fonte, garantindo reprodutibilidade da configuração de monitorização.
+
+\section*{ADR-016: Auditoria de Segurança}
+Auditoria formal de segurança com identificação e correção de onze vulnerabilidades. A lacuna G4 (validação de audiência no fluxo Facebook OAuth) foi documentada e calendarizada para resolução em iterações subsequentes, dado o seu impacto limitado no contexto atual de implantação.

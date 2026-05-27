@@ -1,0 +1,88 @@
+%
+%  chapter4.tex — Implementação
+%
+\chapter{Implementação}
+\label{cha:implementacao}
+
+\section{Decisões Arquiteturais}
+\label{sec:decisoes_arquiteturais}
+
+O processo de desenvolvimento do \textit{Play4Change} foi suportado por um conjunto de Registos de Decisão Arquitetural (\textit{Architecture Decision Records} --- ADRs), que documentam formalmente as escolhas técnicas mais significativas, os critérios de avaliação considerados e as alternativas rejeitadas. Este processo garante rastreabilidade e facilita a evolução fundamentada do sistema.
+
+As principais decisões estão detalhadas no Apêndice~\ref{cha:adrs}. De forma sumária, destacam-se:
+
+\begin{itemize}
+  \item \textbf{Gestão de erros}: adoção do padrão \textit{Arrow Either} com DSL \textit{Raise}, que permite modelar explicitamente os ramos de erro no domínio da aplicação sem recorrer a exceções;
+  \item \textbf{Armazenamento vetorial}: extensão \textit{pgvector} sobre PostgreSQL, evitando a introdução de um serviço adicional dedicado (e.g., Qdrant, Weaviate);
+  \item \textbf{Mensageria}: eventos de domínio Spring, internos aos contextos delimitados, sem necessidade de um \textit{broker} externo (e.g., Kafka, RabbitMQ);
+  \item \textbf{Armazenamento de ficheiros}: MinIO (serviço Docker compatível com S3), com migração para AWS S3 prevista em fases ulteriores;
+  \item \textbf{Implantação}: Docker Compose sobre VPS, com critérios explícitos de migração para Kubernetes definidos no ADR-009;
+  \item \textbf{Estado no cliente móvel}: padrão MVI (\textit{Model-View-Intent}) via \textit{BaseComponent} e \textit{Decompose MutableValue}.
+\end{itemize}
+
+\section{Stack Tecnológico}
+\label{sec:stack}
+
+A Tabela~\ref{tab:stack} apresenta o \textit{stack} tecnológico adotado em cada camada da plataforma.
+
+\begin{table}[ht]
+  \caption{Stack tecnológico do Play4Change}
+  \label{tab:stack}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    \textbf{Camada} & \textbf{Tecnologias} \\
+    \midrule
+    Cliente móvel       & Kotlin Multiplatform, Compose Multiplatform, Decompose \\
+    Cliente web         & \textit{(a definir)} \\
+    Servidor            & Kotlin, Spring Boot, REST, PostgreSQL, pgvector \\
+    Agente de IA        & LangChain4j, Mistral (LLM), pgvector (embeddings) \\
+    Autenticação        & Magic Link (SHA-256, Resend API), Google OAuth, Facebook OAuth \\
+    Armazenamento       & PostgreSQL, MinIO (S3-compatible) \\
+    Observabilidade     & Micrometer, Prometheus, Grafana \\
+    CI/CD               & GitHub Actions \\
+    Implantação         & Docker Compose, VPS \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Estrutura Modular do Servidor}
+\label{sec:modulos_servidor}
+
+O servidor foi organizado segundo os princípios de arquitetura por contextos delimitados (\textit{Bounded Contexts}), em alinhamento com os princípios de \textit{Domain-Driven Design} (DDD)~\cite{evans2003ddd}. Os módulos principais são:
+
+\begin{description}
+  \item[\texttt{:domain}] Entidades de domínio, interfaces de repositório e lógica de negócio central;
+  \item[\texttt{:application}] Casos de uso e serviços de orquestração;
+  \item[\texttt{:infrastructure}] Adaptadores de persistência (PostgreSQL, MinIO), clientes externos e configuração;
+  \item[\texttt{:api}] Controladores REST, DTOs e mapeamentos;
+  \item[\texttt{:ai-agent:langchain}] Módulo Gradle dedicado à integração LangChain4j/Mistral e à lógica de adaptação.
+\end{description}
+
+Esta separação assegura que a lógica de domínio permanece independente dos detalhes de infraestrutura, facilitando a testabilidade e a evolução do sistema.
+
+\section{Agente de IA: Implementação}
+\label{sec:ia_implementacao}
+
+O agente de inteligência artificial é implementado no módulo \texttt{:ai-agent:langchain}, utilizando a \textit{framework} LangChain4j para orquestrar as interações com o modelo de linguagem Mistral. O fluxo de geração de conteúdo segue um \textit{pipeline} estruturado:
+
+\begin{enumerate}
+  \item O administrador define um tópico e os seus objetivos de aprendizagem no portal de administração;
+  \item O agente recebe o pedido de geração e constrói um \textit{prompt} estruturado com os parâmetros do tópico;
+  \item O modelo Mistral gera as tarefas de aprendizagem (questões, explicações, exercícios);
+  \item O conteúdo gerado é validado, persistido e associado ao tópico correspondente;
+  \item Os embeddings semânticos do conteúdo são calculados e armazenados em \textit{pgvector} para recuperação futura.
+\end{enumerate}
+
+O mecanismo de deteção de dificuldades monitoriza, em tempo real, métricas de desempenho do cidadão (e.g., taxa de erros, tempo de resposta) e, quando o limiar de dificuldade é excedido, efetua uma pesquisa semântica no repositório \textit{pgvector} para identificar percursos adaptativos previamente bem-sucedidos com perfis de dificuldade semelhantes.
+
+\section{Observabilidade}
+\label{sec:observabilidade}
+
+A plataforma integra um sistema de observabilidade baseado em Micrometer, Prometheus e Grafana, com sete métricas de domínio personalizadas que permitem monitorizar indicadores chave do negócio, como: taxa de conclusão de microcompetências, frequência de ativação de percursos adaptativos, distribuição de \textit{badges} atribuídos e latência do agente de IA. Os \textit{dashboards} Grafana são provisionados a partir do código-fonte, garantindo reprodutibilidade e rastreabilidade da configuração de monitorização.
+
+\section{Segurança}
+\label{sec:seguranca}
+
+A segurança da plataforma foi auditada formalmente (ADR-016), tendo sido identificadas e corrigidas onze vulnerabilidades. A única lacuna por resolver — denominada G4 — refere-se à validação de audiência em fluxos Facebook OAuth e encontra-se documentada e calendarizada para resolução em iterações subsequentes.
