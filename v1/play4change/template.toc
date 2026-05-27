@@ -1,0 +1,57 @@
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\setcounter {tocdepth}{-1}
+\contentsline {chapter}{Índice}{vii}{chapter*.5}%
+\setcounter {tocdepth}{3}
+\contentsline {chapter}{Lista de Tabelas}{ix}{chapter*.6}%
+\babel@toc {portuguese}{}\relax 
+\contentsline {chapter}{\numberline {1}Introdução}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Contexto e Motivação}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Problema}{1}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Objetivos}{2}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Contribuições}{2}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Estrutura do Documento}{2}{section.1.5}%
+\contentsline {chapter}{\numberline {2}Enquadramento e Estado da Arte}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Cidades Inteligentes e Sustentabilidade}{3}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Aprendizagem Adaptativa}{3}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Gamificação na Educação}{4}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Microcompetências}{4}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Estado da Arte}{4}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Análise Comparativa}{5}{subsection.2.5.1}%
+\contentsline {chapter}{\numberline {3}Solução Proposta}{7}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Visão Geral}{7}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Cliente Móvel}{7}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Cliente Web}{7}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Servidor}{8}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Agente de Inteligência Artificial}{8}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Geração de Conteúdo}{8}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Deteção de Dificuldades e Adaptação}{8}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Reutilização de Percursos Adaptativos}{9}{subsection.3.5.3}%
+\contentsline {section}{\numberline {3.6}Microcompetências e Sistema de Badges}{9}{section.3.6}%
+\contentsline {chapter}{\numberline {4}Implementação}{11}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Decisões Arquiteturais}{11}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Stack Tecnológico}{11}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Estrutura Modular do Servidor}{12}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Agente de IA: Implementação}{12}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Observabilidade}{13}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Segurança}{13}{section.4.6}%
+\contentsline {chapter}{\numberline {5}Avaliação}{15}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Metodologia de Avaliação}{15}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Testes Automatizados}{15}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Avaliação com Utilizadores}{15}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Resultados}{15}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Desempenho do Sistema}{15}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Usabilidade}{16}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Eficácia do Mecanismo Adaptativo}{16}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}Discussão}{16}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Conclusões e Trabalho Futuro}{17}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Síntese}{17}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Contribuições}{17}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Limitações}{18}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Trabalho Futuro}{18}{section.6.4}%
+\contentsline {chapter}{Referências}{19}{chapter*.11}%
+\contentsline {chapter}{\numberline {A}Registos de Decisão Arquitetural (ADRs)}{i}{appendix.A}%
