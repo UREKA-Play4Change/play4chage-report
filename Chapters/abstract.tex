@@ -1,9 +1,0 @@
-\abstractEN % Do NOT modify this line
-
-Play4Change is an adaptive learning platform that combines generative AI, gamification mechanics, and peer review to transform educational content into personalized daily challenges. The platform addresses two critical societal needs: sustainability education aligned with the United Nations Sustainable Development Goals, and digital literacy for the next generation of responsible citizens.
-
-From a technical perspective, the system comprises a cross-platform mobile application built with Kotlin Multiplatform (KMP), Decompose, and the MVI pattern for iOS and Android; a Spring Boot and Kotlin backend using Domain-Driven Design, hexagonal architecture, and Clean Architecture; a shared Kotlin module providing type-safe API contracts across the system boundary; and a TypeScript/React landing page with admin panel. Content generation is powered by an AI pipeline combining Mistral LLM via LangChain4j with Retrieval-Augmented Generation (RAG) and pgvector similarity search. All architectural decisions are documented as 16 Architecture Decision Records.
-
-The system prioritizes sustainable and predictable costs, passwordless authentication (magic link + OAuth 2.0), Redis caching with graceful Redis fallback, full observability via Micrometer and Grafana, and readiness for Kubernetes scaling with explicitly defined migration triggers. Peer review of applied tasks provides cost-free assessment while generating additional learning events for reviewers.
-
-\keywords{Adaptive Learning \sep Gamification \sep Generative AI \sep Kotlin Multiplatform \sep Sustainability \sep Clean Architecture \sep Arrow Either \sep pgvector}
