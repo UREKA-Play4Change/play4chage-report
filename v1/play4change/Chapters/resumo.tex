@@ -1,19 +1,21 @@
 \abstractPT  % Do NOT modify this line
 
-O crescimento das cidades inteligentes exige cidadãos preparados para compreender e participar nas 
-transformações digitais e ambientais que as caracteriza. 
+As plataformas de aprendizagem digital existentes carecem frequentemente de personalização adaptativa efetiva
+e de conteúdo orientado para literacia cívica e sustentabilidade urbana --- lacunas que contribuem para taxas
+de abandono elevadas em contextos de educação informal.
 
-Neste contexto, a missão U!REKA promove a transição para cidades mais 
-sustentáveis e inteligentes, identificando a literacia digital dos cidadãos como um vetor estratégico de mudançam, 
-em alinhamento com os Objetivos de Desenvolvimento Sustentável 3, 11 e~13 das Nações Unidas. 
+O presente trabalho propõe o \textit{Play4Change}, uma plataforma de aprendizagem adaptativa e gamificada
+orientada para cidadãos, desenvolvida no âmbito da missão U!REKA~\cite{ureka2024} e alinhada com os
+Objetivos de Desenvolvimento Sustentável 4, 11 e~13 das Nações Unidas~\cite{un2015sdg}.
+A contribuição central é um mecanismo de reutilização de percursos adaptativos: sempre que um agente de
+inteligência artificial gera um percurso alternativo para um cidadão com dificuldades, esse percurso é
+indexado por semelhança vetorial e reutilizado automaticamente para cidadãos com perfis de dificuldade
+semelhantes, reduzindo o custo de inferência e acumulando progressivamente conhecimento pedagógico coletivo.
 
-
-O presente trabalho propõe o \textit{Play4Change}, uma plataforma de aprendizagem adaptativa e gamificada destinada 
-a cidadãos, que integra um agente de inteligência artificial capaz de gerar conteúdo formativo, e adaptar às dificuldades
-de aprendizagem e propor percursos alternativos personalizados. 
-
-A plataforma compreende um cliente móvel, 
-um portal de administração web, um agente de inteligência artificial, um servidor \textit{stateless} e uma base de dados. A aprendizagem é organizada em microcompetências 
-progressivas, reconhecidas através de \textit{badges}. Os percursos adaptativos produzidos são reutilizados para 
-cidadãos com perfis de dificuldade semelhantes, potenciando a eficácia coletiva do sistema.
+A plataforma integra um cliente móvel multiplataforma (Android e iOS), um portal de administração web,
+um agente de IA baseado em \textit{LangChain4j} com o modelo \textit{Mistral} e recuperação semântica
+via \textit{pgvector}, e um servidor \textit{stateless} em \textit{Spring Boot}.
+A progressão é estruturada em microcompetências atómicas, reconhecidas por \textit{badges}.
+O sistema foi implementado como protótipo funcional e validado segundo os requisitos definidos
+em colaboração com a missão U!REKA.
 
