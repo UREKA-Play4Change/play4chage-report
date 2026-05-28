@@ -60,7 +60,36 @@ O servidor foi organizado segundo os princípios de arquitetura por contextos de
   \item[\texttt{:ai-agent:langchain}] Módulo Gradle dedicado à integração LangChain4j/Mistral e à lógica de adaptação.
 \end{description}
 
-Esta separação assegura que a lógica de domínio permanece independente dos detalhes de infraestrutura, facilitando a testabilidade e a evolução do sistema.
+Esta separação assegura que a lógica de domínio permanece independente dos detalhes de infraestrutura, facilitando a testabilidade e a evolução do sistema. As dependências entre módulos estão ilustradas na Figura~\ref{fig:modulos}.
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/modulos.pdf quando disponível
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    mod/.style={draw, rounded corners=4pt, fill=blue!12,
+                minimum width=3.8cm, minimum height=0.8cm,
+                align=center, font=\small\ttfamily},
+    aimod/.style={mod, fill=orange!18}
+  ]
+  % Module nodes
+  \node[mod]   (dom) at (5.0,  0)   {:domain};
+  \node[mod]   (app) at (5.0, -2.2) {:application};
+  \node[mod]   (inf) at (1.5, -4.4) {:infrastructure};
+  \node[mod]   (api) at (5.0, -4.4) {:api};
+  \node[aimod] (ai)  at (8.5, -4.4) {:ai-agent:langchain};
+  % Dependency arrows (arrow = depends on)
+  \draw[->] (app) -- (dom)  node[midway,right,font=\tiny] {depende de};
+  \draw[->] (inf) -- (app);
+  \draw[->] (api) -- (app);
+  \draw[->] (ai)  -- (app);
+  \draw[->] (inf) to[out=90,in=210] (dom);
+  \draw[->] (api) to[out=90,in=330] (dom);
+  \draw[->] (ai)  to[out=90,in=315] (dom);
+  \end{tikzpicture}
+  \caption{Estrutura modular do servidor e dependências entre módulos Gradle}
+  \label{fig:modulos}
+\end{figure}
 
 \section{Desenho da API REST}
 \label{sec:api_rest}
@@ -103,7 +132,38 @@ O agente de inteligência artificial é implementado no módulo \texttt{:ai-agen
   \item Os embeddings semânticos do conteúdo são calculados e armazenados em \textit{pgvector} para recuperação futura.
 \end{enumerate}
 
-O mecanismo de deteção de dificuldades monitoriza, em tempo real, métricas de desempenho do cidadão (e.g., taxa de erros, tempo de resposta) e, quando o limiar de dificuldade é excedido, efetua uma pesquisa semântica no repositório \textit{pgvector} para identificar percursos adaptativos previamente bem-sucedidos com perfis de dificuldade semelhantes.
+O mecanismo de deteção de dificuldades monitoriza, em tempo real, métricas de desempenho do cidadão (e.g., taxa de erros, tempo de resposta) e, quando o limiar de dificuldade é excedido, efetua uma pesquisa semântica no repositório \textit{pgvector} para identificar percursos adaptativos previamente bem-sucedidos com perfis de dificuldade semelhantes. O \textit{pipeline} completo de geração de conteúdo encontra-se ilustrado na Figura~\ref{fig:pipeline_ia}.
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/pipeline_ia.pdf quando disponível
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    pbox/.style={draw, rounded corners=3pt, fill=blue!12,
+                 minimum width=4.0cm, minimum height=0.8cm, align=center},
+    store/.style={pbox, fill=orange!18},
+    ext/.style={pbox, dashed, fill=green!12}
+  ]
+  % Main pipeline (vertical)
+  \node[pbox]  (admin)  at (0, 0)    {Administrador define tópico};
+  \node[pbox]  (prompt) at (0,-1.8)  {Construção do prompt\\(objetivos pedagógicos)};
+  \node[ext]   (llm)    at (0,-3.6)  {Mistral API\\\scriptsize (geração de conteúdo)};
+  \node[pbox]  (valid)  at (0,-5.4)  {Validação do conteúdo gerado};
+  \node[store] (pers)   at (0,-7.2)  {Persistência (PostgreSQL)};
+  \node[store] (emb)    at (0,-9.0)  {Cálculo de embeddings\\\scriptsize (LangChain4j)};
+  \node[store] (pgv)    at (0,-10.8) {Armazenamento em pgvector};
+  % Arrows
+  \foreach \a/\b in {admin/prompt, prompt/llm, llm/valid, valid/pers, pers/emb, emb/pgv}
+    \draw[->] (\a) -- (\b);
+  % Side branch: reuse
+  \node[pbox, fill=gray!15, text width=3.8cm, align=center] (reuse)
+    at (6.5,-10.8) {Reutilização:\\pesquisa por semelhança\\(kNN em perfis de dificuldade)};
+  \draw[<->, dashed] (pgv.east) -- (reuse.west)
+    node[midway,above,font=\tiny] {kNN search};
+  \end{tikzpicture}
+  \caption{Pipeline de geração de conteúdo e reutilização do agente de IA}
+  \label{fig:pipeline_ia}
+\end{figure}
 
 \section{Observabilidade}
 \label{sec:observabilidade}
@@ -130,15 +190,52 @@ A plataforma é implantada através de Docker Compose numa VPS, com os seguintes
 
 Os serviços externos --- API Mistral, API Resend, Google OAuth e Facebook OAuth --- são consumidos pelo servidor via HTTPS, sem exposição na rede interna do Docker Compose.
 
-% TODO: inserir diagrama de implantação UML (ou diagrama de infraestrutura estilo C4 Nível 3)
-% Representar: VPS com rede interna Docker [app, db, minio, prometheus, grafana]
-%              Ligações entre contentores (portas internas)
-%              Serviços externos acedidos via HTTPS [Mistral, Resend, Google OAuth, Facebook OAuth]
-%              Utilizadores finais [Cidadão → App Móvel, Administrador → Portal Web]
-%
-% \begin{figure}[htbp]
-%   \centering
-%   \includegraphics[width=0.9\textwidth]{Chapters/img/implantacao}
-%   \caption{Diagrama de implantação do Play4Change (Docker Compose)}
-%   \label{fig:implantacao}
-% \end{figure}
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/implantacao.pdf quando disponível
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    svc/.style={draw, rounded corners=3pt, fill=blue!12,
+                minimum width=3.0cm, minimum height=1.1cm,
+                align=center, text width=2.8cm},
+    ext/.style={svc, fill=green!12, dashed},
+    usr/.style={svc, fill=gray!15}
+  ]
+  % VPS outer box
+  \draw[thick, rounded corners=8pt, fill=white] (-0.8,-8.5) rectangle (14.5,2.0);
+  \node[font=\small\bfseries] at (6.8, 1.7) {VPS};
+  % Docker Compose inner box
+  \draw[dashed, rounded corners=5pt, fill=blue!4] (0,-8.0) rectangle (12.5,1.2);
+  \node[font=\footnotesize\itshape, gray] at (6.25, 0.95)
+    {Rede Docker Compose (interna)};
+  % Services top row
+  \node[svc] (app)  at (2.0, 0.0) {\textbf{app}\\\scriptsize Spring Boot\\:8080};
+  \node[svc] (db)   at (6.2, 0.0) {\textbf{db}\\\scriptsize PostgreSQL 16\\+ pgvector~:5432};
+  \node[svc] (minio)at (10.5,0.0) {\textbf{minio}\\\scriptsize MinIO S3\\:9000/:9001};
+  % Services bottom row
+  \node[svc] (prom) at (4.0,-3.5) {\textbf{prometheus}\\\scriptsize Métricas\\:9090};
+  \node[svc] (grf)  at (8.5,-3.5) {\textbf{grafana}\\\scriptsize Dashboards\\:3000};
+  % Internal connections
+  \draw[<->] (app.east)  -- (db.west);
+  \draw[<->] (app.east)  -- (minio.west);
+  \draw[->]  (app.south) to[bend right=10] (prom.north);
+  \draw[->]  (prom.east) -- (grf.west);
+  % External services (below VPS)
+  \node[ext] (mis) at (1.5, -11.0) {\textbf{Mistral API}\\\scriptsize LLM};
+  \node[ext] (res) at (5.0, -11.0) {\textbf{Resend}\\\scriptsize Email};
+  \node[ext] (gg)  at (8.5, -11.0) {\textbf{Google OAuth}\\\scriptsize JWKS};
+  \node[ext] (fb)  at (12.0,-11.0) {\textbf{Facebook OAuth}\\\scriptsize Graph API};
+  % App to external (HTTPS)
+  \foreach \e in {mis,res,gg,fb}
+    \draw[->,dashed] (app.south) to[out=270,in=90] (\e.north);
+  \node[font=\tiny,gray] at (6.8,-9.5) {HTTPS};
+  % Users (right side)
+  \node[usr] (cit) at (17.5, 0.5) {\textbf{Cidadão}\\\scriptsize App Android/iOS};
+  \node[usr] (adm) at (17.5,-2.5) {\textbf{Administrador}\\\scriptsize Portal Web};
+  \draw[->] (cit.west) -- (app.east) node[midway,above,font=\tiny] {HTTPS};
+  \draw[->] (adm.west) to[out=180,in=0] (app.east);
+  \end{tikzpicture}}
+  \caption{Diagrama de implantação do Play4Change (Docker Compose sobre VPS)}
+  \label{fig:implantacao}
+\end{figure}
