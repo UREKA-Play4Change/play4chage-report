@@ -8,45 +8,48 @@
 \def\printcoverpage{
 
 \thispagestyle{empty}
-\newgeometry{tmargin=0.5cm,bmargin=0.5cm,lmargin=2cm,rmargin=2cm}
+\newgeometry{tmargin=1.5cm,bmargin=1.5cm,lmargin=2cm,rmargin=2cm}
 
-\begin{minipage}{0.35\textwidth}
-% Put ISEL logo
-	\logo{\@universitylogo}
+% --- Logos row ---
+\begin{minipage}{0.33\textwidth}
+	\raggedright
+	\includegraphics[height=1.2cm]{\@universitylogo}
 \end{minipage}%
 \hfill
-\begin{minipage}{0.25\textwidth}
+\begin{minipage}{0.33\textwidth}
 	\centering
 	\includegraphics[height=1.2cm]{IPL}
 \end{minipage}%
 \hfill
-\begin{minipage}{0.25\textwidth}
+\begin{minipage}{0.33\textwidth}
 	\raggedleft
 	\includegraphics[height=1.2cm]{UREKA}
 \end{minipage}
 
+\vspace{2cm}
+
 \begin{center}
-
-%Define font style (ptm=Times New Roman)
-	\fontfamily{ptm}
-
-
-\vspace{0.25cm}	
+\fontfamily{ptm}
 % Name of Department
-	\fontsize{14}{16.8}
-	\selectfont
+	\fontsize{14}{16.8}\selectfont
 	\textbf{\@department}
+\end{center}
 
-\vspace{0.65cm}
+\vspace{3cm}
+
+\begin{center}
+\fontfamily{ptm}
+
 % Title of Dissertation
-	\fontsize{18}{21.6}
-	\selectfont
-	\textbf{\@title}\\[0.75cm]
+	\fontsize{24}{28}\selectfont
+	\textbf{\titlemain}\\[0.4cm]
+	\fontsize{16}{20}\selectfont
+	\textbf{\titlesub}
 
-\vspace{0.2cm}	
+\vspace{3cm}
+
 % Name of Authors
-	\fontsize{13}{14.4}
-	\selectfont
+	\fontsize{13}{14.4}\selectfont
 	\ctable[
 		cap=,
 		caption=,
@@ -54,22 +57,22 @@
 		pos=h,
 		maxwidth=1\linewidth,
 		doinside=\hspace*{-0.1cm},
-	]{rX}{}{ 
+	]{rX}{}{
 		\printauthor[]{1}
 		\printauthor[]{2}
 		\printauthor[]{3}
 }
 
-\vspace{0.9cm}	
+\vspace{1cm}
+
 %% Degree
-	\fontsize{12}{13}
-	\selectfont
+	\fontsize{12}{13}\selectfont
 	\@presentationtext
-	
-	\vfill
-	% Advisers
-	\fontsize{11}{14.4}
-	\selectfont
+
+\vspace{2cm}
+
+% Advisers
+	\fontsize{11}{14.4}\selectfont
 	\ctable[
 		cap=,
 		caption=,
@@ -83,15 +86,16 @@
 		\printadviser[]{3}
 }
 
-
-\vfill\vfill\vfill
-
-% Date
-\fontsize{10}{12.2}
-\selectfont
-\textbf{\@theday ~ -- ~ \@themonth ~ -- ~  \@theyear}
-	
 \end{center}
+
+\vspace{0pt plus 3fill}
+
+\begin{center}
+% Date
+\fontsize{10}{12.2}\selectfont
+\textbf{\@theday ~ -- ~ \@themonth ~ -- ~  \@theyear}
+\end{center}
+
 \restoregeometry
 \cleardoublepage %\newpage
 \thispagestyle{empty}
