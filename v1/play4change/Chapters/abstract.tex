@@ -1,7 +1,16 @@
 \abstractEN % Do NOT modify this line
 
-Existing digital learning platforms often lack effective adaptive personalisation and content oriented towards civic literacy and urban sustainability --- gaps that contribute to high dropout rates in informal education contexts.
+Urban sustainability, civic literacy, and climate action are emerging as central imperatives of contemporary European societies. The transition to smart cities depends not only on infrastructure --- it depends, in equal measure, on informed, empowered, and participatory citizens. The U!REKA University Alliance is specifically mandated to accelerate this transition~\cite{ureka2024}.
 
-This work proposes \textit{Play4Change}, an adaptive and gamified learning platform designed for citizens, developed within the U!REKA mission~\cite{ureka2024} and aligned with the United Nations Sustainable Development Goals 4, 11 and~13~\cite{un2015sdg}. The central contribution is an adaptive path reuse mechanism: whenever an artificial intelligence agent generates an alternative learning path for a citizen experiencing difficulties, that path is indexed by vector similarity and automatically reused for citizens with similar difficulty profiles, reducing inference cost and progressively accumulating collective pedagogical knowledge.
+This work proposes \textit{Play4Change}: an adaptive and gamified learning platform developed within the U!REKA mission and aligned with the United Nations Sustainable Development Goals on quality education, sustainable cities, and climate action (SDGs~4, 11 and~13)~\cite{un2015sdg}.
+The platform rests on three functional pillars:
 
-The platform integrates a cross-platform mobile client (Android and iOS), a web administration portal, an AI agent based on \textit{LangChain4j} with the \textit{Mistral} model and semantic retrieval via \textit{pgvector}, and a \textit{stateless} server implemented in \textit{Spring Boot}. Learning is structured into atomic micro-competencies, recognised through badges. The system was implemented as a functional prototype and validated against the requirements defined in collaboration with the U!REKA mission.
+\begin{enumerate}
+  \item \textbf{Daily gamified challenges} --- citizens acquire progressive micro-competencies recognised through badges, within a structured and motivating learning trajectory;
+
+  \item \textbf{Adaptive AI-driven content generation} --- an artificial intelligence agent dynamically generates formative content and adapts learning paths to the individual profile and difficulties of each citizen;
+
+  \item \textbf{Path reuse by vector similarity} --- the central technical contribution: when the agent generates an alternative path for a citizen experiencing difficulties, that path is indexed in \textit{pgvector} and automatically retrieved for analogous profiles in future interactions, reducing dependence on real-time inference and progressively accumulating collective pedagogical knowledge.
+\end{enumerate}
+
+\textit{Play4Change} was implemented as a functional prototype within the U!REKA mission. Results demonstrate the viability of an adaptive and gamified civic education approach capable of addressing the diversity of profiles among European citizens.

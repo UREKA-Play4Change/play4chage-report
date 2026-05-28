@@ -34,7 +34,8 @@
     \field{sortinithash}{B}
     \field{number}{6}
     \field{pages}{4\bibrangedash 16}
-    \field{title}{The 2 sigma problem: The search for methods of group instruction as effective as one-to-one tutoring}
+    \field{title}{The 2 sigma problem: The search for methods of group
+  instruction as effective as one-to-one tutoring}
     \field{volume}{13}
     \field{journaltitle}{Educational Researcher}
     \field{year}{1984}
@@ -104,7 +105,8 @@
     \field{labeltitlesource}{title}
     \field{sortinit}{C}
     \field{sortinithash}{C}
-    \field{title}{Coursera --- Build skills with online courses from top institutions}
+    \field{title}{Coursera --- Build skills with online courses from top
+  institutions}
     \verb{url}
     \verb https://www.coursera.org
     \endverb
@@ -147,9 +149,11 @@
     \field{labeltitlesource}{title}
     \field{sortinit}{D}
     \field{sortinithash}{D}
-    \field{booktitle}{Proceedings of the 15th International Academic MindTrek Conference}
+    \field{booktitle}{Proceedings of the 15th International Academic MindTrek
+  Conference}
     \field{pages}{9\bibrangedash 15}
-    \field{title}{From game design elements to gamefulness: defining gamification}
+    \field{title}{From game design elements to gamefulness: defining
+  gamification}
     \field{year}{2011}
   \endentry
 
@@ -212,7 +216,8 @@
     \field{labeltitlesource}{title}
     \field{sortinit}{E}
     \field{sortinithash}{E}
-    \field{title}{European approach to micro-credentials for lifelong learning and employability}
+    \field{title}{European approach to micro-credentials for lifelong learning
+  and employability}
     \list{institution}{1}{%
       {European Commission}%
     }
@@ -238,7 +243,8 @@
     \field{labeltitlesource}{title}
     \field{sortinit}{E}
     \field{sortinithash}{E}
-    \field{title}{Domain-Driven Design: Tackling Complexity in the Heart of Software}
+    \field{title}{Domain-Driven Design: Tackling Complexity in the Heart of
+  Software}
     \field{year}{2003}
   \endentry
 
@@ -257,7 +263,8 @@
     \field{labeltitlesource}{title}
     \field{sortinit}{F}
     \field{sortinithash}{F}
-    \field{title}{Architectural styles and the design of network-based software architectures}
+    \field{title}{Architectural styles and the design of network-based software
+  architectures}
     \list{institution}{1}{%
       {University of California, Irvine}%
     }
@@ -293,8 +300,10 @@
     \field{sortinit}{H}
     \field{sortinithash}{H}
     \field{pages}{3025\bibrangedash 3034}
-    \field{title}{Does gamification work? --- A literature review of empirical studies on gamification}
-    \field{journaltitle}{Proceedings of the 47th Hawaii International Conference on System Sciences}
+    \field{title}{Does gamification work? --- A literature review of empirical
+  studies on gamification}
+    \field{journaltitle}{Proceedings of the 47th Hawaii International
+  Conference on System Sciences}
     \field{year}{2014}
   \endentry
 
@@ -393,7 +402,8 @@
     \field{sortinit}{K}
     \field{sortinithash}{K}
     \field{pages}{102274}
-    \field{title}{ChatGPT for good? On opportunities and challenges of large language models for education}
+    \field{title}{ChatGPT for good? On opportunities and challenges of large
+  language models for education}
     \field{volume}{103}
     \field{journaltitle}{Learning and Individual Differences}
     \field{year}{2023}
@@ -462,7 +472,8 @@
     \field{sortinit}{N}
     \field{sortinithash}{N}
     \field{pages}{25\bibrangedash 36}
-    \field{title}{Current trends in Smart City initiatives: Some stylised facts}
+    \field{title}{Current trends in Smart City initiatives: Some stylised
+  facts}
     \field{volume}{38}
     \field{journaltitle}{Cities}
     \field{year}{2014}
@@ -482,7 +493,8 @@
     \field{sortinit}{U}
     \field{sortinithash}{U}
     \field{number}{A/RES/70/1}
-    \field{title}{Transforming our world: the 2030 Agenda for Sustainable Development}
+    \field{title}{Transforming our world: the 2030 Agenda for Sustainable
+  Development}
     \list{institution}{1}{%
       {United Nations}%
     }
@@ -530,7 +542,8 @@
     \field{sortinithash}{V}
     \field{number}{4}
     \field{pages}{197\bibrangedash 221}
-    \field{title}{The relative effectiveness of human tutoring, intelligent tutoring systems, and other tutoring systems}
+    \field{title}{The relative effectiveness of human tutoring, intelligent
+  tutoring systems, and other tutoring systems}
     \field{volume}{46}
     \field{journaltitle}{Educational Psychologist}
     \field{year}{2011}

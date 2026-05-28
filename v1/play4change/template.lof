@@ -1,0 +1,24 @@
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Mapa de posicionamento das plataformas (Gamificação vs.\ Adaptação por IA)}}{5}{figure.caption.9}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Diagrama de casos de uso do Play4Change}}{7}{figure.caption.10}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Arquitetura do Play4Change (C4~--- Nível Contentor)}}{9}{figure.caption.13}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Fluxo de autenticação: magic link, Google OAuth e Facebook OAuth}}{11}{figure.caption.14}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Diagrama entidade-associação do Play4Change}}{12}{figure.caption.15}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Estrutura DAG de progressão entre microcompetências (exemplo~--- domínio Sustentabilidade)}}{13}{figure.caption.16}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Diagrama de sequência: deteção de dificuldades e ativação do ramo adaptativo}}{14}{figure.caption.17}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Estrutura modular do servidor e dependências entre módulos Gradle}}{16}{figure.caption.19}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Pipeline de geração de conteúdo e reutilização do agente de IA}}{18}{figure.caption.21}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Diagrama de implantação do Play4Change (Docker Compose sobre VPS)}}{20}{figure.caption.22}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

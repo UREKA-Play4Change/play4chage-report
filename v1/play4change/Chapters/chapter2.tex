@@ -9,7 +9,7 @@
 
 O conceito de cidade inteligente (\textit{smart city}) refere-se a um ecossistema urbano que integra tecnologias de informação e comunicação com o objetivo de melhorar a qualidade de vida dos seus habitantes, otimizar a gestão de recursos e promover a participação cívica~\cite{neirotti2014current}. A transição para este modelo exige não apenas investimento em infraestrutura, mas também o desenvolvimento de literacia digital e ambiental por parte dos cidadãos.
 
-Os ODS~11 e~13 das Nações Unidas estabelecem metas concretas neste domínio: o primeiro apela à criação de cidades e comunidades sustentáveis e inclusivas; o segundo à adoção de medidas urgentes para combater as alterações climáticas. Ambos reconhecem o papel central da educação e da sensibilização cidadã como instrumentos de mudança~\cite{un2015sdg}.
+Os ODS~4, 11 e~13 das Nações Unidas estabelecem metas concretas neste domínio: o primeiro apela à criação de cidades e comunidades sustentáveis e inclusivas; o segundo à adoção de medidas urgentes para combater as alterações climáticas. Ambos reconhecem o papel central da educação e da sensibilização cidadã como instrumentos de mudança~\cite{un2015sdg}.
 
 A Aliança U!REKA (\textit{University Research and Knowledge Alliance}) posiciona-se neste contexto como catalisadora de soluções inovadoras que articulem investigação académica, tecnologia e necessidades das comunidades urbanas, promovendo a transição inteligente e sustentável das cidades europeias~\cite{ureka2024}.
 
@@ -70,4 +70,41 @@ A Tabela~\ref{tab:comparativa} sintetiza a análise comparativa das plataformas 
   \end{tabular}
 \end{table}
 
-Da análise comparativa resulta evidente que nenhuma das plataformas existentes reúne simultaneamente os quatro atributos identificados como essenciais: gamificação efetiva, adaptação por inteligência artificial, reconhecimento de microcompetências e orientação para o domínio das cidades inteligentes. O \textit{Play4Change} posiciona-se assim como uma solução inovadora e diferenciada no panorama atual.
+Da análise comparativa resulta evidente que nenhuma das plataformas existentes reúne simultaneamente os quatro atributos identificados como essenciais: gamificação efetiva, adaptação por inteligência artificial, reconhecimento de microcompetências e orientação para o domínio das cidades inteligentes. O \textit{Play4Change} posiciona-se assim como uma solução inovadora e diferenciada no panorama atual, conforme ilustrado na Figura~\ref{fig:posicionamento}.
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/posicionamento.pdf quando disponível
+  \begin{tikzpicture}[font=\small]
+    % Axes
+    \draw[->] (0,0) -- (8.8,0) node[right] {\small Adaptação por IA};
+    \draw[->] (0,0) -- (0,7.2) node[above] {\small Gamificação};
+    % Axis tick labels
+    \node[font=\tiny, gray] at (2.0,-0.4) {Baixa};
+    \node[font=\tiny, gray] at (6.5,-0.4) {Alta};
+    \node[font=\tiny, gray, rotate=90] at (-0.6, 1.8) {Baixa};
+    \node[font=\tiny, gray, rotate=90] at (-0.6, 5.5) {Alta};
+    % Quadrant dividers
+    \draw[gray!30, dashed] (4.25,0) -- (4.25,7.2);
+    \draw[gray!30, dashed] (0,3.6) -- (8.8,3.6);
+    % Quadrant labels
+    \node[font=\tiny\itshape, gray, align=center] at (2.0, 5.4)
+      {Alta gamificação\\Baixa IA};
+    \node[font=\tiny\itshape, gray, align=center] at (6.5, 1.8)
+      {Baixa gamificação\\Alta IA};
+    % Platform bubbles
+    \node[draw, circle, fill=gray!20, minimum size=1.3cm, font=\tiny, align=center]
+      at (1.2, 1.2) {Coursera\\edX};
+    \node[draw, circle, fill=gray!20, minimum size=1.3cm, font=\tiny, align=center]
+      at (3.0, 2.5) {Khan\\Academy};
+    \node[draw, circle, fill=gray!20, minimum size=1.4cm, font=\tiny, align=center]
+      at (1.2, 5.5) {Kahoot!};
+    \node[draw, circle, fill=gray!20, minimum size=1.5cm, font=\tiny, align=center]
+      at (3.2, 5.9) {Duolingo};
+    \node[draw, circle, fill=blue!30, minimum size=1.8cm, align=center,
+          font=\small\bfseries]
+      at (7.0, 6.3) {Play4\\Change};
+  \end{tikzpicture}
+  \caption{Mapa de posicionamento das plataformas (Gamificação vs.\ Adaptação por IA)}
+  \label{fig:posicionamento}
+\end{figure}
