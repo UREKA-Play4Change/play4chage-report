@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-pdf:
+    name: Compile LaTeX PDF
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compile PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: template.tex
+          working_directory: v1/play4change
+          latexmk_use_lualatex: false
+          latexmk_use_xelatex: false
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: play4change-report
+          path: v1/play4change/template.pdf
+          retention-days: 30
