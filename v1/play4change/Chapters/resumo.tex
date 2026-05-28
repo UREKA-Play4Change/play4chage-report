@@ -1,23 +1,33 @@
 \abstractPT  % Do NOT modify this line
 
-A missão U!REKA define como objetivo a promoção da literacia cívica e da sustentabilidade urbana junto de
-cidadãos europeus de contextos diversificados~\cite{ureka2024}. Este propósito requer uma plataforma de
-aprendizagem orientada para estes domínios, capaz de se adaptar à heterogeneidade dos perfis dos utilizadores
---- uma combinação que as plataformas de aprendizagem generalistas, como o Duolingo~\cite{duolingo2024} ou o
-Khan Academy~\cite{khanacademy2024}, não oferecem.
+A sustentabilidade urbana, a literacia cívica e a ação climática emergem como imperativos
+centrais das sociedades europeias contemporâneas. A transição para cidades inteligentes não
+depende apenas de infraestruturas --- depende, em igual medida, de cidadãos informados,
+capacitados e participativos. A Aliança Universitária U!REKA tem como missão acelerar
+precisamente esta transição~\cite{ureka2024}.
 
-O presente trabalho propõe o \textit{Play4Change}, uma plataforma de aprendizagem adaptativa e gamificada
-orientada para cidadãos, desenvolvida no âmbito da missão U!REKA~\cite{ureka2024} e alinhada com os
-Objetivos de Desenvolvimento Sustentável 4, 11 e~13 das Nações Unidas~\cite{un2015sdg}.
-A contribuição central é um mecanismo de reutilização de percursos adaptativos: sempre que um agente de
-inteligência artificial gera um percurso alternativo para um cidadão com dificuldades, esse percurso é
-indexado por semelhança vetorial e reutilizado automaticamente para cidadãos com perfis de dificuldade
-semelhantes, reduzindo o custo de inferência e acumulando progressivamente conhecimento pedagógico coletivo.
+O presente trabalho propõe o \textit{Play4Change}: uma plataforma de aprendizagem adaptativa
+e gamificada desenvolvida no âmbito da missão U!REKA e alinhada com os Objetivos de
+Desenvolvimento Sustentável das Nações Unidas relativos à educação de qualidade, às cidades
+sustentáveis e à ação climática (ODS~4, 11 e~13)~\cite{un2015sdg}.
+A plataforma assenta em três pilares funcionais:
 
-A plataforma integra um cliente móvel multiplataforma (Android e iOS), um portal de administração web,
-um agente de IA baseado em \textit{LangChain4j} com o modelo \textit{Mistral} e recuperação semântica
-via \textit{pgvector}, e um servidor \textit{stateless} em \textit{Spring Boot}.
-A progressão é estruturada em microcompetências atómicas, reconhecidas por \textit{badges}.
-O sistema foi implementado como protótipo funcional e validado segundo os requisitos definidos
-em colaboração com a missão U!REKA.
+\begin{enumerate}
+  \item \textbf{Desafios diários gamificados} --- os cidadãos adquirem microcompetências
+        progressivas reconhecidas por \textit{badges}, num percurso estruturado e motivante;
 
+  \item \textbf{Geração adaptativa de conteúdo por IA} --- um agente de inteligência
+        artificial gera dinamicamente o conteúdo formativo e adapta os percursos ao perfil
+        e às dificuldades individuais de cada cidadão;
+
+  \item \textbf{Reutilização de percursos por semelhança vetorial} --- a contribuição
+        técnica central: quando o agente gera um percurso alternativo para um cidadão com
+        dificuldades, esse percurso é indexado em \textit{pgvector} e recuperado
+        automaticamente para perfis análogos em interações futuras, reduzindo a dependência
+        de inferência em tempo real e acumulando progressivamente conhecimento pedagógico
+        coletivo.
+\end{enumerate}
+
+O \textit{Play4Change} foi implementado como protótipo funcional no âmbito da missão U!REKA.
+Os resultados demonstram a viabilidade de uma abordagem de educação cívica adaptativa e
+gamificada, capaz de responder à diversidade de perfis dos cidadãos europeus.
