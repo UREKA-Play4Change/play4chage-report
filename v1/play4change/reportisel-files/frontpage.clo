@@ -13,17 +13,17 @@
 % --- Logos row ---
 \begin{minipage}{0.33\textwidth}
 	\raggedright
-	\includegraphics[height=1.2cm]{\@universitylogo}
+	\includegraphics[height=1.8cm]{\@universitylogo}
 \end{minipage}%
 \hfill
 \begin{minipage}{0.33\textwidth}
 	\centering
-	\includegraphics[height=1.2cm]{IPL}
+	\includegraphics[height=1.8cm]{IPL}
 \end{minipage}%
 \hfill
 \begin{minipage}{0.33\textwidth}
 	\raggedleft
-	\includegraphics[height=1.2cm]{UREKA}
+	\includegraphics[height=1.8cm]{UREKA}
 \end{minipage}
 
 \vspace{2cm}
