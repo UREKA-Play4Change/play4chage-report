@@ -23,35 +23,43 @@
 \contentsline {section}{\numberline {2.5}Estado da Arte}{4}{section.2.5}%
 \contentsline {subsection}{\numberline {2.5.1}Análise Comparativa}{5}{subsection.2.5.1}%
 \contentsline {chapter}{\numberline {3}Solução Proposta}{7}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Visão Geral}{7}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Cliente Móvel}{7}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Cliente Web}{7}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Servidor}{8}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Agente de Inteligência Artificial}{8}{section.3.5}%
-\contentsline {subsection}{\numberline {3.5.1}Geração de Conteúdo}{8}{subsection.3.5.1}%
-\contentsline {subsection}{\numberline {3.5.2}Deteção de Dificuldades e Adaptação}{8}{subsection.3.5.2}%
-\contentsline {subsection}{\numberline {3.5.3}Reutilização de Percursos Adaptativos}{9}{subsection.3.5.3}%
-\contentsline {section}{\numberline {3.6}Microcompetências e Sistema de Badges}{9}{section.3.6}%
-\contentsline {chapter}{\numberline {4}Implementação}{11}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Decisões Arquiteturais}{11}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Stack Tecnológico}{11}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Estrutura Modular do Servidor}{12}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Agente de IA: Implementação}{12}{section.4.4}%
-\contentsline {section}{\numberline {4.5}Observabilidade}{13}{section.4.5}%
-\contentsline {section}{\numberline {4.6}Segurança}{13}{section.4.6}%
-\contentsline {chapter}{\numberline {5}Avaliação}{15}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Metodologia de Avaliação}{15}{section.5.1}%
-\contentsline {subsection}{\numberline {5.1.1}Testes Automatizados}{15}{subsection.5.1.1}%
-\contentsline {subsection}{\numberline {5.1.2}Avaliação com Utilizadores}{15}{subsection.5.1.2}%
-\contentsline {section}{\numberline {5.2}Resultados}{15}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Desempenho do Sistema}{15}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}Usabilidade}{16}{subsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.2.3}Eficácia do Mecanismo Adaptativo}{16}{subsection.5.2.3}%
-\contentsline {section}{\numberline {5.3}Discussão}{16}{section.5.3}%
-\contentsline {chapter}{\numberline {6}Conclusões e Trabalho Futuro}{17}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Síntese}{17}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Contribuições}{17}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Limitações}{18}{section.6.3}%
-\contentsline {section}{\numberline {6.4}Trabalho Futuro}{18}{section.6.4}%
-\contentsline {chapter}{Referências}{19}{chapter*.11}%
+\contentsline {section}{\numberline {3.1}Requisitos do Sistema}{7}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Atores e Casos de Uso}{7}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Requisitos Funcionais}{7}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}Requisitos Não Funcionais}{7}{subsection.3.1.3}%
+\contentsline {section}{\numberline {3.2}Visão Geral}{7}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Cliente Móvel}{8}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Cliente Web}{8}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Servidor}{9}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Agente de Inteligência Artificial}{9}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Geração de Conteúdo}{10}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Deteção de Dificuldades e Adaptação}{10}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Reutilização de Percursos Adaptativos}{10}{subsection.3.6.3}%
+\contentsline {section}{\numberline {3.7}Modelo de Dados}{10}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Microcompetências e Sistema de Badges}{11}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Fluxo de Adaptação}{11}{section.3.9}%
+\contentsline {chapter}{\numberline {4}Implementação}{13}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Decisões Arquiteturais}{13}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Stack Tecnológico}{13}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Estrutura Modular do Servidor}{14}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Desenho da API REST}{14}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Agente de IA: Implementação}{14}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Observabilidade}{15}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Segurança}{15}{section.4.7}%
+\contentsline {section}{\numberline {4.8}Diagrama de Implantação}{16}{section.4.8}%
+\contentsline {chapter}{\numberline {5}Avaliação}{17}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Metodologia de Avaliação}{17}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Testes Automatizados}{17}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Avaliação com Utilizadores}{17}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Resultados}{17}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Desempenho do Sistema}{17}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Usabilidade}{18}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Eficácia do Mecanismo Adaptativo}{18}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}Discussão}{18}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Conclusões e Trabalho Futuro}{19}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Síntese}{19}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Contribuições}{19}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Limitações}{20}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Trabalho Futuro}{20}{section.6.4}%
+\contentsline {chapter}{Referências}{21}{chapter*.14}%
 \contentsline {chapter}{\numberline {A}Registos de Decisão Arquitetural (ADRs)}{i}{appendix.A}%
