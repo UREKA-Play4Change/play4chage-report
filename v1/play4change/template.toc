@@ -15,52 +15,52 @@
 \contentsline {section}{\numberline {1.2}Problema}{1}{section.1.2}%
 \contentsline {section}{\numberline {1.3}Objetivos}{2}{section.1.3}%
 \contentsline {section}{\numberline {1.4}Contribuições}{2}{section.1.4}%
-\contentsline {section}{\numberline {1.5}Estrutura do Documento}{2}{section.1.5}%
-\contentsline {chapter}{\numberline {2}Enquadramento e Estado da Arte}{3}{chapter.2}%
-\contentsline {section}{\numberline {2.1}Cidades Inteligentes e Sustentabilidade}{3}{section.2.1}%
-\contentsline {section}{\numberline {2.2}Aprendizagem Adaptativa}{3}{section.2.2}%
-\contentsline {section}{\numberline {2.3}Gamificação na Educação}{4}{section.2.3}%
-\contentsline {section}{\numberline {2.4}Microcompetências}{4}{section.2.4}%
-\contentsline {section}{\numberline {2.5}Estado da Arte}{4}{section.2.5}%
-\contentsline {subsection}{\numberline {2.5.1}Análise Comparativa}{5}{subsection.2.5.1}%
-\contentsline {chapter}{\numberline {3}Solução Proposta}{7}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Requisitos do Sistema}{7}{section.3.1}%
-\contentsline {subsection}{\numberline {3.1.1}Atores e Casos de Uso}{7}{subsection.3.1.1}%
-\contentsline {subsection}{\numberline {3.1.2}Requisitos Funcionais}{7}{subsection.3.1.2}%
-\contentsline {subsection}{\numberline {3.1.3}Requisitos Não Funcionais}{8}{subsection.3.1.3}%
-\contentsline {section}{\numberline {3.2}Visão Geral}{8}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Cliente Móvel}{9}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Cliente Web}{10}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Servidor}{10}{section.3.5}%
-\contentsline {section}{\numberline {3.6}Agente de Inteligência Artificial}{10}{section.3.6}%
-\contentsline {subsection}{\numberline {3.6.1}Geração de Conteúdo}{11}{subsection.3.6.1}%
-\contentsline {subsection}{\numberline {3.6.2}Deteção de Dificuldades e Adaptação}{11}{subsection.3.6.2}%
-\contentsline {subsection}{\numberline {3.6.3}Reutilização de Percursos Adaptativos}{11}{subsection.3.6.3}%
-\contentsline {section}{\numberline {3.7}Modelo de Dados}{12}{section.3.7}%
-\contentsline {section}{\numberline {3.8}Microcompetências e Sistema de Badges}{13}{section.3.8}%
-\contentsline {section}{\numberline {3.9}Fluxo de Adaptação}{13}{section.3.9}%
-\contentsline {chapter}{\numberline {4}Implementação}{15}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Decisões Arquiteturais}{15}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Stack Tecnológico}{15}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Estrutura Modular do Servidor}{16}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Desenho da API REST}{17}{section.4.4}%
-\contentsline {section}{\numberline {4.5}Agente de IA: Implementação}{17}{section.4.5}%
-\contentsline {section}{\numberline {4.6}Observabilidade}{19}{section.4.6}%
-\contentsline {section}{\numberline {4.7}Segurança}{19}{section.4.7}%
-\contentsline {section}{\numberline {4.8}Diagrama de Implantação}{19}{section.4.8}%
-\contentsline {chapter}{\numberline {5}Avaliação}{21}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Metodologia de Avaliação}{21}{section.5.1}%
-\contentsline {subsection}{\numberline {5.1.1}Testes Automatizados}{21}{subsection.5.1.1}%
-\contentsline {subsection}{\numberline {5.1.2}Avaliação com Utilizadores}{21}{subsection.5.1.2}%
-\contentsline {section}{\numberline {5.2}Resultados}{21}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Desempenho do Sistema}{21}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}Usabilidade}{22}{subsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.2.3}Eficácia do Mecanismo Adaptativo}{22}{subsection.5.2.3}%
-\contentsline {section}{\numberline {5.3}Discussão}{22}{section.5.3}%
-\contentsline {chapter}{\numberline {6}Conclusões e Trabalho Futuro}{23}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Síntese}{23}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Contribuições}{23}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Limitações}{24}{section.6.3}%
-\contentsline {section}{\numberline {6.4}Trabalho Futuro}{24}{section.6.4}%
-\contentsline {chapter}{Referências}{25}{chapter*.25}%
+\contentsline {section}{\numberline {1.5}Estrutura do Documento}{3}{section.1.5}%
+\contentsline {chapter}{\numberline {2}Enquadramento e Estado da Arte}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Cidades Inteligentes e Sustentabilidade}{5}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Aprendizagem Adaptativa}{5}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Gamificação na Educação}{6}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Microcompetências}{6}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Estado da Arte}{6}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Análise Comparativa}{7}{subsection.2.5.1}%
+\contentsline {chapter}{\numberline {3}Solução Proposta}{9}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Requisitos do Sistema}{9}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Atores e Casos de Uso}{9}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Requisitos Funcionais}{9}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}Requisitos Não Funcionais}{10}{subsection.3.1.3}%
+\contentsline {section}{\numberline {3.2}Visão Geral}{10}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Cliente Móvel}{11}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Cliente Web}{12}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Servidor}{12}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Agente de Inteligência Artificial}{12}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Geração de Conteúdo}{13}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Deteção de Dificuldades e Adaptação}{13}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Reutilização de Percursos Adaptativos}{13}{subsection.3.6.3}%
+\contentsline {section}{\numberline {3.7}Modelo de Dados}{14}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Microcompetências e Sistema de Badges}{15}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Fluxo de Adaptação}{15}{section.3.9}%
+\contentsline {chapter}{\numberline {4}Implementação}{17}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Decisões Arquiteturais}{17}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Stack Tecnológico}{17}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Estrutura Modular do Servidor}{18}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Desenho da API REST}{19}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Agente de IA: Implementação}{19}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Observabilidade}{21}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Segurança}{21}{section.4.7}%
+\contentsline {section}{\numberline {4.8}Diagrama de Implantação}{21}{section.4.8}%
+\contentsline {chapter}{\numberline {5}Avaliação}{23}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Metodologia de Avaliação}{23}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Testes Automatizados}{23}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Avaliação com Utilizadores}{23}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Resultados}{23}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Desempenho do Sistema}{23}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Usabilidade}{24}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Eficácia do Mecanismo Adaptativo}{24}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}Discussão}{24}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Conclusões e Trabalho Futuro}{25}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Síntese}{25}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Contribuições}{25}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Limitações}{26}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Trabalho Futuro}{26}{section.6.4}%
+\contentsline {chapter}{Referências}{27}{chapter*.25}%
 \contentsline {chapter}{\numberline {A}Registos de Decisão Arquitetural (ADRs)}{i}{appendix.A}%
