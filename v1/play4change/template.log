@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  28 MAY 2026 22:27
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  28 MAY 2026 22:37
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2665,7 +2665,7 @@ File: ts1ppl.fd 2001/06/04 font definitions for TS1/ppl.
 
 
 ]
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 76
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 79
 .
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
@@ -2755,7 +2755,7 @@ Package logreq Info: Writing requests to 'template.run.xml'.
 Here is how much of TeX's memory you used:
  51971 strings out of 467525
  1017635 string characters out of 5418983
- 1903068 words of memory out of 5000000
+ 1904068 words of memory out of 5000000
  79816 multiletter control sequences out of 15000+600000
  735348 words of font info for 227 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
@@ -2773,7 +2773,7 @@ type1/urw/palatino/uplr8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/u
 rw/palatino/uplri8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/tim
 es/utmb8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.
 pfb>
-Output written on template.pdf (46 pages, 792937 bytes).
+Output written on template.pdf (46 pages, 792766 bytes).
 PDF statistics:
  741 PDF objects out of 1000 (max. 8388607)
  656 compressed objects within 7 object streams
