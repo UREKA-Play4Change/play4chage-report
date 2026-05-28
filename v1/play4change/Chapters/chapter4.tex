@@ -62,6 +62,34 @@ O servidor foi organizado segundo os princípios de arquitetura por contextos de
 
 Esta separação assegura que a lógica de domínio permanece independente dos detalhes de infraestrutura, facilitando a testabilidade e a evolução do sistema.
 
+\section{Desenho da API REST}
+\label{sec:api_rest}
+
+A API REST do servidor está organizada por recurso, seguindo as convenções de nomenclatura e os métodos HTTP da arquitetura REST~\cite{fielding2000rest}. A Tabela~\ref{tab:api_endpoints} apresenta os principais grupos de \textit{endpoints}.
+
+\begin{table}[ht]
+  \caption{Principais grupos de \textit{endpoints} da API REST}
+  \label{tab:api_endpoints}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lp{2.8cm}p{6.5cm}}
+    \toprule
+    \textbf{Prefixo} & \textbf{Métodos} & \textbf{Função} \\
+    \midrule
+    \texttt{/auth}          & POST             & Autenticação: \textit{magic link}, Google OAuth, Facebook OAuth \\
+    \texttt{/users}         & GET, PATCH       & Gestão do perfil do utilizador autenticado \\
+    \texttt{/topics}        & GET, POST, PATCH, DELETE & Gestão de tópicos (requer papel de administrador) \\
+    \texttt{/tasks}         & GET, POST        & Obtenção de tarefas diárias e submissão de respostas \\
+    \texttt{/badges}        & GET              & Consulta de \textit{badges} disponíveis e obtidos \\
+    \texttt{/progress}      & GET              & Histórico de progresso do cidadão \\
+    \texttt{/adaptive}      & GET              & Ramo adaptativo ativo do cidadão \\
+    \texttt{/admin/metrics} & GET              & Métricas de utilização (requer papel de administrador) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A especificação completa da API encontra-se no contrato OpenAPI gerado automaticamente em tempo de execução, disponível em \texttt{/v3/api-docs}.
+
 \section{Agente de IA: Implementação}
 \label{sec:ia_implementacao}
 
@@ -86,3 +114,31 @@ A plataforma integra um sistema de observabilidade baseado em Micrometer, Promet
 \label{sec:seguranca}
 
 A segurança da plataforma foi auditada formalmente (ADR-016), tendo sido identificadas e corrigidas onze vulnerabilidades. A única lacuna por resolver — denominada G4 — refere-se à validação de audiência em fluxos Facebook OAuth e encontra-se documentada e calendarizada para resolução em iterações subsequentes.
+
+\section{Diagrama de Implantação}
+\label{sec:diagrama_implantacao}
+
+A plataforma é implantada através de Docker Compose numa VPS, com os seguintes serviços orquestrados:
+
+\begin{description}
+  \item[\texttt{app}] Servidor Spring Boot (porta 8080); configurado por variáveis de ambiente para base de dados, serviços externos e chaves de autenticação;
+  \item[\texttt{db}] PostgreSQL~16 com extensão \textit{pgvector}, acessível internamente na porta 5432;
+  \item[\texttt{minio}] Armazenamento compatível com S3 (portas 9000/9001), utilizado para ficheiros estáticos e imagens de \textit{badges};
+  \item[\texttt{prometheus}] Recolha de métricas via \textit{endpoint} Micrometer exposto pelo servidor (porta 9090);
+  \item[\texttt{grafana}] Visualização de \textit{dashboards} (porta 3000), provisionados a partir do código-fonte.
+\end{description}
+
+Os serviços externos --- API Mistral, API Resend, Google OAuth e Facebook OAuth --- são consumidos pelo servidor via HTTPS, sem exposição na rede interna do Docker Compose.
+
+% TODO: inserir diagrama de implantação UML (ou diagrama de infraestrutura estilo C4 Nível 3)
+% Representar: VPS com rede interna Docker [app, db, minio, prometheus, grafana]
+%              Ligações entre contentores (portas internas)
+%              Serviços externos acedidos via HTTPS [Mistral, Resend, Google OAuth, Facebook OAuth]
+%              Utilizadores finais [Cidadão → App Móvel, Administrador → Portal Web]
+%
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.9\textwidth]{Chapters/img/implantacao}
+%   \caption{Diagrama de implantação do Play4Change (Docker Compose)}
+%   \label{fig:implantacao}
+% \end{figure}
