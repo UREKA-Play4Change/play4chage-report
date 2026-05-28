@@ -39,26 +39,22 @@ alternativa à geração generativa em tempo real.
 Para concretizar este objetivo, definem-se os seguintes objetivos específicos:
 
 \begin{enumerate}
-  \item[\textbf{OE1}] Identificar e caracterizar os requisitos de uma plataforma de
-        educação cívica adaptativa, com base nas lacunas identificadas na literatura
-        e nas limitações das soluções existentes;
+  \item[\textbf{OE1}] Especificar os requisitos funcionais e não funcionais de uma
+        plataforma de aprendizagem cívica adaptativa e gamificada, com base na
+        análise crítica da literatura e das soluções existentes, estabelecendo
+        critérios de aceitação mensuráveis que orientem o desenvolvimento e a
+        avaliação do protótipo;
 
-  \item[\textbf{OE2}] Propor um modelo de microcompetências gamificadas aplicado ao
-        domínio das cidades inteligentes, definindo critérios de progressão e
-        reconhecimento adequados a contextos de educação informal e contínua;
+  \item[\textbf{OE2}] Conceber e prototipar o \textit{Play4Change}: uma plataforma
+        modular que integra desafios gamificados com microcompetências progressivas,
+        geração adaptativa de conteúdo por IA e personalização dinâmica de percursos
+        de aprendizagem;
 
-  \item[\textbf{OE3}] Conceber e implementar uma arquitetura modular que integre
-        geração de conteúdo por IA, rastreamento de dificuldades em tempo real e
-        personalização de percursos de aprendizagem;
-
-  \item[\textbf{OE4}] Projetar e avaliar um mecanismo de reutilização de percursos
-        adaptativos por semelhança vetorial, analisando o seu impacto na redução de
-        chamadas ao modelo generativo e na acumulação de conhecimento pedagógico
-        coletivo;
-
-  \item[\textbf{OE5}] Avaliar o protótipo funcional resultante segundo dimensões de
-        usabilidade, eficácia pedagógica e desempenho técnico, face a critérios de
-        aceitação pré-definidos.
+  \item[\textbf{OE3}] Projetar, implementar e avaliar um mecanismo de reutilização
+        de percursos adaptativos por semelhança vetorial, quantificando o seu impacto
+        na redução de inferência generativa em tempo real, na acumulação de
+        conhecimento pedagógico coletivo e na usabilidade e eficácia pedagógica do
+        protótipo resultante, face aos critérios definidos em~\textbf{OE1}.
 \end{enumerate}
 
 \section{Contribuições}
@@ -68,11 +64,9 @@ As contribuições deste trabalho distribuem-se em dois planos: engenharia de so
 
 Do ponto de vista de engenharia, contribui-se com:
 \begin{itemize}
-  \item Um modelo de microcompetências gamificadas aplicado ao domínio das cidades
-        inteligentes e da sustentabilidade urbana (OE2);
-  \item Uma arquitetura modular de geração adaptativa de conteúdo por IA, capaz de
-        detetar dificuldades de aprendizagem em tempo real e propor percursos
-        personalizados (OE3).
+  \item O protótipo funcional do \textit{Play4Change}: uma plataforma modular com
+        desafios gamificados, modelo de microcompetências progressivas e geração
+        adaptativa de conteúdo por IA~(OE2).
 \end{itemize}
 
 Do ponto de vista da investigação, a contribuição central é:
@@ -81,7 +75,7 @@ Do ponto de vista da investigação, a contribuição central é:
         vetorial: os percursos gerados pelo agente de IA são indexados em
         \textit{pgvector} e recuperados automaticamente para perfis análogos,
         reduzindo a dependência de inferência generativa em tempo real e acumulando
-        progressivamente conhecimento pedagógico coletivo (OE4).
+        progressivamente conhecimento pedagógico coletivo~(OE3).
 \end{itemize}
 
 \section{Estrutura do Documento}
