@@ -11,7 +11,7 @@ A transição para cidades inteligentes constitui um dos maiores desafios socioe
 
 Neste quadro, a literacia cívica e a educação para a sustentabilidade emergem como alavancas fundamentais. A capacidade de os cidadãos adquirirem novas competências de forma contínua e acessível representa um vetor estratégico para a coesão social e para a adaptação às exigências de uma sociedade em permanente transformação. Este imperativo encontra enquadramento direto nos Objetivos de Desenvolvimento Sustentável (ODS) das Nações Unidas, nomeadamente no ODS~4 (\textit{Educação de Qualidade}), ODS~11 (\textit{Cidades e Comunidades Sustentáveis}) e ODS~13 (\textit{Ação Climática}), que apelam à participação ativa dos cidadãos na construção de sociedades mais resilientes e sustentáveis~\cite{un2015sdg}.
 
-A motivação central do \textit{Play4Change} assenta na premissa de que a mudança genuína começa pelo conhecimento. Uma plataforma de aprendizagem acessível, personalizada e gamificada pode capacitar os cidadãos para agirem como agentes de transformação nas suas comunidades, alinhando literacia cívica e ação climática com os objetivos de desenvolvimento sustentável.
+A investigação em literacia digital e participação urbana evidencia que o acesso a oportunidades de aprendizagem personalizada e contínua está diretamente correlacionado com o nível de envolvimento dos cidadãos em processos de decisão coletiva~\cite{neirotti2014current}. Neste quadro, uma plataforma adaptativa e gamificada constitui um instrumento com potencial para capacitar cidadãos enquanto agentes de transformação nas suas comunidades, alinhando literacia cívica e ação climática com os objetivos globais de sustentabilidade.
 
 \section{Problema}
 \label{sec:problema}
@@ -23,30 +23,65 @@ Apesar da proliferação de plataformas de aprendizagem online, persistem lacuna
   \item integração com os desafios específicos das cidades inteligentes.
 \end{itemize}
 
-Adicionalmente, a motivação intrínseca para a aprendizagem continuada representa um obstáculo recorrente em contextos de educação informal. A ausência de elementos de \textit{engagement} e reconhecimento progressivo contribui para taxas de abandono elevadas nas plataformas convencionais.
+Adicionalmente, a motivação intrínseca para a aprendizagem continuada representa um obstáculo recorrente em contextos de educação informal: a taxa de abandono em plataformas de e-learning convencionais ultrapassa frequentemente os 90\,\%~\cite{jordan2015mooc}, fenómeno que a literatura atribui, em grande medida, à ausência de personalização e de elementos de \textit{engagement} progressivo~\cite{hamari2014does}.
+
+Nenhuma das soluções disponíveis --- Duolingo~\cite{duolingo2024}, Khan~Academy~\cite{khanacademy2024}, Coursera~\cite{coursera2024} ou Kahoot!~\cite{kahoot2024} --- combina personalização adaptativa por IA com reutilização de percursos pedagógicos por semelhança vetorial num contexto específico de literacia cívica e sustentabilidade urbana. Esta lacuna justifica a proposta apresentada neste trabalho.
 
 \section{Objetivos}
 \label{sec:objetivos}
 
-O presente trabalho tem como objetivo principal conceber, implementar e avaliar o \textit{Play4Change}, uma plataforma de aprendizagem adaptativa e gamificada orientada para cidadãos, no âmbito da missão U!REKA.
+O objetivo principal deste trabalho é \textbf{conceber, prototipar e avaliar} o
+\textit{Play4Change}: uma plataforma de aprendizagem adaptativa e gamificada para
+educação cívica urbana, investigando em particular a viabilidade e a eficácia de um
+mecanismo de reutilização de percursos pedagógicos por semelhança vetorial como
+alternativa à geração generativa em tempo real.
 
-Os objetivos específicos são:
+Para concretizar este objetivo, definem-se os seguintes objetivos específicos:
+
 \begin{enumerate}
-  \item Desenvolver um cliente móvel que permita aos cidadãos realizar tarefas de aprendizagem diárias de forma gamificada, adquirindo microcompetências progressivas reconhecidas por \textit{badges};
-  \item Implementar um portal de administração web que habilite gestores a criar e gerir tópicos formativos;
-  \item Construir um servidor \textit{stateless} que coordene todos os componentes da plataforma de forma escalável;
-  \item Integrar um agente de inteligência artificial capaz de gerar conteúdo formativo automaticamente, detetar dificuldades de aprendizagem em tempo real e propor percursos alternativos personalizados;
-  \item Implementar um mecanismo de reutilização de percursos adaptativos entre cidadãos com perfis de dificuldade semelhantes, potenciando a eficácia coletiva do sistema.
+  \item[\textbf{OE1}] Identificar e caracterizar os requisitos de uma plataforma de
+        educação cívica adaptativa, com base nas lacunas identificadas na literatura
+        e nas limitações das soluções existentes;
+
+  \item[\textbf{OE2}] Propor um modelo de microcompetências gamificadas aplicado ao
+        domínio das cidades inteligentes, definindo critérios de progressão e
+        reconhecimento adequados a contextos de educação informal e contínua;
+
+  \item[\textbf{OE3}] Conceber e implementar uma arquitetura modular que integre
+        geração de conteúdo por IA, rastreamento de dificuldades em tempo real e
+        personalização de percursos de aprendizagem;
+
+  \item[\textbf{OE4}] Projetar e avaliar um mecanismo de reutilização de percursos
+        adaptativos por semelhança vetorial, analisando o seu impacto na redução de
+        chamadas ao modelo generativo e na acumulação de conhecimento pedagógico
+        coletivo;
+
+  \item[\textbf{OE5}] Avaliar o protótipo funcional resultante segundo dimensões de
+        usabilidade, eficácia pedagógica e desempenho técnico, face a critérios de
+        aceitação pré-definidos.
 \end{enumerate}
 
 \section{Contribuições}
 \label{sec:contribuicoes}
 
-As principais contribuições deste trabalho são:
+As contribuições deste trabalho distribuem-se em dois planos: engenharia de software e investigação aplicada.
+
+Do ponto de vista de engenharia, contribui-se com:
 \begin{itemize}
-  \item Um modelo de microcompetências gamificadas aplicado ao domínio das cidades inteligentes e da sustentabilidade urbana;
-  \item Uma arquitetura de geração adaptativa de conteúdo por IA, capaz de detetar dificuldades de aprendizagem em tempo real e propor percursos personalizados;
-  \item Um mecanismo de reutilização de percursos por semelhança vetorial --- a contribuição técnica central: os percursos adaptativos são indexados em \textit{pgvector} e recuperados para perfis análogos, acumulando progressivamente conhecimento pedagógico coletivo.
+  \item Um modelo de microcompetências gamificadas aplicado ao domínio das cidades
+        inteligentes e da sustentabilidade urbana (OE2);
+  \item Uma arquitetura modular de geração adaptativa de conteúdo por IA, capaz de
+        detetar dificuldades de aprendizagem em tempo real e propor percursos
+        personalizados (OE3).
+\end{itemize}
+
+Do ponto de vista da investigação, a contribuição central é:
+\begin{itemize}
+  \item Um mecanismo de reutilização de percursos adaptativos por semelhança
+        vetorial: os percursos gerados pelo agente de IA são indexados em
+        \textit{pgvector} e recuperados automaticamente para perfis análogos,
+        reduzindo a dependência de inferência generativa em tempo real e acumulando
+        progressivamente conhecimento pedagógico coletivo (OE4).
 \end{itemize}
 
 \section{Estrutura do Documento}

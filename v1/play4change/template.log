@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  28 MAY 2026 22:01
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  28 MAY 2026 22:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2494,10 +2494,14 @@ File: Logo/01_ISEL-Logotipo-RGB_Horizontal-Principal-900â”¬â•‘.png Graphic file
 <use Logo/01_ISEL-Logotipo-RGB_Horizontal-Principal-900â”¬â•‘.png>
 Package pdftex.def Info: Logo/01_ISEL-Logotipo-RGB_Horizontal-Principal-900â”¬â
 •‘.png  used on input line 203.
-(pdftex.def)             Requested size: 136.73643pt x 34.14322pt.
+(pdftex.def)             Requested size: 205.15685pt x 51.21504pt.
+
+Overfull \hbox (45.536pt too wide) in paragraph at lines 203--203
+[][]  
+ []
+
 LaTeX Font Info:    Trying to load font information for OT1+txr on input line 2
 03.
-
 (/usr/local/texlive/2026/texmf-dist/tex/latex/txfonts/ot1txr.fd
 File: ot1txr.fd 2000/12/15 v3.1
 )
@@ -2535,15 +2539,19 @@ File: utxexa.fd 2000/12/15 v3.1
 File: Logo/IPL.png Graphic file (type png)
 <use Logo/IPL.png>
 Package pdftex.def Info: Logo/IPL.png  used on input line 203.
-(pdftex.def)             Requested size: 88.47997pt x 34.14322pt.
+(pdftex.def)             Requested size: 132.71996pt x 51.21504pt.
 <Logo/UREKA.png, id=239, 420.57124pt x 120.45pt>
 File: Logo/UREKA.png Graphic file (type png)
 <use Logo/UREKA.png>
 Package pdftex.def Info: Logo/UREKA.png  used on input line 203.
-(pdftex.def)             Requested size: 119.21588pt x 34.14322pt.
+(pdftex.def)             Requested size: 178.82063pt x 51.21504pt.
+
+Overfull \hbox (19.19978pt too wide) in paragraph at lines 203--203
+ [][]
+ []
+
 LaTeX Font Info:    Trying to load font information for T1+ptm on input line 20
 3.
-
 (/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/t1ptm.fd
 File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
 )
@@ -2649,26 +2657,26 @@ n input line 222.
 \@myi=\count597
  (./Chapters/chapter1.tex
 Cap\'{\i }tulo 1.
-[1
+LaTeX Font Info:    Trying to load font information for TS1+ppl on input line 2
+1.
+(/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ppl.fd
+File: ts1ppl.fd 2001/06/04 font definitions for TS1/ppl.
+) [1
 
 
 ]
-LaTeX Font Info:    Trying to load font information for TS1+ppl on input line 4
-2.
- (/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/ts1ppl.fd
-File: ts1ppl.fd 2001/06/04 font definitions for TS1/ppl.
-))
-(./Chapters/chapter2.tex
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 4.
-
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 76
+.
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
 File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-) [2{/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}]
-Cap\'{\i }tulo 2.
-[3
+) [2{/usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}]) (./Chap
+ters/chapter2.tex
+[3] [4
 
-] [4]) (./Chapters/chapter3.tex [5] [6
+]
+Cap\'{\i }tulo 2.
+[5] [6]) (./Chapters/chapter3.tex [7] [8
 
 ]
 Cap\'{\i }tulo 3.
@@ -2677,34 +2685,34 @@ Underfull \hbox (badness 10000) in paragraph at lines 78--78
 []|\T1/ppl/m/n/10 Deteção au-to-má-tica de di-fi-cul-da-des de
  []
 
-[7] [8] [9] [10] [11]
+[9] [10] [11] [12] [13]
 LaTeX Font Info:    Trying to load font information for T1+pcr on input line 26
 8.
 
 (/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/t1pcr.fd
 File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
-) [12])
-(./Chapters/chapter4.tex [13] [14]
+) [14])
+(./Chapters/chapter4.tex [15] [16]
 Cap\'{\i }tulo 4.
-[15
+[17
 
 ]
 Underfull \hbox (badness 10000) in paragraph at lines 110--110
 []|\T1/ppl/m/n/10 GET, POST,
  []
 
-[16] [17] [18]) (./Chapters/chapter5.tex [19] [20]
+[18] [19] [20]) (./Chapters/chapter5.tex [21] [22]
 Cap\'{\i }tulo 5.
-[21
-
-]) (./Chapters/chapter6.tex [22]
-Cap\'{\i }tulo 6.
 [23
 
-]) [24] [25
+]) (./Chapters/chapter6.tex [24]
+Cap\'{\i }tulo 6.
+[25
+
+]) [26] [27
 
 
-] [26]
+] [28]
 \@myi=\count598
  (./Appendixes/appendix1.tex
 Ap\^endice A.
@@ -2745,10 +2753,10 @@ Package logreq Info: Writing requests to 'template.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 51969 strings out of 467525
- 1017447 string characters out of 5418983
- 1903994 words of memory out of 5000000
- 79812 multiletter control sequences out of 15000+600000
+ 51971 strings out of 467525
+ 1017635 string characters out of 5418983
+ 1903068 words of memory out of 5000000
+ 79816 multiletter control sequences out of 15000+600000
  735348 words of font info for 227 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
  99i,12n,108p,2493b,2454s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -2765,10 +2773,10 @@ type1/urw/palatino/uplr8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/u
 rw/palatino/uplri8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/tim
 es/utmb8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.
 pfb>
-Output written on template.pdf (44 pages, 790586 bytes).
+Output written on template.pdf (46 pages, 792937 bytes).
 PDF statistics:
- 730 PDF objects out of 1000 (max. 8388607)
- 647 compressed objects within 7 object streams
- 168 named destinations out of 1000 (max. 500000)
+ 741 PDF objects out of 1000 (max. 8388607)
+ 656 compressed objects within 7 object streams
+ 166 named destinations out of 1000 (max. 500000)
  484 words of extra memory for PDF output out of 10000 (max. 10000000)
 
