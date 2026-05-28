@@ -4,16 +4,104 @@
 \chapter{Solução Proposta}
 \label{cha:solucao}
 
+\section{Requisitos do Sistema}
+\label{sec:requisitos}
+
+Esta secção apresenta os requisitos funcionais e não funcionais que guiaram o design e a implementação do \textit{Play4Change}.
+
+\subsection{Atores e Casos de Uso}
+\label{ssec:casos_uso}
+
+O sistema contempla dois atores principais:
+
+\begin{description}
+  \item[Cidadão] Utilizador final da aplicação móvel. Autentica-se na plataforma, realiza tarefas de aprendizagem diárias, acompanha a sua progressão e recebe \textit{badges} ao completar microcompetências.
+  \item[Administrador] Gestor da plataforma com acesso ao portal web de administração. Cria e gere tópicos formativos, configura microcompetências e \textit{badges}, e monitoriza métricas de utilização.
+\end{description}
+
+% TODO: inserir diagrama UML de casos de uso
+% Cidadão: Autenticar-se, Realizar tarefa diária, Ver progresso, Ver badges, Receber ramo adaptativo
+% Administrador: Criar tópico, Gerir microcompetências, Monitorizar métricas, Rever conteúdo IA
+%
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.85\textwidth]{Chapters/img/casos_uso}
+%   \caption{Diagrama de casos de uso do Play4Change}
+%   \label{fig:casos_uso}
+% \end{figure}
+
+\subsection{Requisitos Funcionais}
+\label{ssec:req_funcionais}
+
+A Tabela~\ref{tab:req_funcionais} apresenta os principais requisitos funcionais do sistema.
+
+\begin{table}[ht]
+  \caption{Requisitos funcionais do Play4Change}
+  \label{tab:req_funcionais}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{cp{7cm}lc}
+    \toprule
+    \textbf{ID} & \textbf{Descrição} & \textbf{Ator} & \textbf{Prior.} \\
+    \midrule
+    RF01 & Autenticação por \textit{magic link}, Google OAuth e Facebook OAuth & Cidadão & Alta \\
+    RF02 & Apresentação diária de tarefas de aprendizagem personalizadas & Cidadão & Alta \\
+    RF03 & Atribuição de \textit{badges} ao completar uma microcompetência & Cidadão & Alta \\
+    RF04 & Deteção automática de dificuldades de aprendizagem em tempo real & Sistema & Alta \\
+    RF05 & Proposta de ramo adaptativo quando dificuldades são detetadas & Cidadão & Alta \\
+    RF06 & Geração automática de conteúdo formativo por IA & Sistema & Alta \\
+    RF07 & Criação e gestão de tópicos formativos pelo administrador & Administrador & Alta \\
+    RF08 & Monitorização de métricas de utilização e desempenho & Administrador & Média \\
+    RF09 & Reutilização de percursos adaptativos entre cidadãos com perfis semelhantes & Sistema & Média \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Requisitos Não Funcionais}
+\label{ssec:req_nao_funcionais}
+
+A Tabela~\ref{tab:req_nao_funcionais} apresenta os requisitos não funcionais que condicionaram as opções arquiteturais do sistema.
+
+\begin{table}[ht]
+  \caption{Requisitos não funcionais do Play4Change}
+  \label{tab:req_nao_funcionais}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{clp{7.5cm}}
+    \toprule
+    \textbf{ID} & \textbf{Categoria} & \textbf{Descrição} \\
+    \midrule
+    RNF01 & Desempenho       & Latência da API REST (p99) inferior a 500\,ms \\
+    RNF02 & Escalabilidade   & Servidor \textit{stateless} com suporte a escalabilidade horizontal \\
+    RNF03 & Segurança        & Fluxos de autenticação conformes com recomendações OWASP \\
+    RNF04 & Disponibilidade  & Disponibilidade de 99{,}5\,\% em ambiente de produção \\
+    RNF05 & Manutenibilidade & Decisões arquiteturais documentadas em ADRs \\
+    RNF06 & Usabilidade      & Pontuação SUS do cliente móvel superior a 70 \\
+    RNF07 & Portabilidade    & Cliente móvel compatível com Android e iOS (Kotlin Multiplatform) \\
+    RNF08 & Observabilidade  & Métricas de domínio expostas via Prometheus e Grafana \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Visão Geral}
 \label{sec:visao_geral}
 
 O \textit{Play4Change} é uma plataforma de aprendizagem adaptativa e gamificada composta por quatro componentes principais: (i)~um cliente móvel destinado aos cidadãos; (ii)~um cliente web com \textit{landing page} e portal de administração; (iii)~um servidor \textit{stateless} que coordena toda a lógica de negócio; e (iv)~um agente de inteligência artificial responsável pela geração e adaptação de conteúdo pedagógico.
 
-% TODO: Inserir diagrama de arquitetura de alto nível
+% TODO: inserir diagrama de arquitetura de alto nível (C4 Nível 2 — Contentores)
+% Contentores a representar:
+%   - App Móvel (Kotlin Multiplatform / Compose) — utilizada pelo Cidadão
+%   - Portal Web (admin + landing page) — utilizado pelo Administrador
+%   - Servidor REST (Spring Boot, Kotlin) — coordena toda a lógica de negócio
+%   - Agente de IA (:ai-agent:langchain) — gera e adapta conteúdo
+%   - PostgreSQL + pgvector — dados relacionais e vetoriais
+%   - MinIO — armazenamento de ficheiros (imagens de badges, conteúdo)
+%   Serviços externos: Mistral API, Resend, Google OAuth, Facebook OAuth
+%
 % \begin{figure}[htbp]
 %   \centering
-%   \includegraphics[width=0.85\textwidth]{arquitetura_geral}
-%   \caption{Arquitetura de alto nível do Play4Change}
+%   \includegraphics[width=0.9\textwidth]{Chapters/img/arquitetura_geral}
+%   \caption{Arquitetura do Play4Change (C4 --- Nível Contentor)}
 %   \label{fig:arquitetura_geral}
 % \end{figure}
 
@@ -72,6 +160,33 @@ Esta deteção é realizada com base em embeddings semânticos armazenados em \t
 
 Um elemento inovador da arquitetura reside na reutilização de percursos adaptativos. Quando um cidadão supera uma dificuldade através de um \textit{ramo adaptativo}, esse percurso é armazenado na biblioteca de conteúdo adaptativo. Perante um novo cidadão com um perfil de dificuldade semelhante, o sistema recupera e reutiliza o percurso já validado, em vez de gerar conteúdo novo de raiz. Este mecanismo reduz a latência na resposta adaptativa e melhora progressivamente a eficácia do sistema com o crescimento da base de utilizadores.
 
+\section{Modelo de Dados}
+\label{sec:modelo_dados}
+
+O modelo de dados do \textit{Play4Change} assenta numa base de dados relacional PostgreSQL, estendida com a extensão \textit{pgvector} para suporte a pesquisa semântica vetorial. As entidades principais são:
+
+\begin{description}
+  \item[\texttt{User}] Representa um utilizador da plataforma (cidadão ou administrador), com identificador, email, papel (\textit{role}) e fornecedor de autenticação.
+  \item[\texttt{Topic}] Tópico de aprendizagem criado pelo administrador, com título e objetivos pedagógicos.
+  \item[\texttt{MicroCompetency}] Unidade atómica de progressão, associada a um tópico e a um limiar de desempenho para conclusão.
+  \item[\texttt{Badge}] Recompensa visual atribuída ao concluir uma microcompetência, com imagem armazenada no MinIO.
+  \item[\texttt{Task}] Tarefa de aprendizagem (questão, exercício ou explicação), com conteúdo textual e \textit{embedding} semântico armazenado como vetor em \textit{pgvector}.
+  \item[\texttt{UserProgress}] Registo do desempenho de um cidadão numa tarefa (pontuação, número de tentativas, \textit{timestamp}).
+  \item[\texttt{AdaptivePath}] Percurso adaptativo associado a um perfil de dificuldade, com o \textit{embedding} do perfil e a sequência de tarefas alternativas.
+  \item[\texttt{UserBadge}] Associação entre um cidadão e os \textit{badges} obtidos, com data de atribuição.
+\end{description}
+
+% TODO: inserir diagrama entidade-associação (EA) ou diagrama de classes de domínio
+% Entidades: User, Topic, MicroCompetency, Badge, Task, UserProgress, AdaptivePath, UserBadge
+% Nota: Task.embedding e AdaptivePath.difficultyProfile são colunas do tipo vector(N) (pgvector)
+%
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.9\textwidth]{Chapters/img/modelo_dados}
+%   \caption{Diagrama entidade-associação do Play4Change}
+%   \label{fig:modelo_dados}
+% \end{figure}
+
 \section{Microcompetências e Sistema de Badges}
 \label{sec:microcompetencias_badges}
 
@@ -80,3 +195,38 @@ As microcompetências constituem a unidade atómica de progressão no \textit{Pl
 Os \textit{badges} são atribuídos ao término de um ciclo de tarefas bem-sucedidas, funcionando como certificado informal de aquisição da microcompetência. O perfil do cidadão agrega todos os \textit{badges} obtidos, construindo assim um portfólio de competências progressivo.
 
 A progressão entre microcompetências segue uma estrutura de grafo dirigido acíclico (\textit{DAG}), onde determinadas competências constituem pré-requisitos de outras de nível superior. Esta estrutura permite ao sistema recomendar percursos de aprendizagem coerentes e pedagogicamente fundamentados.
+
+% TODO: inserir diagrama DAG de microcompetências (exemplo com 2--3 domínios)
+% Mostrar nós (microcompetências) com arestas de pré-requisito entre eles
+%
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.75\textwidth]{Chapters/img/dag_microcompetencias}
+%   \caption{Estrutura DAG de progressão entre microcompetências (exemplo)}
+%   \label{fig:dag_microcompetencias}
+% \end{figure}
+
+\section{Fluxo de Adaptação}
+\label{sec:fluxo_adaptacao}
+
+O diagrama de sequência da Figura~\ref{fig:seq_adaptacao} ilustra a interação entre os componentes durante a realização de uma tarefa com deteção de dificuldades e ativação do ramo adaptativo.
+
+% TODO: inserir diagrama de sequência UML
+% Participantes: Cidadão, App Móvel, Servidor, Agente IA, pgvector, Mistral API
+% Fluxo:
+%   1. Cidadão submete resposta → Servidor  (POST /tasks/{id}/answer)
+%   2. Servidor regista UserProgress e verifica se limiar de dificuldade é excedido
+%   3. Se dificuldade detetada: Servidor → Agente IA (analisarPerfil)
+%   4. Agente IA → pgvector: pesquisa semântica por perfil de dificuldade semelhante
+%   5a. Percurso encontrado → devolver AdaptivePath ao Servidor
+%   5b. Percurso não encontrado → Agente IA → Mistral API (gerar percurso)
+%       → armazenar novo AdaptivePath em pgvector
+%   6. Servidor devolve ramo adaptativo à App Móvel
+%   7. App Móvel apresenta percurso alternativo ao Cidadão
+%
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.9\textwidth]{Chapters/img/seq_adaptacao}
+%   \caption{Diagrama de sequência: deteção de dificuldades e ativação do ramo adaptativo}
+%   \label{fig:seq_adaptacao}
+% \end{figure}
