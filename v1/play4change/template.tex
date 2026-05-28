@@ -53,8 +53,10 @@
 %======================================================
 
 % To register TODO notes in the text
+\setlength{\marginparwidth}{2cm}
 \usepackage[textsize=footnotesize]{todonotes}
-\setlength{\marginparwidth}{1.5cm}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, backgrounds, calc}
 %%%%%% Indexing %%%%%%
 
 % The contents of both files (acronyms and glossary) will be merged
@@ -112,7 +114,7 @@
 \input{personaldataofreport}
 %% Title of Report + author(s) + professor + date
 % Title of Report + author(s) + professor + date
-\hypersetup{ a4paper=true,
+\hypersetup{
              pdftitle={ \thetitle},
              pdfauthor={ \theauthor},
              pdfsubject={ 
