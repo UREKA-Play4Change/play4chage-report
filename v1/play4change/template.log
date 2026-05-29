@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  28 MAY 2026 22:43
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  29 MAY 2026 12:22
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2487,19 +2487,30 @@ Package biblatex Info: Reference segment=0 on input line 196.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-<Logo/01_ISEL-Logotipo-RGB_Horizontal-Principal-900┬║.png, id=236, 3420.298
-2pt x 853.7496pt>
-File: Logo/01_ISEL-Logotipo-RGB_Horizontal-Principal-900┬║.png Graphic file
- (type png)
-<use Logo/01_ISEL-Logotipo-RGB_Horizontal-Principal-900┬║.png>
-Package pdftex.def Info: Logo/01_ISEL-Logotipo-RGB_Horizontal-Principal-900┬�
-��.png  used on input line 203.
-(pdftex.def)             Requested size: 205.15685pt x 51.21504pt.
-
-Overfull \hbox (45.536pt too wide) in paragraph at lines 203--203
-[][]  
- []
-
+<Logo/Logo-01_ISEL-Logotipo-RGB_Horizontal-Principal-900┬║.png, id=232, 375
+.4025pt x 232.87pt>
+File: Logo/Logo-01_ISEL-Logotipo-RGB_Horizontal-Principal-900┬║.png Graphic
+ file (type png)
+<use Logo/Logo-01_ISEL-Logotipo-RGB_Horizontal-Principal-900┬║.png>
+Package pdftex.def Info: Logo/Logo-01_ISEL-Logotipo-RGB_Horizontal-Principal-90
+0┬║.png  used on input line 203.
+(pdftex.def)             Requested size: 103.19876pt x 64.01869pt.
+<Logo/IPL.png, id=234, 1833.85126pt x 707.64375pt>
+File: Logo/IPL.png Graphic file (type png)
+<use Logo/IPL.png>
+Package pdftex.def Info: Logo/IPL.png  used on input line 203.
+(pdftex.def)             Requested size: 165.87895pt x 64.01869pt.
+<Logo/UREKA.png, id=235, 420.57124pt x 120.45pt>
+File: Logo/UREKA.png Graphic file (type png)
+<use Logo/UREKA.png>
+Package pdftex.def Info: Logo/UREKA.png  used on input line 203.
+(pdftex.def)             Requested size: 178.82063pt x 51.21504pt.
+LaTeX Font Info:    Trying to load font information for T1+ptm on input line 20
+3.
+ (/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/t1ptm.fd
+File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
+)
+LaTeX Font Info:    Calculating math sizes for size <13> on input line 203.
 LaTeX Font Info:    Trying to load font information for OT1+txr on input line 2
 03.
 (/usr/local/texlive/2026/texmf-dist/tex/latex/txfonts/ot1txr.fd
@@ -2535,28 +2546,6 @@ LaTeX Font Info:    Trying to load font information for U+txexa on input line 2
 (/usr/local/texlive/2026/texmf-dist/tex/latex/txfonts/utxexa.fd
 File: utxexa.fd 2000/12/15 v3.1
 )
-<Logo/IPL.png, id=238, 1833.85126pt x 707.64375pt>
-File: Logo/IPL.png Graphic file (type png)
-<use Logo/IPL.png>
-Package pdftex.def Info: Logo/IPL.png  used on input line 203.
-(pdftex.def)             Requested size: 132.71996pt x 51.21504pt.
-<Logo/UREKA.png, id=239, 420.57124pt x 120.45pt>
-File: Logo/UREKA.png Graphic file (type png)
-<use Logo/UREKA.png>
-Package pdftex.def Info: Logo/UREKA.png  used on input line 203.
-(pdftex.def)             Requested size: 178.82063pt x 51.21504pt.
-
-Overfull \hbox (19.19978pt too wide) in paragraph at lines 203--203
- [][]
- []
-
-LaTeX Font Info:    Trying to load font information for T1+ptm on input line 20
-3.
-(/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/t1ptm.fd
-File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
-)
-LaTeX Font Info:    Calculating math sizes for size <13> on input line 203.
-
 
 LaTeX Font Warning: Font shape `U/matha/m/n' in size <13> not available
 (Font)              size <12> substituted on input line 203.
@@ -2599,19 +2588,19 @@ LaTeX Font Warning: Font shape `U/mathx/m/n' in size <5.5> not available
 
 
 {/usr/local/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/loc
-al/texlive/2026/texmf-dist/fonts/enc/dvips/base/8r.enc} <./Logo/01_ISEL-Logotip
-o-RGB_Horizontal-Principal-900┬║.png> <./Logo/IPL.png> <./Logo/UREKA.png>] 
-[2
+al/texlive/2026/texmf-dist/fonts/enc/dvips/base/8r.enc} <./Logo/Logo-01_ISEL-Lo
+gotipo-RGB_Horizontal-Principal-900┬║.png> <./Logo/IPL.png> <./Logo/UREKA.p
+ng>] [2
 
 
 ] (./Chapters/resumo.tex) (./Chapters/abstract.tex [3
 
 ] [4
 
-]) [5] [6
+]) [5]
+[6
 
-]
-(./template.toc [7])
+] (./template.toc [7])
 \tf@toc=\write7
 \openout7 = `template.toc'.
 
@@ -2630,10 +2619,10 @@ Package babel Info: 'portuguese' activates 'portuges' shorthands.
 \tf@lot=\write9
 \openout9 = `template.lot'.
 
- [11
 
-]
-[12
+[11
+
+] [12
 
 ]
 
@@ -2711,31 +2700,7 @@ Cap\'{\i }tulo 6.
 ]) [26] [27
 
 
-] [28]
-\@myi=\count598
- (./Appendixes/appendix1.tex
-Ap\^endice A.
-
-Overfull \hbox (34.30649pt too wide) in paragraph at lines 4--4
- |\T1/ppl/b/n/24.88 Registos de De-ci-s�o Ar-qui-te-tu-ral (ADRs)| 
- []
-
-
-pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has 
-been already used, duplicate ignored
-<to be read again> 
-                   \relax 
-l.24 ...012: Armazenamento de Ficheiros com MinIO}
-                                                   [1
-
-
-])
-pdfTeX warning (ext4): destination with the same identifier (name{page.ii}) has
- been already used, duplicate ignored
-<to be read again> 
-                   \relax 
-l.248 \cleardoublepage
-                       [2] (./template.aux)
+] [28] (./template.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
@@ -2746,16 +2711,16 @@ LaTeX Font Warning: Size substitutions with differences
 (Font)              up to 1.0pt have occurred.
 
 Package rerunfilecheck Info: File `template.out' has not changed.
-(rerunfilecheck)             Checksum: 0AED1D13167A81D95A10192A6C347BC3;8949.
+(rerunfilecheck)             Checksum: ED3E05E1676468EE85E8E1C617CF42F3;8688.
 Package logreq Info: Writing requests to 'template.run.xml'.
 \openout1 = `template.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 51971 strings out of 467525
- 1017635 string characters out of 5418983
- 1904068 words of memory out of 5000000
- 79816 multiletter control sequences out of 15000+600000
+ 51958 strings out of 467525
+ 1017417 string characters out of 5418983
+ 1903911 words of memory out of 5000000
+ 79808 multiletter control sequences out of 15000+600000
  735348 words of font info for 227 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
  99i,12n,108p,2493b,2454s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -2772,10 +2737,10 @@ type1/urw/palatino/uplr8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/u
 rw/palatino/uplri8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/tim
 es/utmb8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.
 pfb>
-Output written on template.pdf (46 pages, 792439 bytes).
+Output written on template.pdf (44 pages, 454243 bytes).
 PDF statistics:
- 741 PDF objects out of 1000 (max. 8388607)
- 656 compressed objects within 7 object streams
- 166 named destinations out of 1000 (max. 500000)
- 484 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 729 PDF objects out of 1000 (max. 8388607)
+ 646 compressed objects within 7 object streams
+ 165 named destinations out of 1000 (max. 500000)
+ 476 words of extra memory for PDF output out of 10000 (max. 10000000)
 
