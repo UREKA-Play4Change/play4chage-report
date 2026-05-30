@@ -63,4 +63,3 @@
 \contentsline {section}{\numberline {6.3}Limitações}{26}{section.6.3}%
 \contentsline {section}{\numberline {6.4}Trabalho Futuro}{26}{section.6.4}%
 \contentsline {chapter}{Referências}{27}{chapter*.25}%
-\contentsline {chapter}{\numberline {A}Registos de Decisão Arquitetural (ADRs)}{i}{appendix.A}%
