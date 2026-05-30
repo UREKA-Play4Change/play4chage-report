@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  30 MAY 2026 16:44
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  30 MAY 2026 16:48
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2669,18 +2669,26 @@ Cap\'{\i }tulo 2.
 ]
 Cap\'{\i }tulo 3.
 
-Underfull \hbox (badness 10000) in paragraph at lines 78--78
+Overfull \hbox (8.6214pt too wide) in paragraph at lines 58--59
+ [][] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 80--80
 []|\T1/ppl/m/n/10 Deteção au-to-má-tica de di-fi-cul-da-des de
  []
 
-[9] [10] [11] [12] [13]
-LaTeX Font Info:    Trying to load font information for T1+pcr on input line 26
-8.
+[9]
+Underfull \vbox (badness 2384) has occurred while \output is active []
 
-(/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/t1pcr.fd
+ [10]
+[11] [12] [13]
+LaTeX Font Info:    Trying to load font information for T1+pcr on input line 27
+0.
+ (/usr/local/texlive/2026/texmf-dist/tex/latex/psnfss/t1pcr.fd
 File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
-) [14])
-(./Chapters/chapter4.tex [15] [16]
+)
+[14]) (./Chapters/chapter4.tex [15] [16]
 Cap\'{\i }tulo 4.
 [17
 
@@ -2719,11 +2727,11 @@ Package logreq Info: Writing requests to 'template.run.xml'.
 Here is how much of TeX's memory you used:
  51958 strings out of 467525
  1017417 string characters out of 5418983
- 1903916 words of memory out of 5000000
+ 1900917 words of memory out of 5000000
  79808 multiletter control sequences out of 15000+600000
  735348 words of font info for 227 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
- 99i,12n,108p,2493b,2454s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 99i,13n,108p,2493b,2454s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2026/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></usr/l
 ocal/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr8.pfb></usr/local/texlive
 /2026/texmf-dist/fonts/type1/public/mathabx-type1/matha10.pfb></usr/local/texli
@@ -2737,7 +2745,7 @@ type1/urw/palatino/uplr8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/u
 rw/palatino/uplri8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/tim
 es/utmb8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.
 pfb>
-Output written on template.pdf (44 pages, 454346 bytes).
+Output written on template.pdf (44 pages, 454315 bytes).
 PDF statistics:
  729 PDF objects out of 1000 (max. 8388607)
  646 compressed objects within 7 object streams
