@@ -70,14 +70,14 @@ A Tabela~\ref{tab:comparativa} sintetiza a análise comparativa das plataformas 
   \end{tabular}
 \end{table}
 
-Da análise comparativa resulta evidente que nenhuma das plataformas existentes reúne simultaneamente os três atributos identificados como essenciais: gamificação efetiva, desafios adaptativos e reconhecimento de microcompetências. O \textit{Play4Change} posiciona-se assim como uma solução inovadora e diferenciada no panorama atual, conforme ilustrado na Figura~\ref{fig:posicionamento}.
+Da análise comparativa resulta evidente que nenhuma das plataformas existentes combina uma gamificação efetiva com uma aprendizagem profunda e estruturada orientada para a aquisição real de competências. O \textit{Play4Change} posiciona-se assim como uma solução inovadora e diferenciada no panorama atual, conforme ilustrado na Figura~\ref{fig:posicionamento}.
 
 \begin{figure}[htbp]
   \centering
   % TODO: substituir por img/posicionamento.pdf quando disponível
   \begin{tikzpicture}[font=\small]
     % Axes
-    \draw[->] (0,0) -- (8.8,0) node[right] {\small Microcompetências};
+    \draw[->] (0,0) -- (8.8,0) node[right] {\small Profundidade de Aprendizagem};
     \draw[->] (0,0) -- (0,7.2) node[above] {\small Gamificação};
     % Axis tick labels
     \node[font=\tiny, gray] at (2.0,-0.4) {Baixa};
@@ -89,27 +89,27 @@ Da análise comparativa resulta evidente que nenhuma das plataformas existentes 
     \draw[gray!30, dashed] (0,3.6) -- (8.8,3.6);
     % Quadrant labels
     \node[font=\tiny\itshape, gray, align=center] at (2.0, 5.4)
-      {Alta gamificação\\Baixas microcomp.};
+      {Alta gamificação\\Aprendizagem superficial};
     \node[font=\tiny\itshape, gray, align=center] at (6.5, 1.8)
-      {Baixa gamificação\\Altas microcomp.};
+      {Baixa gamificação\\Aprendizagem profunda};
     % Platform bubbles
-    % Coursera/edX: gamificação=× (y~1.0), microcompetências=Parcial (x~3.5)
+    % Coursera/edX: gamificação=× (y~1.0), aprendizagem profunda (x~7.2)
     \node[draw, circle, fill=gray!20, minimum size=1.3cm, font=\tiny, align=center]
-      at (3.5, 1.0) {Coursera\\edX};
-    % Khan Academy: gamificação=Parcial (y~3.0), microcompetências=× (x~1.0)
+      at (7.2, 1.0) {Coursera\\edX};
+    % Khan Academy: gamificação=Parcial (y~2.5), aprendizagem profunda (x~5.8)
     \node[draw, circle, fill=gray!20, minimum size=1.3cm, font=\tiny, align=center]
-      at (1.0, 3.0) {Khan\\Academy};
-    % Kahoot!: gamificação=✓ (y~5.2), microcompetências=× (x~0.9)
+      at (5.8, 2.5) {Khan\\Academy};
+    % Kahoot!: gamificação=✓ (y~5.8), aprendizagem superficial (x~1.0)
     \node[draw, circle, fill=gray!20, minimum size=1.4cm, font=\tiny, align=center]
-      at (0.9, 5.2) {Kahoot!};
-    % Duolingo: gamificação=✓ (y~6.2), microcompetências=× (x~1.4)
+      at (1.0, 5.8) {Kahoot!};
+    % Duolingo: gamificação=✓ (y~6.2), aprendizagem superficial (x~1.8)
     \node[draw, circle, fill=gray!20, minimum size=1.5cm, font=\tiny, align=center]
-      at (1.4, 6.2) {Duolingo};
+      at (1.8, 6.2) {Duolingo};
     % Play4Change: gamificação=✓ (y~6.5), microcompetências=✓ (x~7.2) — unique top-right
     \node[draw, circle, fill=blue!30, minimum size=1.8cm, align=center,
           font=\small\bfseries]
       at (7.2, 6.5) {Play4\\Change};
   \end{tikzpicture}
-  \caption{Mapa de posicionamento das plataformas (Gamificação vs.\ Microcompetências)}
+  \caption{Mapa de posicionamento das plataformas (Gamificação vs.\ Profundidade de Aprendizagem)}
   \label{fig:posicionamento}
 \end{figure}
