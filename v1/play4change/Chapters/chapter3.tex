@@ -32,25 +32,27 @@ O sistema contempla dois atores principais:
   ]
   % System boundary
   \draw[dashed, rounded corners=8pt, fill=gray!5]
-       (1.2,-5.5) rectangle (11.8, 0.9);
-  \node[gray, font=\footnotesize\itshape] at (6.5, 0.65)
+       (1.5,-5.8) rectangle (12.5, 1.2);
+  \node[gray, font=\footnotesize\itshape] at (7.0, 0.95)
        {Sistema Play4Change};
-  % Actors
-  \node[actor] (cid) at (0.0, -1.0) {Cidadão};
-  \node[actor] (adm) at (0.0, -4.2) {Administrador};
-  % Citizen use cases
-  \node[uc] (u1) at (5.2,  0.2) {Autenticar-se};
-  \node[uc] (u2) at (5.2, -1.0) {Realizar tarefa diária};
-  \node[uc] (u3) at (5.2, -2.2) {Ver progresso};
-  \node[uc] (u4) at (5.2, -3.4) {Receber badge};
-  \node[uc] (u5) at (5.2, -4.6) {Receber ramo adaptativo};
-  % Admin use cases
-  \node[uc] (u6) at (10.0, -1.0) {Criar tópico};
-  \node[uc] (u7) at (10.0, -2.2) {Gerir microcompetências};
-  \node[uc] (u8) at (10.0, -3.4) {Monitorizar métricas};
-  \node[uc] (u9) at (10.0, -4.6) {Rever conteúdo IA};
-  % Lines
-  \foreach \t in {u1,u2,u3,u4,u5} \draw (cid) -- (\t);
+  % Actors — Cidadão left, Administrador right
+  \node[actor] (cid) at (0.0,  -2.5) {Cidadão};
+  \node[actor] (adm) at (14.0, -2.5) {Administrador};
+  % Shared use case — centred at top
+  \node[uc] (u1) at (7.0,  0.4) {Autenticar-se};
+  % Citizen use cases — left column
+  \node[uc] (u2) at (4.0, -1.2) {Realizar tarefa diária};
+  \node[uc] (u3) at (4.0, -2.4) {Ver progresso};
+  \node[uc] (u4) at (4.0, -3.6) {Receber badge};
+  \node[uc] (u5) at (4.0, -5.0) {Receber ramo adaptativo};
+  % Admin use cases — right column
+  \node[uc] (u6) at (10.0, -1.2) {Criar tópico};
+  \node[uc] (u7) at (10.0, -2.4) {Gerir microcompetências};
+  \node[uc] (u8) at (10.0, -3.6) {Monitorizar métricas};
+  \node[uc] (u9) at (10.0, -5.0) {Rever conteúdo IA};
+  % Lines — no crossings
+  \draw (cid) -- (u1);
+  \foreach \t in {u2,u3,u4,u5} \draw (cid) -- (\t);
   \draw (adm) -- (u1);
   \foreach \t in {u6,u7,u8,u9} \draw (adm) -- (\t);
   \end{tikzpicture}
