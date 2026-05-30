@@ -16,7 +16,7 @@ O sistema contempla dois atores principais:
 
 \begin{description}
   \item[Cidadão] Utilizador final da aplicação móvel. Autentica-se na plataforma, realiza tarefas de aprendizagem diárias, acompanha a sua progressão e recebe \textit{badges} ao completar microcompetências.
-  \item[Administrador] Gestor da plataforma com acesso ao portal web de administração. Cria e gere tópicos formativos, configura microcompetências e \textit{badges}, e monitoriza métricas de utilização.
+  \item[Administrador] Gestor da plataforma com acesso ao portal web de administração. Cria e gere tópicos formativos, configura \textit{badges} por tópico, e monitoriza métricas de utilização.
 \end{description}
 
 \begin{figure}[htbp]
@@ -47,7 +47,7 @@ O sistema contempla dois atores principais:
   \node[uc] (u5) at (4.0, -5.0) {Receber ramo adaptativo};
   % Admin use cases — right column
   \node[uc] (u6) at (10.0, -1.2) {Criar tópico};
-  \node[uc] (u7) at (10.0, -2.4) {Gerir microcompetências};
+  \node[uc] (u7) at (10.0, -2.4) {Configurar badges};
   \node[uc] (u8) at (10.0, -3.6) {Monitorizar métricas};
   \node[uc] (u9) at (10.0, -5.0) {Rever conteúdo IA};
   % Lines — no crossings
@@ -181,7 +181,7 @@ O cliente web serve dois propósitos distintos: uma \textit{landing page} públi
 No portal de administração, os administradores podem:
 \begin{itemize}
   \item Criar e gerir tópicos de aprendizagem, definindo os objetivos pedagógicos associados;
-  \item Configurar as microcompetências e os \textit{badges} correspondentes;
+  \item Configurar os \textit{badges} associados a cada tópico;
   \item Monitorizar métricas de utilização e desempenho agregado dos cidadãos;
   \item Aprovar ou rever conteúdo gerado pelo agente de IA.
 \end{itemize}
