@@ -7,7 +7,7 @@
 \section{Contexto e Motivação}
 \label{sec:contexto}
 
-A transição para cidades inteligentes constitui um dos maiores desafios socioeconómicos da atualidade. Este processo exige não apenas infraestruturas tecnológicas avançadas, mas também cidadãos informados, capacitados e participativos. A Aliança Universitária U!REKA, no âmbito da qual o presente projeto se insere, tem como missão acelerar precisamente esta transição, promovendo soluções inovadoras que articulem tecnologia, sustentabilidade e educação~\cite{ureka2024}.
+A transição para cidades inteligentes constitui um dos maiores desafios socioeconómicos da atualidade. Este processo enfrenta três obstáculos interdependentes: infraestruturas tecnológicas, constrangimentos financeiros e de governança, e --- o foco do presente projeto --- \textbf{o elemento humano}: as competências, a motivação e a participação dos cidadãos. A Aliança Universitária U!REKA, no âmbito da qual o presente projeto se insere, tem como missão acelerar precisamente esta transição, promovendo soluções inovadoras que articulem tecnologia, sustentabilidade e educação~\cite{ureka2024}.
 
 Neste quadro, a literacia cívica e a educação para a sustentabilidade emergem como alavancas fundamentais. A capacidade de os cidadãos adquirirem novas competências de forma contínua e acessível representa um vetor estratégico para a coesão social e para a adaptação às exigências de uma sociedade em permanente transformação. Este imperativo encontra enquadramento direto nos Objetivos de Desenvolvimento Sustentável (ODS) das Nações Unidas, nomeadamente no ODS~4 (\textit{Educação de Qualidade}), ODS~11 (\textit{Cidades e Comunidades Sustentáveis}) e ODS~13 (\textit{Ação Climática}), que apelam à participação ativa dos cidadãos na construção de sociedades mais resilientes e sustentáveis~\cite{un2015sdg}.
 
@@ -16,25 +16,28 @@ A investigação em literacia digital e participação urbana evidencia que o ac
 \section{Problema}
 \label{sec:problema}
 
-Apesar da proliferação de plataformas de aprendizagem online, persistem lacunas significativas no que respeita à educação cívica contextualizada e à promoção de competências direcionadas para a sustentabilidade urbana. As soluções existentes carecem frequentemente de:
+Apesar da proliferação de plataformas de aprendizagem online, persistem lacunas significativas no que respeita à educação cívica contextualizada e à promoção de competências direcionadas para a sustentabilidade urbana. Essas lacunas correspondem precisamente aos três obstáculos identificados. As soluções existentes carecem frequentemente de:
 \begin{itemize}
-  \item mecanismos de personalização efetivos que respondam às dificuldades individuais de cada aprendente;
-  \item modelos de reconhecimento de competências que sejam simultaneamente granulares e verificáveis;
-  \item integração com os desafios específicos das cidades inteligentes.
+  \item mecanismos de \textit{engagement} que tornem a aprendizagem cívica num hábito
+        motivante --- a taxa de abandono em plataformas de \textit{e-learning}
+        convencionais ultrapassa frequentemente os 90\,\%~\cite{jordan2015mooc}, fenómeno
+        atribuído à ausência de elementos de \textit{engagement} progressivo~\cite{hamari2014does};
+  \item mecanismos de personalização efetivos que respondam às dificuldades individuais
+        de cada aprendente;
+  \item modelos de reconhecimento de competências que sejam simultaneamente granulares
+        e verificáveis, integrados com os desafios específicos das cidades inteligentes.
 \end{itemize}
 
-Adicionalmente, a motivação intrínseca para a aprendizagem continuada representa um obstáculo recorrente em contextos de educação informal: a taxa de abandono em plataformas de e-learning convencionais ultrapassa frequentemente os 90\,\%~\cite{jordan2015mooc}, fenómeno que a literatura atribui, em grande medida, à ausência de personalização e de elementos de \textit{engagement} progressivo~\cite{hamari2014does}.
-
-Nenhuma das soluções disponíveis --- Duolingo~\cite{duolingo2024}, Khan~Academy~\cite{khanacademy2024}, Coursera~\cite{coursera2024} ou Kahoot!~\cite{kahoot2024} --- combina personalização adaptativa por IA com reutilização de percursos pedagógicos por semelhança vetorial num contexto específico de literacia cívica e sustentabilidade urbana. Esta lacuna justifica a proposta apresentada neste trabalho.
+Nenhuma das soluções disponíveis --- Duolingo~\cite{duolingo2024}, Khan~Academy~\cite{khanacademy2024}, Coursera~\cite{coursera2024} ou Kahoot!~\cite{kahoot2024} --- aborda simultaneamente as três lacunas identificadas num contexto específico de literacia cívica e sustentabilidade urbana. Esta lacuna motiva a proposta apresentada neste trabalho.
 
 \section{Objetivos}
 \label{sec:objetivos}
 
 O objetivo principal deste trabalho é \textbf{conceber, prototipar e avaliar} o
 \textit{Play4Change}: uma plataforma de aprendizagem adaptativa e gamificada para
-educação cívica urbana, investigando em particular a viabilidade e a eficácia de um
-mecanismo de reutilização de percursos pedagógicos por semelhança vetorial como
-alternativa à geração generativa em tempo real.
+educação cívica urbana. Em particular, investiga-se a viabilidade e a eficácia de um
+mecanismo de personalização adaptativa baseado na reutilização de percursos por
+semelhança vetorial como alternativa à geração generativa em tempo real.
 
 Para concretizar este objetivo, definem-se os seguintes objetivos específicos:
 
@@ -60,9 +63,12 @@ As contribuições deste trabalho distribuem-se em dois planos: engenharia de so
 
 Do ponto de vista de engenharia, contribui-se com:
 \begin{itemize}
-  \item O protótipo funcional do \textit{Play4Change}: uma plataforma modular com
-        desafios gamificados, modelo de microcompetências progressivas e geração
-        adaptativa de conteúdo por IA~(OE2).
+  \item \textbf{Engagement} --- plataforma com desafios diários gamificados que
+        transformam a aprendizagem cívica num hábito motivante~(OE2);
+  \item \textbf{Personalização} --- geração adaptativa de conteúdo por IA com
+        mecanismo de reutilização de percursos por semelhança vetorial~(OE2,~OE3);
+  \item \textbf{Reconhecimento} --- modelo de microcompetências progressivas
+        certificadas por \textit{badges}~(OE2).
 \end{itemize}
 
 Do ponto de vista da investigação, a contribuição central é:
