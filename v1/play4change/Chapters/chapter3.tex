@@ -171,7 +171,7 @@ Do ponto de vista dos três pilares da plataforma, os componentes distribuem-se 
 \section{Cliente Móvel}
 \label{sec:cliente_movel}
 
-O cliente móvel é o ponto de entrada principal para os cidadãos. A aplicação apresenta diariamente um conjunto de tarefas de aprendizagem relacionadas com tópicos de cidades inteligentes e sustentabilidade. Cada tarefa contribui para a progressão numa ou mais microcompetências, que, quando completadas, são reconhecidas através da atribuição de um \textit{badge}.
+O cliente móvel é o ponto de entrada principal para os cidadãos. A aplicação apresenta diariamente um conjunto de tarefas de aprendizagem relacionadas com tópicos de cidades inteligentes e sustentabilidade. Cada tarefa contribui para a progressão num tópico, que, quando completado, é reconhecido através da atribuição de um \textit{badge}.
 
 A experiência do utilizador é gamificada: o progresso é visualizado de forma contínua, existem sequências diárias (\textit{streaks}) que incentivam a regularidade, e os \textit{badges} obtidos são visíveis no perfil pessoal do cidadão. O design da aplicação segue os princípios de \textit{Mobile First} e de acessibilidade, garantindo usabilidade a uma audiência diversificada.
 
@@ -250,14 +250,14 @@ O agente de inteligência artificial é o componente diferenciador do \textit{Pl
 \subsection{Geração de Conteúdo}
 \label{ssec:geracao_conteudo}
 
-O agente é responsável pela geração automática de tarefas de aprendizagem, questões e explicações associadas a cada tópico. Utiliza um LLM (\textit{Large Language Model}) através da \textit{framework} LangChain4j com o modelo Mistral, o que permite produzir conteúdo pedagógico diversificado e contextualizado sem intervenção manual dos administradores para cada unidade de conteúdo.
+O agente é responsável pela geração automática de tarefas de aprendizagem, questões e explicações associadas a cada tópico. Utiliza um LLM (\textit{Large Language Model}) através da \textit{framework} LangChain4j com o modelo Mistral, o que permite produzir conteúdo pedagógico diversificado e contextualizado sem intervenção manual dos administradores para cada unidade de conteúdo. Para garantir a disponibilidade do serviço em caso de falha do LLM externo, a geração é protegida por um \textit{circuit breaker} com política de \textit{retry} e \textit{backoff} exponencial (RNF05).
 
 \subsection{Deteção de Dificuldades e Adaptação}
 \label{ssec:detecao_dificuldades}
 
 O sistema monitoriza continuamente o desempenho dos cidadãos durante a realização das tarefas. Quando são identificados padrões indicadores de dificuldade --- tais como respostas incorretas repetidas, tempo de resposta elevado ou abandono da tarefa --- o agente propõe um \textit{ramo adaptativo}: uma sequência alternativa de conteúdo que aborda o mesmo tópico com uma abordagem diferente, mais acessível ou mais detalhada.
 
-Esta deteção é realizada com base em embeddings semânticos armazenados em \textit{pgvector}, que permitem identificar semelhanças entre o perfil de dificuldade atual e casos anteriores já resolvidos.
+Esta deteção é realizada com base em \textit{embeddings} semânticos armazenados em \textit{pgvector}, que permitem identificar semelhanças entre o perfil de dificuldade atual e casos anteriores já resolvidos.
 
 \subsection{Reutilização de Percursos Adaptativos}
 \label{ssec:reutilizacao}
@@ -272,8 +272,7 @@ O modelo de dados do \textit{Play4Change} assenta numa base de dados relacional 
 \begin{description}
   \item[\texttt{User}] Representa um utilizador da plataforma (cidadão ou administrador), com identificador, email, papel (\textit{role}) e fornecedor de autenticação.
   \item[\texttt{Topic}] Tópico de aprendizagem criado pelo administrador, com título e objetivos pedagógicos.
-  \item[\texttt{MicroCompetency}] Unidade atómica de progressão, associada a um tópico e a um limiar de desempenho para conclusão.
-  \item[\texttt{Badge}] Recompensa visual atribuída ao concluir uma microcompetência, com imagem armazenada no MinIO.
+  \item[\texttt{Badge}] Recompensa visual atribuída ao completar um tópico, com imagem armazenada no MinIO.
   \item[\texttt{Task}] Tarefa de aprendizagem (questão, exercício ou explicação), com conteúdo textual e \textit{embedding} semântico armazenado como vetor em \textit{pgvector}.
   \item[\texttt{UserProgress}] Registo do desempenho de um cidadão numa tarefa (pontuação, número de tentativas, \textit{timestamp}).
   \item[\texttt{AdaptivePath}] Percurso adaptativo associado a um perfil de dificuldade, com o \textit{embedding} do perfil e a sequência de tarefas alternativas.
@@ -294,35 +293,33 @@ O modelo de dados do \textit{Play4Change} assenta numa base de dados relacional 
   % Entities
   \node[entity] (user)  at (0,    0)   {User};
   \node[entity] (ub)    at (5.5,  0)   {UserBadge};
-  \node[entity] (badge) at (11,   0)   {Badge};
-  \node[entity] (topic) at (5.5, -3)   {Topic};
-  \node[entity] (mc)    at (11,  -3)   {MicroCompetency};
   \node[entity] (task)  at (0,   -3)   {Task\\\scriptsize \texttt{embedding: vector(N)}};
+  \node[entity] (topic) at (5.5, -3)   {Topic};
+  \node[entity] (badge) at (11,  -3)   {Badge};
   \node[entity] (prog)  at (0,   -6)   {UserProgress};
   \node[entity] (ap)    at (5.5, -6)   {AdaptivePath\\\scriptsize \texttt{difficultyProfile: vector(N)}};
   % Relationships
   \draw[->] (user.east)  -- (ub.west)      node[rel,above] {1\,:\,N};
-  \draw[->] (ub.east)    -- (badge.west)   node[rel,above] {N\,:\,1};
-  \draw[->] (mc.north)   to[out=90,in=0]  (badge.south east) node[rel,right] {1\,:\,1};
-  \draw[->] (topic.east) -- (mc.west)      node[rel,above] {1\,:\,N};
-  \draw[->] (task.north) to[out=90,in=180] (topic.west) node[rel,above] {N\,:\,1};
+  \draw[->] (ub.east)    to[out=0,in=90]   (badge.north)   node[rel,right] {N\,:\,1};
+  \draw[->] (topic.east) -- (badge.west)   node[rel,above] {1\,:\,1};
+  \draw[->] (task.east)  -- (topic.west)   node[rel,above] {N\,:\,1};
   \draw[->] (prog.north) -- (user.south)   node[rel,left]  {N\,:\,1};
   \draw[->] (prog.east)  -- (ap.west)      node[rel,above] {N\,:\,1};
   \draw[->] (prog.north east) to[out=45,in=240] (task.south east) node[rel,right] {N\,:\,1};
-  \draw[->] (ap.east)    to[out=0,in=270]  (mc.south) node[rel,right] {N\,:\,1};
+  \draw[->] (ap.north)   -- (topic.south)  node[rel,right] {N\,:\,1};
   \end{tikzpicture}}
   \caption{Diagrama entidade-associação do Play4Change}
   \label{fig:modelo_dados}
 \end{figure}
 
-\section{Microcompetências e Sistema de Badges}
-\label{sec:microcompetencias_badges}
+\section{Tópicos e Sistema de Badges}
+\label{sec:topicos_badges}
 
-As microcompetências constituem a unidade atómica de progressão no \textit{Play4Change}. Cada microcompetência é definida por: (i)~um conjunto de objetivos de aprendizagem verificáveis; (ii)~um limiar de desempenho mínimo para a sua conclusão; e (iii)~um \textit{badge} associado, visualmente representativo da competência adquirida.
+Os tópicos constituem a unidade de progressão no \textit{Play4Change}. Cada tópico é definido por: (i)~um conjunto de objetivos de aprendizagem verificáveis; (ii)~um limiar de desempenho mínimo para a sua conclusão; e (iii)~um \textit{badge} associado, visualmente representativo das competências adquiridas.
 
-Os \textit{badges} são atribuídos ao término de um ciclo de tarefas bem-sucedidas, funcionando como certificado informal de aquisição da microcompetência. O perfil do cidadão agrega todos os \textit{badges} obtidos, construindo assim um portfólio de competências progressivo.
+Os \textit{badges} são atribuídos ao completar um tópico, funcionando como certificado informal de aquisição das competências associadas. O perfil do cidadão agrega todos os \textit{badges} obtidos, construindo assim um portfólio de competências progressivo.
 
-A progressão entre microcompetências segue uma estrutura de grafo dirigido acíclico (\textit{DAG}), onde determinadas competências constituem pré-requisitos de outras de nível superior. Esta estrutura permite ao sistema recomendar percursos de aprendizagem coerentes e pedagogicamente fundamentados.
+A progressão entre tópicos segue uma estrutura de grafo dirigido acíclico (\textit{DAG}), onde determinados tópicos constituem pré-requisitos de outros de nível superior. Esta estrutura permite ao sistema recomendar percursos de aprendizagem coerentes e pedagogicamente fundamentados.
 
 \begin{figure}[htbp]
   \centering
@@ -354,8 +351,8 @@ A progressão entre microcompetências segue uma estrutura de grafo dirigido ac�
   \foreach \x/\y in {1.6/0.55, 7.4/0.55, 4.5/-1.85, 1.6/-4.25, 7.4/-4.25, 4.5/-6.65}
     \node[bgo] at (\x,\y) {\(\star\)};
   \end{tikzpicture}
-  \caption{Estrutura DAG de progressão entre microcompetências (exemplo~--- domínio Sustentabilidade)}
-  \label{fig:dag_microcompetencias}
+  \caption{Estrutura DAG de progressão entre tópicos (exemplo~--- domínio Sustentabilidade)}
+  \label{fig:dag_topicos}
 \end{figure}
 
 \section{Fluxo de Adaptação}

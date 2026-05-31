@@ -37,29 +37,31 @@
 \contentsline {subsection}{\numberline {3.6.2}Deteção de Dificuldades e Adaptação}{14}{subsection.3.6.2}%
 \contentsline {subsection}{\numberline {3.6.3}Reutilização de Percursos Adaptativos}{15}{subsection.3.6.3}%
 \contentsline {section}{\numberline {3.7}Modelo de Dados}{15}{section.3.7}%
-\contentsline {section}{\numberline {3.8}Microcompetências e Sistema de Badges}{16}{section.3.8}%
+\contentsline {section}{\numberline {3.8}Tópicos e Sistema de Badges}{16}{section.3.8}%
 \contentsline {section}{\numberline {3.9}Fluxo de Adaptação}{17}{section.3.9}%
 \contentsline {chapter}{\numberline {4}Implementação}{19}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Decisões Arquiteturais}{19}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Stack Tecnológico}{19}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Estrutura Modular do Servidor}{20}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Desenho da API REST}{21}{section.4.4}%
-\contentsline {section}{\numberline {4.5}Agente de IA: Implementação}{21}{section.4.5}%
-\contentsline {section}{\numberline {4.6}Observabilidade}{23}{section.4.6}%
-\contentsline {section}{\numberline {4.7}Segurança}{23}{section.4.7}%
-\contentsline {section}{\numberline {4.8}Diagrama de Implantação}{23}{section.4.8}%
-\contentsline {chapter}{\numberline {5}Avaliação}{25}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Metodologia de Avaliação}{25}{section.5.1}%
-\contentsline {subsection}{\numberline {5.1.1}Testes Automatizados}{25}{subsection.5.1.1}%
-\contentsline {subsection}{\numberline {5.1.2}Avaliação com Utilizadores}{25}{subsection.5.1.2}%
-\contentsline {section}{\numberline {5.2}Resultados}{25}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Desempenho do Sistema}{25}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}Usabilidade}{26}{subsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.2.3}Eficácia do Mecanismo Adaptativo}{26}{subsection.5.2.3}%
-\contentsline {section}{\numberline {5.3}Discussão}{26}{section.5.3}%
-\contentsline {chapter}{\numberline {6}Conclusões e Trabalho Futuro}{27}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Síntese}{27}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Contribuições}{27}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Limitações}{28}{section.6.3}%
-\contentsline {section}{\numberline {6.4}Trabalho Futuro}{28}{section.6.4}%
-\contentsline {chapter}{Referências}{29}{chapter*.25}%
+\contentsline {section}{\numberline {4.1}Princípios de Implementação}{19}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Stack Tecnológico}{20}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Implementação do Cliente Móvel}{20}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Implementação do Cliente Web}{21}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Estrutura Modular do Servidor}{22}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Desenho da API REST}{23}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Agente de IA: Implementação}{23}{section.4.7}%
+\contentsline {section}{\numberline {4.8}Observabilidade}{24}{section.4.8}%
+\contentsline {section}{\numberline {4.9}Segurança}{25}{section.4.9}%
+\contentsline {section}{\numberline {4.10}Diagrama de Implantação}{25}{section.4.10}%
+\contentsline {chapter}{\numberline {5}Avaliação}{27}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Metodologia de Avaliação}{27}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Testes Automatizados}{27}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Avaliação com Utilizadores}{27}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Resultados}{27}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Desempenho do Sistema}{27}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Usabilidade}{28}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Eficácia do Mecanismo Adaptativo}{28}{subsection.5.2.3}%
+\contentsline {section}{\numberline {5.3}Discussão}{28}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Conclusões e Trabalho Futuro}{29}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Síntese}{29}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Contribuições}{29}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Limitações}{30}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Trabalho Futuro}{30}{section.6.4}%
+\contentsline {chapter}{Referências}{33}{chapter*.28}%
