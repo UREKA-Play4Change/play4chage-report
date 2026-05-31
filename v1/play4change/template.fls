@@ -2,7 +2,7 @@ PWD /Users/radeshgovind/Ureka-Play4Change/play4chage-report/v1/play4change
 INPUT /usr/local/texlive/2026/texmf.cnf
 INPUT /usr/local/texlive/2026/texmf-dist/web2c/texmf.cnf
 INPUT /usr/local/texlive/2026/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT template.tex
+INPUT /Users/radeshgovind/Ureka-Play4Change/play4chage-report/v1/play4change/template.tex
 OUTPUT template.log
 INPUT ./reportisel.cls
 INPUT reportisel.cls
