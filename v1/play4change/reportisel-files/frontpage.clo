@@ -11,20 +11,12 @@
 \newgeometry{tmargin=1.5cm,bmargin=1.5cm,lmargin=2cm,rmargin=2cm}
 
 % --- Logos row ---
-\begin{minipage}{0.33\textwidth}
-	\raggedright
-	\includegraphics[height=1.8cm]{\@universitylogo}
-\end{minipage}%
+\noindent
+\includegraphics[height=2.25cm]{\@universitylogo}%
 \hfill
-\begin{minipage}{0.33\textwidth}
-	\centering
-	\includegraphics[height=1.8cm]{IPL}
-\end{minipage}%
+\includegraphics[height=2.25cm]{IPL}%
 \hfill
-\begin{minipage}{0.33\textwidth}
-	\raggedleft
-	\includegraphics[height=1.8cm]{UREKA}
-\end{minipage}
+\includegraphics[height=1.8cm]{UREKA}
 
 \vspace{2cm}
 

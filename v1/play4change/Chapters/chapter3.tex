@@ -4,6 +4,8 @@
 \chapter{Solução Proposta}
 \label{cha:solucao}
 
+Face à lacuna identificada no Capítulo~\ref{cha:enquadramento} --- nenhuma plataforma existente combina \textit{engagement}, personalização adaptativa e reconhecimento formal de competências no contexto da literacia cívica urbana --- este capítulo apresenta a solução proposta. O objetivo é concretizar dois dos três objetivos definidos no Capítulo~\ref{cha:introducao}: OE1, através da especificação dos requisitos funcionais e não funcionais que guiam o \textit{design} da plataforma; e OE2, através da descrição arquitetural de uma solução que integra os três pilares do \textit{Play4Change}: \textbf{Engagement} (desafios gamificados diários), \textbf{Personalização} (adaptação de percursos por IA com reutilização vetorial) e \textbf{Reconhecimento} (microcompetências certificadas por \textit{badges}).
+
 \section{Requisitos do Sistema}
 \label{sec:requisitos}
 
@@ -15,8 +17,8 @@ Esta secção apresenta os requisitos funcionais e não funcionais que guiaram o
 O sistema contempla dois atores principais:
 
 \begin{description}
-  \item[Cidadão] Utilizador final da aplicação móvel. Autentica-se na plataforma, realiza tarefas de aprendizagem diárias, acompanha a sua progressão e recebe \textit{badges} ao completar microcompetências.
-  \item[Administrador] Gestor da plataforma com acesso ao portal web de administração. Cria e gere tópicos formativos, configura \textit{badges} por tópico, e monitoriza métricas de utilização.
+  \item[Cidadão] Utilizador final da aplicação móvel. Autentica-se na plataforma, subscreve tópicos, realiza tarefas de aprendizagem diárias e recebe \textit{badges} ao completar tópicos.
+  \item[Administrador] Gestor da plataforma com acesso ao portal web de administração. Cria e gere tópicos formativos, revê o conteúdo gerado, e monitoriza métricas de utilização.
 \end{description}
 
 \begin{figure}[htbp]
@@ -36,30 +38,30 @@ O sistema contempla dois atores principais:
   \node[gray, font=\footnotesize\itshape] at (7.0, 0.95)
        {Sistema Play4Change};
   % Actors — Cidadão left, Administrador right
-  \node[actor] (cid) at (0.0,  -2.5) {Cidadão};
-  \node[actor] (adm) at (14.0, -2.5) {Administrador};
+  \node[actor] (cid) at (0.0,  -3.0) {Cidadão};
+  \node[actor] (adm) at (14.0, -3.0) {Administrador};
   % Shared use case — centred at top
   \node[uc] (u1) at (7.0,  0.4) {Autenticar-se};
   % Citizen use cases — left column
   \node[uc] (u2) at (4.0, -1.2) {Realizar tarefa diária};
-  \node[uc] (u3) at (4.0, -2.4) {Ver progresso};
+  \node[uc] (u3) at (4.0, -2.4) {Subscrever tópico};
   \node[uc] (u4) at (4.0, -3.6) {Receber badge};
   \node[uc] (u5) at (4.0, -5.0) {Receber ramo adaptativo};
   % Admin use cases — right column
-  \node[uc] (u6) at (10.0, -1.2) {Gerir tópicos};
-  \node[uc] (u7) at (10.0, -2.4) {Configurar badges};
-  \node[uc] (u8) at (10.0, -3.6) {Monitorizar métricas};
-  \node[uc] (u9) at (10.0, -5.0) {Rever conteúdo IA};
+  \node[uc] (u6) at (10.0, -1.8) {Gerir tópicos};
+  \node[uc] (u8) at (10.0, -3.1) {Monitorizar métricas};
+  \node[uc] (u9) at (10.0, -4.4) {Rever conteúdo IA};
   % Lines — no crossings
   \draw (cid) -- (u1);
   \foreach \t in {u2,u3,u4,u5} \draw (cid) -- (\t);
   \draw (adm) -- (u1);
-  \foreach \t in {u6,u7,u8,u9} \draw (adm) -- (\t);
+  \foreach \t in {u6,u8,u9} \draw (adm) -- (\t);
   \end{tikzpicture}
   \caption{Diagrama de casos de uso do Play4Change}
   \label{fig:casos_uso}
 \end{figure}
 
+\clearpage
 \subsection{Requisitos Funcionais}
 \label{ssec:req_funcionais}
 
@@ -74,15 +76,16 @@ A Tabela~\ref{tab:req_funcionais} apresenta os principais requisitos funcionais 
     \toprule
     \textbf{ID} & \textbf{Descrição} & \textbf{Ator} & \textbf{Prior.} \\
     \midrule
-    RF01 & Autenticação por \textit{magic link}, Google OAuth e Facebook OAuth & Cidadão & Alta \\
+    RF01 & Autenticação por \textit{magic link} & Cidadão & Alta \\
     RF02 & Apresentação diária de tarefas de aprendizagem personalizadas & Cidadão & Alta \\
-    RF03 & Atribuição de \textit{badges} ao completar uma microcompetência & Cidadão & Alta \\
-    RF04 & Deteção automática de dificuldades de aprendizagem em tempo real & Sistema & Alta \\
+    RF03 & Atribuição de \textit{badges} ao completar um tópico & Cidadão & Alta \\
+    RF04 & Deteção automática de dificuldades de aprendizagem & Sistema & Alta \\
     RF05 & Proposta de ramo adaptativo quando dificuldades são detetadas & Cidadão & Alta \\
     RF06 & Geração automática de conteúdo formativo por IA & Sistema & Alta \\
     RF07 & Criação e gestão de tópicos formativos pelo administrador & Administrador & Alta \\
     RF08 & Monitorização de métricas de utilização e desempenho & Administrador & Média \\
     RF09 & Reutilização de percursos adaptativos entre cidadãos com perfis semelhantes & Sistema & Média \\
+    RF10 & Revisão e aprovação de conteúdo formativo gerado por IA & Administrador & Alta \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -101,14 +104,13 @@ A Tabela~\ref{tab:req_nao_funcionais} apresenta os requisitos não funcionais qu
     \toprule
     \textbf{ID} & \textbf{Categoria} & \textbf{Descrição} \\
     \midrule
-    RNF01 & Desempenho       & Latência da API REST (p99) inferior a 500\,ms \\
-    RNF02 & Escalabilidade   & Servidor \textit{stateless} com suporte a escalabilidade horizontal \\
-    RNF03 & Segurança        & Fluxos de autenticação conformes com recomendações OWASP \\
-    RNF04 & Disponibilidade  & Disponibilidade de 99{,}5\,\% em ambiente de produção \\
-    RNF05 & Manutenibilidade & Decisões arquiteturais documentadas em ADRs \\
-    RNF06 & Usabilidade      & Pontuação SUS do cliente móvel superior a 70 \\
-    RNF07 & Portabilidade    & Cliente móvel compatível com Android e iOS (Kotlin Multiplatform) \\
-    RNF08 & Observabilidade  & Métricas de domínio expostas via Prometheus e Grafana \\
+    RNF01 & Escalabilidade   & Servidor \textit{stateless} com suporte a escalabilidade horizontal \\
+    RNF02 & Segurança        & Fluxos de autenticação conformes com recomendações OWASP \\
+    RNF03 & Portabilidade    & Cliente móvel compatível com Android e iOS \\
+    RNF04 & Observabilidade  & Métricas de domínio expostas via Prometheus e Grafana \\
+    RNF05 & Resiliência      & Agente de IA protegido por \textit{circuit breaker} e política de \textit{retry} com \textit{backoff} exponencial \\
+    RNF06 & Proteção         & \textit{Rate limiting} por IP e \textit{endpoint} via Bucket4j (autenticação limitada a 5–20 pedidos por 10 minutos; HTTP~429 com \textit{Retry-After}) \\
+    RNF07 & Seg.\ Transporte & Cabeçalhos HTTP de segurança (HSTS, CSP, X-Frame-Options) configurados no \textit{reverse proxy} \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -164,6 +166,8 @@ O \textit{Play4Change} é uma plataforma de aprendizagem adaptativa e gamificada
 
 A separação de responsabilidades entre os componentes foi um princípio arquitetural central no design do sistema. O servidor é \textit{stateless}, o que permite escalabilidade horizontal e simplifica a gestão de sessões. O agente de IA funciona de forma assíncrona, não bloqueando o fluxo principal de interação do utilizador.
 
+Do ponto de vista dos três pilares da plataforma, os componentes distribuem-se do seguinte modo: o \textbf{Engagement} é concretizado pelo cliente móvel, através dos desafios diários, \textit{streaks} e visualização de progresso; a \textbf{Personalização} é assegurada pelo agente de IA em conjunto com o armazenamento vetorial em \textit{pgvector}, que gera e reutiliza percursos adaptativos; e o \textbf{Reconhecimento} materializa-se no modelo de microcompetências e \textit{badges}, transversal ao servidor e ao cliente móvel.
+
 \section{Cliente Móvel}
 \label{sec:cliente_movel}
 
@@ -181,7 +185,6 @@ O cliente web serve dois propósitos distintos: uma \textit{landing page} públi
 No portal de administração, os administradores podem:
 \begin{itemize}
   \item Criar e gerir tópicos de aprendizagem, definindo os objetivos pedagógicos associados;
-  \item Configurar os \textit{badges} associados a cada tópico;
   \item Monitorizar métricas de utilização e desempenho agregado dos cidadãos;
   \item Aprovar ou rever conteúdo gerado pelo agente de IA.
 \end{itemize}
@@ -225,7 +228,7 @@ O fluxo dos três mecanismos de autenticação suportados encontra-se ilustrado 
     at (\xs,-4.9) {alt: Google OAuth};
   \draw[->] (\xc,-5.5) -- (\xa,-5.5) node[midway,above,font=\tiny] {login com Google};
   \draw[->] (\xa,-6.1) -- (\xs,-6.1) node[midway,above,font=\tiny] {POST /auth/google \{idToken\}};
-  \draw[->] (\xs,-6.7) -- (\xg,-6.7) node[midway,above,font=\tiny] {verificar JWKS local};
+  \draw[->] (\xs,-6.7) -- (\xg,-6.7) node[midway,above,font=\tiny] {obter JWKS (fetch + cache)};
   \draw[->,dashed] (\xs,-7.3) -- (\xa,-7.3) node[midway,above,font=\tiny] {JWT};
   % --- Facebook OAuth ---
   \node[draw, fill=yellow!20, rounded corners=2pt, font=\tiny\bfseries]
