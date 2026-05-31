@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  31 MAY 2026 15:58
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.3)  31 MAY 2026 16:02
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2660,7 +2660,7 @@ ra-ba-lho é \T1/ppl/b/n/10 con-ce-ber, pro-to-ti-par e ava-liar \T1/ppl/m/n/10
 o \T1/ppl/m/it/10 Play4Change\T1/ppl/m/n/10 :
  []
 
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 92
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 91
 .
 (/usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
 File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -2751,7 +2751,7 @@ type1/urw/palatino/uplr8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/u
 rw/palatino/uplri8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/tim
 es/utmb8a.pfb></usr/local/texlive/2026/texmf-dist/fonts/type1/urw/times/utmr8a.
 pfb>
-Output written on template.pdf (44 pages, 454743 bytes).
+Output written on template.pdf (44 pages, 454662 bytes).
 PDF statistics:
  729 PDF objects out of 1000 (max. 8388607)
  646 compressed objects within 7 object streams
