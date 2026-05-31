@@ -1,31 +1,32 @@
 \abstractPT  % Do NOT modify this line
 
-A sustentabilidade urbana, a literacia cívica e a ação climática emergem como imperativos
-centrais das sociedades europeias contemporâneas. A transição para cidades inteligentes não
-depende apenas de infraestruturas --- depende, em igual medida, de cidadãos informados,
-capacitados e participativos. A Aliança Universitária U!REKA tem como missão acelerar
+A transição para cidades inteligentes enfrenta três obstáculos interdependentes:
+infraestruturas tecnológicas, constrangimentos financeiros e de governança, e --- o foco do
+presente trabalho --- \textbf{o elemento humano}: as competências, a motivação e a
+participação dos cidadãos. A Aliança Universitária U!REKA tem como missão acelerar
 precisamente esta transição~\cite{ureka2024}.
 
 O presente trabalho propõe o \textit{Play4Change}: uma plataforma de aprendizagem adaptativa
-e gamificada desenvolvida no âmbito da missão U!REKA e alinhada com os Objetivos de
-Desenvolvimento Sustentável das Nações Unidas relativos à educação de qualidade, às cidades
-sustentáveis e à ação climática (ODS~4, 11 e~13)~\cite{un2015sdg}.
-A plataforma assenta em três pilares funcionais:
+e gamificada para educação cívica urbana, desenvolvida no âmbito da missão U!REKA e alinhada
+com os Objetivos de Desenvolvimento Sustentável das Nações Unidas relativos à educação de
+qualidade, às cidades sustentáveis e à ação climática (ODS~4, 11 e~13)~\cite{un2015sdg}.
+A plataforma assenta em três pilares:
 
 \begin{enumerate}
-  \item \textbf{Desafios diários gamificados} --- os cidadãos adquirem microcompetências
-        progressivas reconhecidas por \textit{badges}, num percurso estruturado e motivante;
+  \item \textbf{Engagement --- Desafios diários gamificados} --- transformam a aprendizagem
+        cívica num hábito diário motivante, através do qual os cidadãos desenvolvem
+        microcompetências progressivas;
 
-  \item \textbf{Geração adaptativa de conteúdo por IA} --- um agente de inteligência
-        artificial gera dinamicamente o conteúdo formativo e adapta os percursos ao perfil
-        e às dificuldades individuais de cada cidadão;
+  \item \textbf{Personalização --- Desafios adaptativos por IA} --- a contribuição central:
+        um agente de inteligência artificial adapta os percursos ao perfil e às dificuldades
+        de cada cidadão; quando gera um percurso alternativo, este é indexado em
+        \textit{pgvector} e reutilizado automaticamente para perfis análogos em interações
+        futuras, reduzindo a dependência de inferência em tempo real e acumulando
+        progressivamente conhecimento pedagógico coletivo;
 
-  \item \textbf{Reutilização de percursos por semelhança vetorial} --- a contribuição
-        técnica central: quando o agente gera um percurso alternativo para um cidadão com
-        dificuldades, esse percurso é indexado em \textit{pgvector} e recuperado
-        automaticamente para perfis análogos em interações futuras, reduzindo a dependência
-        de inferência em tempo real e acumulando progressivamente conhecimento pedagógico
-        coletivo.
+  \item \textbf{Reconhecimento --- Badges e microcompetências} --- cada etapa de progressão
+        é certificada por um \textit{badge}, tornando cada passo no percurso visível e
+        contabilizável.
 \end{enumerate}
 
 O \textit{Play4Change} foi implementado como protótipo funcional no âmbito da missão U!REKA.
