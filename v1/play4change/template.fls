@@ -478,6 +478,8 @@ INPUT /usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libr
 INPUT /usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tikzlibrarybackgrounds.code.tex
 INPUT /usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tikzlibrarycalc.code.tex
 INPUT /usr/local/texlive/2026/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tikzlibrarycalc.code.tex
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/placeins/placeins.sty
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/placeins/placeins.sty
 INPUT ./sty/code.sty
 INPUT sty/code.sty
 INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/tcolorbox/tcolorbox.sty
@@ -777,6 +779,12 @@ INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/adobe/palatino/pplb8t.vf
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/adobe/palatino/pplb8r.tfm
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/adobe/palatino/pplb8t.vf
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/adobe/palatino/pplb8r.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
+INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/lm/ec-lmr10.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/lm/ec-lmr8.tfm
+INPUT /usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/vf/adobe/palatino/pplr8c.vf
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/mathpazo/fplmr.tfm
 INPUT ./Chapters/chapter2.tex
@@ -784,12 +792,6 @@ INPUT ./Chapters/chapter2.tex
 INPUT ./Chapters/chapter2.tex
 INPUT ./Chapters/chapter2.tex
 INPUT Chapters/chapter2.tex
-INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
-INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
-INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/lm/t1lmr.fd
-INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/lm/ec-lmr10.tfm
-INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/public/lm/ec-lmr8.tfm
-INPUT /usr/local/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/adobe/palatino/pplr8t.tfm
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/adobe/palatino/pplb8t.tfm
 INPUT /usr/local/texlive/2026/texmf-dist/fonts/tfm/adobe/palatino/pplr8t.tfm
