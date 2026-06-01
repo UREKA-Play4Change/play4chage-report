@@ -66,7 +66,7 @@ A Tabela~\ref{tab:stack} apresenta o \textit{stack} tecnológico adotado em cada
     Cliente web         & React \\
     Servidor            & Kotlin, Spring Boot, REST, PostgreSQL, pgvector \\
     Agente de IA        & LangChain4j, Mistral (LLM), pgvector (embeddings) \\
-    Autenticação        & Magic Link (SHA-256, Resend API), Google OAuth, Facebook OAuth \\
+    Autenticação        & Magic Link (SHA-256, Resend API) \\
     Armazenamento       & PostgreSQL, MinIO (S3-compatible) \\
     Observabilidade     & Micrometer, Prometheus, Grafana \\
     CI/CD               & GitHub Actions \\
@@ -203,7 +203,7 @@ A API REST do servidor está organizada por recurso, seguindo as convenções de
     \toprule
     \textbf{Prefixo} & \textbf{Métodos} & \textbf{Função} \\
     \midrule
-    \texttt{/auth}          & POST             & Autenticação: \textit{magic link}, Google OAuth, Facebook OAuth \\
+    \texttt{/auth}          & POST             & Autenticação: \textit{magic link} \\
     \texttt{/users}         & GET, PATCH       & Gestão do perfil do utilizador autenticado \\
     \texttt{/topics}        & GET, POST, PATCH, DELETE & Gestão de tópicos (requer papel de administrador) \\
     \texttt{/tasks}         & GET, POST        & Obtenção de tarefas diárias e submissão de respostas \\
@@ -301,7 +301,7 @@ A segurança da plataforma foi auditada formalmente, tendo como referência as c
 
   \item \textbf{A05 --- Configuração de Segurança Incorreta}: cabeçalhos de segurança HTTP ausentes (e.g., \texttt{Content-Security-Policy}, \texttt{X-Frame-Options}, \texttt{Strict-Transport-Security}); corrigidos na configuração Spring Security e provisionados como código para garantir reprodutibilidade.
 
-  \item \textbf{A07 --- Falhas de Identificação e Autenticação}: validação insuficiente de \textit{claims} nos fluxos OAuth; corrigida com verificação local via JWKS para Google OAuth e validação via Graph API para Facebook OAuth.
+  \item \textbf{A07 --- Falhas de Identificação e Autenticação}: validação insuficiente do token no fluxo de autenticação; corrigida com verificação segura do token SHA-256 no servidor antes da emissão do JWT.
 \end{itemize}
 
 \section{Diagrama de Implantação}
@@ -317,7 +317,7 @@ A plataforma é implantada através de Docker Compose numa VPS, com os seguintes
   \item[\texttt{grafana}] Visualização de \textit{dashboards} (porta 3000), provisionados a partir do código-fonte.
 \end{description}
 
-Os serviços externos --- API Mistral, API Resend, Google OAuth e Facebook OAuth --- são consumidos pelo servidor via HTTPS, sem exposição na rede interna do Docker Compose.
+Os serviços externos --- API Mistral e API Resend --- são consumidos pelo servidor via HTTPS, sem exposição na rede interna do Docker Compose.
 
 \begin{figure}[htbp]
   \centering
@@ -350,12 +350,10 @@ Os serviços externos --- API Mistral, API Resend, Google OAuth e Facebook OAuth
   \draw[->]  (app.south) to[bend right=10] (prom.north);
   \draw[->]  (prom.east) -- (grf.west);
   % External services (below VPS)
-  \node[ext] (mis) at (1.5, -11.0) {\textbf{Mistral API}\\\scriptsize LLM};
-  \node[ext] (res) at (5.0, -11.0) {\textbf{Resend}\\\scriptsize Email};
-  \node[ext] (gg)  at (8.5, -11.0) {\textbf{Google OAuth}\\\scriptsize JWKS};
-  \node[ext] (fb)  at (12.0,-11.0) {\textbf{Facebook OAuth}\\\scriptsize Graph API};
+  \node[ext] (mis) at (3.0, -11.0) {\textbf{Mistral API}\\\scriptsize LLM};
+  \node[ext] (res) at (8.0, -11.0) {\textbf{Resend}\\\scriptsize Email};
   % App to external (HTTPS)
-  \foreach \e in {mis,res,gg,fb}
+  \foreach \e in {mis,res}
     \draw[->,dashed] (app.south) to[out=270,in=90] (\e.north);
   \node[font=\tiny,gray] at (6.8,-9.5) {HTTPS};
   % Users (right side)
