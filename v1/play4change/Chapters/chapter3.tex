@@ -144,9 +144,7 @@ O \textit{Play4Change} é uma plataforma de aprendizagem adaptativa e gamificada
   \node[cdb]  (mio) at (4.5, -6.4) {\textbf{MinIO}\\\scriptsize S3-compatible\\\scriptsize Ficheiros};
   % Row 4: External
   \node[cext] (mis) at (-1.5,-9.8) {\textbf{Mistral API}\\\scriptsize LLM};
-  \node[cext] (res) at (2.0, -9.8) {\textbf{Resend}\\\scriptsize Magic Link};
-  \node[cext] (gg)  at (5.2, -9.8) {\textbf{Google OAuth}\\\scriptsize JWKS};
-  \node[cext] (fb)  at (8.4, -9.8) {\textbf{Facebook OAuth}\\\scriptsize Graph API};
+  \node[cext] (res) at (3.5, -9.8) {\textbf{Resend}\\\scriptsize Magic Link};
   % Arrows
   \draw[->] (mob.south) -- (srv.north west);
   \draw[->] (web.south) -- (srv.north east);
@@ -156,8 +154,6 @@ O \textit{Play4Change} é uma plataforma de aprendizagem adaptativa e gamificada
   \draw[<->] (srv.south east) -- (mio.north);
   \draw[<->] (ai.south) to[out=270,in=30] (pg.north east);
   \draw[->,dashed] (srv.south) to[out=270,in=90] (res.north);
-  \draw[->,dashed] (srv.south) to[out=270,in=90] (gg.north);
-  \draw[->,dashed] (srv.south east) to[out=270,in=90] (fb.north);
   \draw[->,dashed] (ai.south) to[out=270,in=90] (mis.north east);
   \end{tikzpicture}}
   \caption{Arquitetura do Play4Change (C4~--- Nível Contentor)}
@@ -194,51 +190,35 @@ No portal de administração, os administradores podem:
 
 O servidor constitui o núcleo da plataforma, implementando a lógica de negócio, a gestão de utilizadores, a persistência de dados e a orquestração entre os restantes componentes. Foi concebido como um serviço \textit{stateless}, em conformidade com os princípios da arquitetura REST~\cite{fielding2000rest}, o que confere ao sistema flexibilidade para escalar horizontalmente em função da procura.
 
-A autenticação é suportada por múltiplos mecanismos: \textit{magic link} (com \textit{hashing} SHA-256 e envio por email através da API Resend), Google OAuth (verificação local via JWKS) e Facebook OAuth (validação via Graph API). Esta diversidade de meios de acesso visa maximizar a acessibilidade para diferentes perfis de utilizadores.
+A autenticação é suportada por \textit{magic link} (com \textit{hashing} SHA-256 e envio por email através da API Resend). Esta abordagem garante um fluxo de acesso seguro e sem necessidade de palavra-passe para os utilizadores da plataforma.
 
 A persistência de dados inclui, para além dos dados estruturados da plataforma, um armazenamento vetorial baseado em \textit{pgvector} (extensão PostgreSQL), utilizado pelo agente de IA para recuperação semântica de conteúdo e deteção de padrões de dificuldade.
 
-O fluxo dos três mecanismos de autenticação suportados encontra-se ilustrado na Figura~\ref{fig:auth_flow}.
+O fluxo de autenticação por \textit{magic link} encontra-se ilustrado na Figura~\ref{fig:auth_flow}.
 
 \begin{figure}[htbp]
   \centering
   % TODO: substituir por img/auth_flow.pdf quando disponível
   \resizebox{\textwidth}{!}{%
   \begin{tikzpicture}[>=Stealth, font=\scriptsize]
-  \def\xc{0}\def\xa{2.5}\def\xs{5.8}\def\xe{9.2}\def\xg{12.2}\def\xf{15.2}
+  \def\xc{0}\def\xa{2.5}\def\xs{5.8}\def\xe{9.2}
   % Headers
   \foreach \x/\n in {
     \xc/Cidadão, \xa/App, \xs/Servidor,
-    \xe/{Resend API}, \xg/{Google OAuth}, \xf/{Facebook OAuth}}
+    \xe/{Resend API}}
     \node[font=\scriptsize\bfseries, align=center] at (\x, 0.6) {\n};
   % Lifelines
-  \foreach \x in {\xc,\xa,\xs,\xe,\xg,\xf}
-    \draw[gray!40] (\x,0.0) -- (\x,-10.0);
+  \foreach \x in {\xc,\xa,\xs,\xe}
+    \draw[gray!40] (\x,0.0) -- (\x,-5.0);
   % --- Magic Link ---
-  \node[draw, fill=yellow!20, rounded corners=2pt, font=\tiny\bfseries]
-    at (\xs,-0.5) {alt: Magic Link};
   \draw[->] (\xc,-1.1) -- (\xa,-1.1) node[midway,above,font=\tiny] {pedir magic link};
   \draw[->] (\xa,-1.7) -- (\xs,-1.7) node[midway,above,font=\tiny] {POST /auth/magic-link};
   \draw[->] (\xs,-2.3) -- (\xe,-2.3) node[midway,above,font=\tiny] {enviar email (token SHA-256)};
   \draw[->] (\xc,-3.0) -- (\xa,-3.0) node[midway,above,font=\tiny] {clica link};
   \draw[->] (\xa,-3.6) -- (\xs,-3.6) node[midway,above,font=\tiny] {GET /auth/verify?token=\ldots};
   \draw[->,dashed] (\xs,-4.2) -- (\xa,-4.2) node[midway,above,font=\tiny] {JWT};
-  % --- Google OAuth ---
-  \node[draw, fill=yellow!20, rounded corners=2pt, font=\tiny\bfseries]
-    at (\xs,-4.9) {alt: Google OAuth};
-  \draw[->] (\xc,-5.5) -- (\xa,-5.5) node[midway,above,font=\tiny] {login com Google};
-  \draw[->] (\xa,-6.1) -- (\xs,-6.1) node[midway,above,font=\tiny] {POST /auth/google \{idToken\}};
-  \draw[->] (\xs,-6.7) -- (\xg,-6.7) node[midway,above,font=\tiny] {obter JWKS (fetch + cache)};
-  \draw[->,dashed] (\xs,-7.3) -- (\xa,-7.3) node[midway,above,font=\tiny] {JWT};
-  % --- Facebook OAuth ---
-  \node[draw, fill=yellow!20, rounded corners=2pt, font=\tiny\bfseries]
-    at (\xs,-7.9) {alt: Facebook OAuth};
-  \draw[->] (\xc,-8.5) -- (\xa,-8.5) node[midway,above,font=\tiny] {login com Facebook};
-  \draw[->] (\xa,-9.1) -- (\xs,-9.1) node[midway,above,font=\tiny] {POST /auth/facebook \{accessToken\}};
-  \draw[->] (\xs,-9.7) -- (\xf,-9.7) node[midway,above,font=\tiny] {Graph API: validar token};
-  \draw[->,dashed] (\xs,-10.0) -- (\xa,-10.0) node[midway,below,font=\tiny] {JWT};
   \end{tikzpicture}}
-  \caption{Fluxo de autenticação: magic link, Google OAuth e Facebook OAuth}
+  \caption{Fluxo de autenticação: magic link}
   \label{fig:auth_flow}
 \end{figure}
 
