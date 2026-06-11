@@ -1,0 +1,96 @@
+%
+%  chapter1.tex — Introdução
+%
+\chapter{Introdução}
+\label{cha:introducao}
+
+\section{Contexto e Motivação}
+\label{sec:contexto}
+
+A transição para cidades inteligentes constitui um dos maiores desafios socioeconómicos da atualidade. Este processo enfrenta três obstáculos interdependentes: infraestruturas tecnológicas, constrangimentos financeiros e de governança, e --- o foco do presente projeto --- \textbf{o elemento humano}: as competências, a motivação e a participação dos cidadãos. A Aliança Universitária U!REKA, no âmbito da qual o presente projeto se insere, tem como missão acelerar precisamente esta transição, promovendo soluções inovadoras que articulem tecnologia, sustentabilidade e educação~\cite{ureka2024}.
+
+Neste quadro, a literacia cívica e a educação para a sustentabilidade emergem como alavancas fundamentais. A capacidade de os cidadãos adquirirem novas competências de forma contínua e acessível representa um vetor estratégico para a coesão social e para a adaptação às exigências de uma sociedade em permanente transformação. Este imperativo encontra enquadramento direto nos Objetivos de Desenvolvimento Sustentável (ODS) das Nações Unidas, nomeadamente no ODS~4 (\textit{Educação de Qualidade}), ODS~11 (\textit{Cidades e Comunidades Sustentáveis}) e ODS~13 (\textit{Ação Climática}), que apelam à participação ativa dos cidadãos na construção de sociedades mais resilientes e sustentáveis~\cite{un2015sdg}.
+
+A investigação em literacia digital e participação urbana evidencia que o acesso a oportunidades de aprendizagem personalizada e contínua está diretamente correlacionado com o nível de envolvimento dos cidadãos em processos de decisão coletiva~\cite{neirotti2014current}. Neste quadro, uma plataforma adaptativa e gamificada constitui um instrumento com potencial para capacitar cidadãos enquanto agentes de transformação nas suas comunidades, alinhando literacia cívica e ação climática com os objetivos globais de sustentabilidade.
+
+\section{Problema}
+\label{sec:problema}
+
+A transição para cidades inteligentes exige uma abordagem educativa específica:
+orientada para o domínio cívico-urbano, motivante a longo prazo e reconhecível em
+termos de competências. As plataformas de aprendizagem existentes ---
+Duolingo~\cite{duolingo2024}, Khan~Academy~\cite{khanacademy2024},
+Coursera~\cite{coursera2024} e Kahoot!~\cite{kahoot2024} --- foram concebidas para
+outros contextos e objetivos: aprendizagem linguística, certificação académica em
+larga escala ou dinâmicas de sala de aula. Excelentes nos seus domínios, não foram
+desenhadas para responder ao elemento humano da transição para cidades inteligentes.
+Uma plataforma adequada a este desafio deveria oferecer:
+\begin{itemize}
+  \item mecanismos de \textit{engagement} que tornem a aprendizagem cívica num hábito
+        motivante --- a taxa de abandono em plataformas de \textit{e-learning}
+        convencionais ultrapassa frequentemente os 90\,\%~\cite{jordan2015mooc}, fenómeno
+        atribuído à ausência de elementos de \textit{engagement} progressivo~\cite{hamari2014does};
+  \item mecanismos de personalização efetivos que respondam às dificuldades individuais
+        de cada aprendente;
+  \item modelos de reconhecimento de competências que sejam simultaneamente granulares
+        e verificáveis, integrados com os desafios específicos das cidades inteligentes.
+\end{itemize}
+
+Nenhuma das plataformas referidas aborda simultaneamente os três requisitos num
+contexto específico de literacia cívica e sustentabilidade urbana. Esta lacuna motiva
+a proposta apresentada neste trabalho.
+
+\section{Objetivos}
+\label{sec:objetivos}
+
+Face à lacuna identificada, o objetivo principal deste trabalho é
+\textbf{conceber, prototipar e avaliar} o \textit{Play4Change}: uma plataforma de
+aprendizagem adaptativa e gamificada para educação cívica urbana. A contribuição
+científica central reside no desenho e avaliação de um mecanismo de personalização
+por semelhança vetorial, que reduz a dependência de geração em tempo real e acumula
+progressivamente conhecimento pedagógico coletivo.
+
+Para concretizar este objetivo, definem-se os seguintes objetivos específicos:
+
+\begin{enumerate}
+  \item[\textbf{OE1}] Especificar os requisitos funcionais e não funcionais de uma
+        plataforma de aprendizagem cívica adaptativa e gamificada, a partir da
+        caracterização das necessidades identificadas;
+
+  \item[\textbf{OE2}] Conceber e prototipar o \textit{Play4Change}: uma plataforma
+        que integre desafios gamificados diários, adaptação de percursos por IA e
+        reconhecimento de microcompetências por \textit{badges};
+
+  \item[\textbf{OE3}] Implementar e avaliar um mecanismo de reutilização de percursos
+        por semelhança vetorial, quantificando o impacto na eficiência computacional
+        e na eficácia pedagógica da personalização.
+\end{enumerate}
+
+\section{Contribuições}
+\label{sec:contribuicoes}
+
+As contribuições deste trabalho distribuem-se em dois planos: engenharia de software e investigação aplicada.
+
+Do ponto de vista de engenharia, contribui-se com:
+\begin{itemize}
+  \item \textbf{Engagement} --- plataforma com desafios diários gamificados que
+        transformam a aprendizagem cívica num hábito motivante~(OE2);
+  \item \textbf{Personalização} --- geração adaptativa de conteúdo por IA com
+        mecanismo de reutilização de percursos por semelhança vetorial~(OE2,~OE3);
+  \item \textbf{Reconhecimento} --- modelo de microcompetências progressivas
+        certificadas por \textit{badges}~(OE2).
+\end{itemize}
+
+Do ponto de vista da investigação, a contribuição central é:
+\begin{itemize}
+  \item Um mecanismo de reutilização de percursos adaptativos por semelhança
+        vetorial: os percursos gerados pelo agente de IA são indexados em
+        \textit{pgvector} e recuperados automaticamente para perfis análogos,
+        reduzindo a dependência de inferência generativa em tempo real e acumulando
+        progressivamente conhecimento pedagógico coletivo~(OE3).
+\end{itemize}
+
+\section{Estrutura do Documento}
+\label{sec:estrutura}
+
+O presente documento encontra-se organizado da seguinte forma. O Capítulo~\ref{cha:enquadramento} apresenta o enquadramento teórico e o estado da arte, contextualizando o projeto face às soluções e tecnologias existentes. O Capítulo~\ref{cha:solucao} descreve a solução proposta, detalhando a arquitetura e os componentes principais da plataforma. O Capítulo~\ref{cha:implementacao} descreve as decisões de implementação mais relevantes e o \textit{stack} tecnológico adotado. O Capítulo~\ref{cha:avaliacao} apresenta a metodologia de avaliação e os resultados obtidos. Por fim, o Capítulo~\ref{cha:conclusoes} sintetiza as conclusões do trabalho e aponta direções para investigação futura.

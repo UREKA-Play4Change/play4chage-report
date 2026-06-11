@@ -1,0 +1,30 @@
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Áreas e competências do quadro DigComp 2.2}}{2}{figure.caption.10}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Os três pilares do Play4Change}}{3}{figure.caption.11}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Plataformas analisadas posicionadas nos três eixos do Play4Change}}{11}{figure.caption.13}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Diagrama de componentes do sistema Play4Change}}{13}{figure.caption.14}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Arquitectura interna do servidor (Ports \& Adapters)}}{14}{figure.caption.15}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Pipeline síncrono de processamento de pedidos}}{17}{figure.caption.17}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Pipeline assíncrono de geração de conteúdo com SSE}}{18}{figure.caption.19}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Fluxo de autenticação \emph {Magic Link}}}{19}{figure.caption.22}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Estrutura interna do JWT emitido pelo \emph {Play4Change}}}{20}{figure.caption.23}%
+\contentsline {figure}{\numberline {3.7}{\ignorespaces Rotação de \emph {refresh tokens} e detecção de roubo}}{21}{figure.caption.24}%
+\contentsline {figure}{\numberline {3.8}{\ignorespaces Pipeline de geração de conteúdo com IA}}{23}{figure.caption.26}%
+\contentsline {figure}{\numberline {3.9}{\ignorespaces Fluxo principal do percurso do aprendente}}{24}{figure.caption.27}%
+\contentsline {figure}{\numberline {3.10}{\ignorespaces Sequência: resposta errada ao percurso adaptativo}}{26}{figure.caption.30}%
+\contentsline {figure}{\numberline {3.11}{\ignorespaces Máquina de estados do percurso adaptativo}}{27}{figure.caption.31}%
+\contentsline {figure}{\numberline {3.12}{\ignorespaces Escalada progressiva para o modo de explicação}}{28}{figure.caption.32}%
+\contentsline {figure}{\numberline {3.13}{\ignorespaces Sequência do ciclo de explicação holística}}{29}{figure.caption.33}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

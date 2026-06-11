@@ -1,0 +1,97 @@
+%
+%  chapter5.tex — Avaliação
+%
+\chapter{Avaliação}
+\label{cha:avaliacao}
+
+\section{Metodologia de Avaliação}
+\label{sec:metodologia}
+
+A avaliação do \textit{Play4Change} foi conduzida segundo uma abordagem multidimensional, incidindo sobre três perspetivas complementares: (i)~a qualidade funcional do sistema, verificada através de testes automatizados; (ii)~a adequação da experiência de utilização, avaliada com utilizadores reais; e (iii)~o desempenho e a escalabilidade dos componentes críticos.
+
+\subsection{Testes Automatizados}
+\label{ssec:testes_automatizados}
+
+A estratégia de testes do servidor segue uma pirâmide de testes com três níveis:
+
+\begin{enumerate}
+  \item \textbf{Testes unitários}: validação isolada da lógica de domínio e dos casos de uso, sem dependências externas;
+  \item \textbf{Testes de integração}: verificação do comportamento dos adaptadores de infraestrutura (PostgreSQL, MinIO, \textit{pgvector}) com instâncias reais dos serviços, via Testcontainers;
+  \item \textbf{Testes de contrato}: validação da conformidade da API REST com o contrato OpenAPI definido.
+\end{enumerate}
+
+% TODO: inserir métricas de cobertura de testes obtidas
+% Cobertura de testes: X% (unitários), Y% (integração)
+
+\subsection{Avaliação com Utilizadores}
+\label{ssec:avaliacao_utilizadores}
+
+% TODO: descrever o protocolo de avaliação com utilizadores reais
+% (número de participantes, perfil, cenários testados, instrumentos de avaliação — e.g., SUS, questionários)
+% Sugestão: System Usability Scale (SUS) para o cliente móvel
+
+A avaliação da experiência de utilização do cliente móvel foi conduzida com um grupo de participantes representativos do público-alvo da plataforma. O protocolo de avaliação incluiu a realização de cenários de utilização pré-definidos, seguida da aplicação do questionário \textit{System Usability Scale} (SUS)~\cite{brooke1996sus}.
+
+\section{Resultados}
+\label{sec:resultados}
+
+\subsection{Desempenho do Sistema}
+\label{ssec:desempenho}
+
+% TODO: inserir resultados de desempenho (latência média da API, tempo de geração de conteúdo pelo agente IA, etc.)
+
+Os testes de desempenho focaram-se nos componentes de maior criticidade: o servidor REST e o agente de IA. Os principais indicadores obtidos são apresentados na Tabela~\ref{tab:desempenho}.
+
+\begin{table}[ht]
+  \caption{Indicadores de desempenho do Play4Change}
+  \label{tab:desempenho}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Indicador} & \textbf{Valor obtido} \\
+    \midrule
+    Latência média da API (p50)    & \textit{a preencher} \\
+    Latência da API (p99)          & \textit{a preencher} \\
+    Tempo médio de geração de conteúdo (IA) & \textit{a preencher} \\
+    Tempo médio de pesquisa adaptativa (pgvector) & \textit{a preencher} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Usabilidade}
+\label{ssec:usabilidade}
+
+% TODO: inserir resultados do questionário SUS e análise qualitativa
+
+A aplicação do questionário SUS ao cliente móvel resultou numa pontuação de \textbf{XX/100} (classificação: \textit{TODO}), indicando uma perceção de usabilidade \textit{TODO} por parte dos participantes. Os pontos de melhoria identificados com maior frequência foram: \textit{TODO}.
+
+\subsection{Eficácia do Mecanismo Adaptativo}
+\label{ssec:eficacia_adaptativo}
+
+% TODO: inserir dados sobre taxa de reutilização de percursos adaptativos,
+% taxa de sucesso após ramo adaptativo vs. sem ramo adaptativo
+
+A eficácia do mecanismo de adaptação foi avaliada através da comparação entre a taxa de sucesso dos cidadãos que receberam um \textit{ramo adaptativo} e a dos cidadãos que prosseguiram sem intervenção adaptativa. Os resultados obtidos são apresentados na Tabela~\ref{tab:adaptativo}.
+
+\begin{table}[ht]
+  \caption{Eficácia do mecanismo de aprendizagem adaptativa}
+  \label{tab:adaptativo}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Condição} & \textbf{Taxa de sucesso} & \textbf{N} \\
+    \midrule
+    Sem ramo adaptativo & \textit{a preencher} & \textit{a preencher} \\
+    Com ramo adaptativo & \textit{a preencher} & \textit{a preencher} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Discussão}
+\label{sec:discussao}
+
+% TODO: análise crítica dos resultados, limitações da avaliação e implicações para o trabalho futuro
+
+Os resultados obtidos evidenciam \textit{TODO}. As principais limitações da avaliação conduzida residem em \textit{TODO}, nomeadamente no que respeita à dimensão e representatividade da amostra de utilizadores. Estes fatores devem ser considerados na interpretação dos resultados e constituem oportunidades de investigação futura.

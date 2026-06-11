@@ -1,0 +1,1267 @@
+%
+%  chapter_deepdive.tex  —  versão 2 (reescrita estrutural)
+%  Aprofundamento Técnico: Por Detrás do Play4Change
+%
+%  Estrutura: geral → específico, um conceito por secção,
+%  organizado pelos três pilares do projeto.
+%  Linguagem: português europeu académico.
+%
+\chapter{Aprofundamento Técnico: Por Detrás do Sistema}
+\label{cha:deepdive}
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Enquadramento e Estrutura do Capítulo}
+\label{sec:enquadramento}
+% ═══════════════════════════════════════════════════════════════════
+
+Este capítulo percorre o \textit{Play4Change} de dentro para fora.
+Em vez de enumerar funcionalidades, parte da arquitectura geral e aprofunda
+cada subsistema por ordem de dependência: primeiro o que todos os fluxos
+partilham (autenticação, \textit{pipeline} HTTP), depois o que é específico
+de cada pilar do projeto.
+
+A leitura está organizada da seguinte forma:
+
+\begin{enumerate}
+  \item \textbf{Arquitectura geral} — os três clientes, os serviços de
+    suporte e as fronteiras entre camadas.
+  \item \textbf{Autenticação} — o protocolo \textit{magic link},
+    armazenamento seguro de \textit{tokens} e renovação silenciosa.
+  \item \textbf{Pipeline HTTP do servidor} — as catorze camadas que todo
+    o pedido atravessa antes de chegar ao controlador.
+  \item \textbf{Os três pilares} — mapeamento dos objetivos pedagógicos
+    para subsistemas de engenharia.
+  \item \textbf{Pilar I — Envolvimento} — atribuição diária de tarefas,
+    pontos e sequências.
+  \item \textbf{Pilar II — Personalização (criação com IA)} — extração
+    de conteúdo, geração de tarefas com LLM e engenharia de
+    \textit{prompts}.
+  \item \textbf{Pilar II — Personalização (pesquisa vectorial)} —
+    \textit{embeddings}, similaridade do cosseno, índice IVFFlat e as
+    três estratégias de reutilização.
+  \item \textbf{Pilar II — Personalização (remediação adaptativa)} —
+    deteção de dificuldade e ramos de recuperação.
+  \item \textbf{Pilar III — Reconhecimento} — emissão de \textit{badges}.
+  \item \textbf{Arquitetura do cliente móvel} — Kotlin Multiplatform,
+    Decompose, Koin e padrão MVI.
+  \item \textbf{Observabilidade} — métricas, alertas e \textit{dashboards}.
+  \item \textbf{Segurança} — modelo de ameaças e controlos OWASP.
+  \item \textbf{Superfície completa da API REST}.
+\end{enumerate}
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Arquitectura Geral da Plataforma}
+\label{sec:arquitectura_geral}
+% ═══════════════════════════════════════════════════════════════════
+
+O \textit{Play4Change} é composto por três camadas principais
+(Figura~\ref{fig:arquitectura_geral}): dois clientes com superfícies
+distintas, uma API REST centralizada e um conjunto de serviços de suporte.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    tier/.style={draw, fill=#1, rounded corners=5pt,
+                 minimum width=3.2cm, minimum height=1.1cm, align=center},
+    svc/.style={draw, fill=gray!12, rounded corners=3pt,
+                minimum width=2.4cm, minimum height=0.8cm, align=center},
+    lbl/.style={font=\bfseries\footnotesize, color=gray!60}
+  ]
+    % Clients
+    \node[tier=blue!12]   (web) at (-4, 0) {Portal Web\\{\small React + TypeScript}\\{\footnotesize Administrador}};
+    \node[tier=orange!15] (mob) at ( 4, 0) {App Móvel\\{\small KMP + Compose}\\{\footnotesize Aprendente}};
+
+    % API
+    \node[tier=green!14]  (api) at (0,-2.5){API REST\\{\small Spring Boot}\\{\footnotesize HTTPS / JSON / SSE}};
+
+    % Services
+    \node[svc] (pg)    at (-4.5,-5){PostgreSQL\\{\tiny + pgvector}};
+    \node[svc] (minio) at (-1.5,-5){MinIO\\{\tiny S3}};
+    \node[svc] (ai)    at ( 1.5,-5){Mistral AI\\{\tiny LangChain4j}};
+    \node[svc] (resend)at ( 4.5,-5){Resend\\{\tiny E-mail}};
+
+    % Labels
+    \node[lbl] at (-6.2, 0)   {Clientes};
+    \node[lbl] at (-6.2,-2.5) {Servidor};
+    \node[lbl] at (-6.2,-5)   {Serviços};
+
+    % Edges
+    \draw[->] (web) -- node[left, font=\tiny]{HTTPS + JWT} (api);
+    \draw[->] (mob) -- node[right,font=\tiny]{HTTPS + JWT} (api);
+    \draw[->] (api) -- (pg);
+    \draw[->] (api) -- (minio);
+    \draw[->] (api) -- (ai);
+    \draw[->] (api) -- (resend);
+    \draw[->, dashed, color=blue!50] (api) to[bend left=12]
+      node[above,font=\tiny]{SSE} (web);
+  \end{tikzpicture}
+  \caption{Arquitectura de três camadas do \textit{Play4Change}}
+  \label{fig:arquitectura_geral}
+\end{figure}
+
+\paragraph{Portal Web de Administração.}
+Construído em React 18 com TypeScript e TanStack Query para gestão do
+estado de servidor.
+É reservado exclusivamente aos administradores de conteúdo: criação de
+tópicos a partir de URL ou PDF, monitorização do progresso de geração em
+tempo real via \textit{Server-Sent Events}, edição de tarefas e gestão de
+utilizadores.
+O administrador nunca interage com a aplicação móvel — são superfícies
+completamente separadas com papéis distintos.
+
+\paragraph{Aplicação Móvel.}
+Construída com Kotlin Multiplatform e Compose Multiplatform, partilhando
+a totalidade do código de negócio, rede e interface entre Android e iOS.
+É a superfície primária dos aprendentes: inscrição em tópicos, resolução
+de tarefas diárias, progressão no mapa de aprendizagem e remediação
+adaptativa quando é detetada dificuldade.
+
+\paragraph{API REST Spring Boot.}
+Serve ambos os clientes com o mesmo conjunto de \textit{endpoints},
+diferenciados por papel (\texttt{ADMIN} vs.\ utilizador autenticado).
+Implementa a Arquitectura Hexagonal~\cite{cockburn2005hexagonal}, isolando
+a lógica de domínio de todas as dependências externas através de
+interfaces de porta.
+
+\paragraph{Serviços de suporte.}
+PostgreSQL (com a extensão \textit{pgvector} para pesquisa vectorial)
+persiste toda a informação transacional e os \textit{embeddings} das
+tarefas.
+MinIO armazena os conteúdos de fonte dos tópicos (texto extraído e PDF
+original).
+A API Mistral fornece tanto o modelo de linguagem para geração de tarefas
+como o modelo de \textit{embedding} para representação semântica.
+O Resend entrega os \textit{e-mails} de \textit{magic link}.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Fundação Transversal: Autenticação Sem Palavra-Passe}
+\label{sec:autenticacao}
+% ═══════════════════════════════════════════════════════════════════
+
+Antes de qualquer funcionalidade, o utilizador — seja administrador no
+portal web ou aprendente na aplicação móvel — tem de se autenticar.
+O \textit{Play4Change} elimina completamente as palavras-passe, adoptando
+um protocolo de \textit{magic link}~\cite{owasp2021a07}: o utilizador
+fornece apenas o seu endereço de correio eletrónico e recebe uma ligação
+de autenticação de utilização única.
+
+\subsection*{Porque não palavras-passe}
+
+As palavras-passe introduzem três superfícies de ataque que o
+\textit{magic link} elimina por construção: armazenamento de hashes
+suscetíveis a ataques de dicionário, reutilização de credenciais entre
+serviços e \textit{phishing} de credenciais.
+A ligação de autenticação é válida durante 15 minutos, de utilização
+única e armazenada apenas como resumo SHA-256 — mesmo que a base de dados
+seja comprometida, o valor armazenado não pode ser usado diretamente.
+
+\subsection*{O protocolo em quatro passos}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    act/.style={draw, fill=#1, rounded corners=3pt,
+                minimum width=2.6cm, minimum height=0.7cm, align=center}
+  ]
+    \node[act=blue!10]   (cli) at (0,   0) {Cliente\\(web / móvel)};
+    \node[act=green!10]  (api) at (5.5, 0) {Spring Boot API};
+    \node[act=orange!10] (ext) at (10.5,0) {Resend / PostgreSQL};
+
+    % Lifelines
+    \foreach \x in {0,5.5,10.5} \draw[dashed] (\x,-0.4) -- (\x,-10.2);
+
+    % Step 1
+    \draw[->] (0,-1.0) -- node[above,font=\tiny]{(1) POST /auth/magic-link \{email\}} (5.5,-1.0);
+    \draw[->] (5.5,-1.7) -- node[above,font=\tiny]{enviar e-mail com ligação} (10.5,-1.7);
+    \draw[->] (5.5,-2.4) -- node[above,font=\tiny]{guardar SHA-256 TTL 15 min} (10.5,-2.4);
+    \draw[->] (5.5,-3.1) -- node[above,font=\tiny]{(1R) 202 Accepted} (0,-3.1);
+
+    % Step 2
+    \draw[->] (0,-4.2) -- node[above,font=\tiny]{(2) GET /auth/verify?token=X} (5.5,-4.2);
+    \draw[->] (5.5,-4.9) -- node[above,font=\tiny]{(2R) 302 → play4change://auth/verify?token=X} (0,-4.9);
+
+    % Step 3
+    \draw[->] (0,-6.2) -- node[above,font=\tiny]{(3) POST /auth/magic-link/verify \{token\}} (5.5,-6.2);
+    \draw[->] (5.5,-6.9) -- node[above,font=\tiny]{verificar SHA-256, marcar consumido} (10.5,-6.9);
+    \draw[->] (5.5,-7.6) -- node[above,font=\tiny]{(3R) 200 OK \{accessToken, refreshToken\}} (0,-7.6);
+
+    % Step 4
+    \draw[->] (0,-8.8) -- node[above,font=\tiny]{(4) pedido protegido + Bearer token} (5.5,-8.8);
+    \draw[->] (5.5,-9.5) -- node[above,font=\tiny]{(4R) 200 OK / 401 → renovação automática} (0,-9.5);
+  \end{tikzpicture}
+  \caption{Protocolo de autenticação \textit{magic link}: quatro passos}
+  \label{fig:auth_sequence}
+\end{figure}
+
+\paragraph{Passo 1 — Pedido de ligação.}
+O cliente submete o endereço de correio eletrónico.
+O servidor gera um \textit{token} aleatório criptograficamente seguro,
+armazena o seu resumo SHA-256 com TTL de 15 minutos, envia o \textit{e-mail}
+via API Resend e responde \texttt{202 Accepted} — \emph{sempre a mesma
+resposta}, independentemente de o endereço existir ou não, impedindo
+enumeração de utilizadores~\cite{owasp2021a05}.
+Um \texttt{RateLimitFilter} impõe um máximo de três pedidos por IP por
+hora.
+
+\paragraph{Passo 2 — Clique na ligação.}
+O \textit{e-mail} contém \texttt{GET /auth/verify?token=\{raw\}}.
+O servidor emite \texttt{302 Found} para o esquema URI personalizado
+\texttt{play4change://auth/verify?token=\{raw\}}.
+No mobile, o sistema operativo interceta o esquema e abre a aplicação.
+No web, a \texttt{AuthCallbackPage} processa o redirecionamento.
+
+\paragraph{Passo 3 — Verificação e emissão de \textit{tokens}.}
+O cliente envia o \textit{token} em claro via \texttt{POST /auth/magic-link/verify}.
+O servidor recalcula o SHA-256, valida a existência e a não-expiração,
+marca-o como consumido e emite um par de \textit{tokens}:
+um \textit{token} de acesso JWT (15--30 minutos) e um \textit{token} de
+atualização opaco com TTL de 7 dias.
+
+\paragraph{Passo 4 — Pedidos autenticados e renovação silenciosa.}
+Todos os pedidos subsequentes transportam o JWT no cabeçalho
+\texttt{Authorization: Bearer}.
+Quando o JWT expira, o cliente renova-o silenciosamente sem interromper
+o utilizador (detalhado abaixo por plataforma).
+
+\subsection*{Armazenamento seguro de \textit{tokens} por plataforma}
+
+Os \textit{tokens} não podem ser armazenados em texto simples; cada
+plataforma usa o mecanismo de segurança nativo disponível
+(Figura~\ref{fig:token_storage}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    plat/.style={draw, fill=#1, rounded corners=5pt,
+                 minimum width=4.5cm, minimum height=3.4cm, align=center,
+                 text width=4.2cm},
+  ]
+    \node[plat=blue!8] (web) at (-3.5,0) {%
+      \textbf{Portal Web}\\[4pt]
+      \textit{Access token}:\\
+      \texttt{sessionStorage}\\
+      (limpo ao fechar o separador)\\[4pt]
+      \textit{Refresh token}:\\
+      \textit{cookie} HTTP\\
+      \texttt{SameSite=Strict}\\
+      \texttt{Secure}\\[4pt]
+      Renovação: interceptor Axios\\
+      + fila de pedidos pendentes
+    };
+    \node[plat=green!10] (and) at ( 1.5,0) {%
+      \textbf{Android}\\[4pt]
+      \texttt{EncryptedSharedPreferences}\\
+      (Jetpack Security)\\[4pt]
+      Chaves: AES-256-SIV\\
+      Valores: AES-256-GCM\\
+      Chave-mestra no\\
+      \textit{Android Keystore}\\[4pt]
+      Renovação: plugin Ktor\\
+      \texttt{Auth \{bearer\{\}\}}
+    };
+    \node[plat=gray!12] (ios) at ( 6.5,0) {%
+      \textbf{iOS}\\[4pt]
+      \textit{Keychain} (Security.framework)\\
+      via Kotlin/Native CInterop\\[4pt]
+      \texttt{kSecUseDataProtection}\\
+      \texttt{Keychain = true}\\
+      \texttt{kSecAttrAccessible}\\
+      \texttt{AfterFirstUnlock}\\[4pt]
+      Renovação: plugin Ktor\\
+      \texttt{Auth \{bearer\{\}\}}
+    };
+  \end{tikzpicture}
+  \caption{Mecanismos de armazenamento seguro de \textit{tokens} por plataforma}
+  \label{fig:token_storage}
+\end{figure}
+
+Na aplicação móvel, a interface \texttt{TokenStorage} abstrai ambas as
+implementações.
+O módulo Koin da plataforma (\texttt{platformModule}) regista a
+implementação correta em tempo de compilação — o código partilhado nunca
+depende de uma implementação concreta.
+Quando o servidor devolve \texttt{401}, o plugin Ktor \texttt{Auth}
+invoca automaticamente \texttt{POST /auth/refresh}; em caso de falha
+não transitória, \texttt{SessionEventBus.sessionExpired()} redireciona
+o utilizador para o ecrã de autenticação sem destruir a \textit{Activity}
+Android.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{O \textit{Pipeline} de Processamento de Pedidos HTTP}
+\label{sec:pipeline_http}
+% ═══════════════════════════════════════════════════════════════════
+
+Todo o pedido HTTP — independentemente de origem (web ou móvel) ou
+destino (rota pública ou protegida) — percorre a mesma sequência de
+catorze camadas no servidor antes de atingir o controlador de domínio.
+Compreender esta sequência é essencial para entender onde cada
+preocupação transversal (segurança, rastreabilidade, métricas) é tratada.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    layer/.style={draw, fill=#1, rounded corners=3pt,
+                  minimum width=11cm, minimum height=0.78cm,
+                  align=center, text width=10.6cm},
+    arr/.style={->, thick, color=gray!55}
+  ]
+    \node[layer=orange!18]  at (0, 0.0)  {\textbf{1. Nginx}
+      — terminação TLS, cabeçalhos de segurança, \texttt{proxy\_buffering off} (SSE)};
+    \node[layer=yellow!22]  at (0,-0.95) {\textbf{2. Tomcat} (\textit{embedded})
+      — aceitação TCP, gestão do conjunto de fios de execução};
+    \node[layer=red!14]     at (0,-1.90) {\textbf{3. \texttt{RateLimitFilter}}
+      \small[\texttt{HIGHEST\_PRECEDENCE}]\ — limite de pedidos \texttt{/auth/**} por IP → \texttt{429}};
+    \node[layer=red!9]      at (0,-2.85) {\textbf{4. \texttt{RequestIdFilter}}
+      \small[\texttt{@Order(1)}]\ — gera \texttt{X-Request-Id}, injeta no MDC (rastreabilidade)};
+    \node[layer=blue!10]    at (0,-3.80) {\textbf{5. Spring Security — \texttt{CorsFilter}}
+      — valida origem, emite \texttt{Access-Control-*}, responde \texttt{OPTIONS}};
+    \node[layer=blue!16]    at (0,-4.75) {\textbf{6. \texttt{JwtAuthFilter}}
+      — analisa \texttt{Bearer}, povoa \texttt{SecurityContextHolder} (ou \texttt{401})};
+    \node[layer=blue!22]    at (0,-5.70) {\textbf{7. Spring Security — Autorização}
+      — \texttt{/admin/**} → \texttt{ADMIN}; resto → \texttt{authenticated()}; falha → \texttt{403}};
+    \node[layer=green!12]   at (0,-6.65) {\textbf{8. \texttt{WebMvcMetricsFilter}}
+      — regista \texttt{http\_server\_requests\_seconds} no Prometheus (automático)};
+    \node[layer=purple!10]  at (0,-7.60) {\textbf{9. \texttt{DispatcherServlet}}
+      — mapeamento de controlador, negociação de conteúdo, resolução de argumentos};
+    \node[layer=teal!10]    at (0,-8.55) {\textbf{10. \texttt{LoggingInterceptor.preHandle()}}
+      — grava \textit{timestamp} de início em \texttt{request.setAttribute}};
+    \node[layer=teal!16]    at (0,-9.50) {\textbf{11. Controlador + Bean Validation (\texttt{@Valid})}
+      — desserialização Jackson, restrições JSR-380 → \texttt{400} em caso de falha};
+    \node[layer=teal!22]    at (0,-10.45){\textbf{12. Serviço de Aplicação}
+      — lógica de domínio com \texttt{Either<AppError,T>} (Arrow)};
+    \node[layer=teal!16]    at (0,-11.40){\textbf{13. \texttt{LoggingInterceptor.afterCompletion()}}
+      — regista método, caminho, estado HTTP e duração em ms};
+    \node[layer=orange!12]  at (0,-12.35){\textbf{14. \texttt{@RestControllerAdvice}}
+      — mapeia exceções não capturadas para respostas de erro JSON estruturadas};
+
+    % downward arrows on the right margin
+    \foreach \y in {-0.48,-1.43,-2.38,-3.33,-4.28,-5.23,-6.18,-7.13,
+                    -8.08,-9.03,-9.98,-10.93,-11.88} {
+      \draw[arr] (5.8,\y) -- (5.8,\y-0.50);
+    }
+  \end{tikzpicture}
+  \caption{As catorze camadas do \textit{pipeline} de pedido-resposta do servidor Spring Boot}
+  \label{fig:pipeline_http}
+\end{figure}
+
+A lógica de domínio só é alcançada na camada 12.
+Todas as preocupações transversais — segurança, rastreabilidade, métricas,
+tratamento de erros — estão encapsuladas nas camadas anteriores, sem
+qualquer código de infraestrutura nos serviços de aplicação.
+
+\subsection*{Processamento assíncrono paralelo}
+
+Os pedidos de criação de tópico não bloqueiam o fio de execução do
+Tomcat enquanto a IA gera as tarefas.
+Um \texttt{ThreadPoolTaskExecutor} dedicado (\texttt{generationExecutor}),
+com 3 fios de execução e fila de capacidade 25, recebe o trabalho de
+geração imediatamente após o registo do tópico na base de dados:
+
+\begin{verbatim}
+corePoolSize = 3  |  maxPoolSize = 3  |  queueCapacity = 25
+setThreadNamePrefix("gen-")    // visível em JVM thread dumps
+\end{verbatim}
+
+Assim, a criação de um tópico devolve \texttt{201 Created} em milissegundos;
+o progresso é depois comunicado ao portal web via SSE.
+Quando a fila atinge a capacidade, novos pedidos de geração são rejeitados
+com \texttt{503} e o alerta Prometheus
+\texttt{GenerationThreadPoolQueueSaturated} é disparado.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Os Três Pilares: Mapeamento para Subsistemas de Engenharia}
+\label{sec:tres_pilares}
+% ═══════════════════════════════════════════════════════════════════
+
+O \textit{Play4Change} está organizado em torno de três pilares
+pedagógicos, cada um com um subsistema de engenharia correspondente
+(Figura~\ref{fig:pilares_subsistemas}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    pil/.style={draw, fill=#1, rounded corners=5pt,
+                minimum width=3.6cm, minimum height=1.2cm, align=center},
+    sub/.style={draw, fill=#1, rounded corners=3pt,
+                minimum width=3.6cm, minimum height=0.8cm,
+                align=center, text width=3.4cm}
+  ]
+    \node[pil=blue!12]   (eng) at (-4.5,0) {\textbf{Envolvimento}\\gamificação};
+    \node[pil=orange!15] (per) at (   0,0) {\textbf{Personalização}\\IA adaptativa};
+    \node[pil=green!12]  (rec) at ( 4.5,0) {\textbf{Reconhecimento}\\progresso};
+
+    \node[sub=blue!8]   (e1) at (-4.5,-2.0){\texttt{TaskAssignment}\\1 tarefa/dia/tópico};
+    \node[sub=blue!5]   (e2) at (-4.5,-3.2){Pontos + \textit{streak}\\diário};
+
+    \node[sub=orange!10] (p1) at (0,-2.0){LangChain4j + Mistral\\geração de tarefas};
+    \node[sub=orange!7]  (p2) at (0,-3.2){pgvector\\similaridade vectorial};
+    \node[sub=orange!5]  (p3) at (0,-4.4){\texttt{HandleStruggleService}\\remediação adaptativa};
+
+    \node[sub=green!8]  (r1) at (4.5,-2.0){\texttt{BadgeIssuanceService}\\critérios configuráveis};
+    \node[sub=green!5]  (r2) at (4.5,-3.2){\textit{Badges} digitais\\verificáveis (PostgreSQL)};
+
+    \draw[->] (eng) -- (e1); \draw[->] (e1) -- (e2);
+    \draw[->] (per) -- (p1); \draw[->] (p1) -- (p2); \draw[->] (p2) -- (p3);
+    \draw[->] (rec) -- (r1); \draw[->] (r1) -- (r2);
+  \end{tikzpicture}
+  \caption{Os três pilares pedagógicos e os subsistemas de engenharia correspondentes}
+  \label{fig:pilares_subsistemas}
+\end{figure}
+
+As secções seguintes aprofundam cada pilar, começando pelo mais simples
+(Envolvimento) e progredindo para o mais complexo (Personalização).
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Pilar I — Envolvimento: Atribuição Diária e Gamificação}
+\label{sec:pilar_envolvimento}
+% ═══════════════════════════════════════════════════════════════════
+
+O pilar de Envolvimento garante que o aprendente tem sempre uma tarefa
+disponível e que o progresso acumulado é visível e recompensador.
+
+\subsection*{Inscrição num tópico}
+
+O aprendente inicia a sua jornada no ecrã \textbf{Explorar} da aplicação
+móvel, seleciona um tópico ativo e toca em «Inscrever»:
+
+\begin{verbatim}
+POST /user/enroll
+Authorization: Bearer <token>
+{ "topicId": "<uuid>" }
+\end{verbatim}
+
+O \texttt{EnrollmentService} aplica quatro guardas em sequência antes de
+criar a inscrição: o tópico tem de estar \texttt{ACTIVE}; não pode ter
+expirado; todos os pré-requisitos têm de estar concluídos; e não pode
+existir já uma inscrição ativa.
+Em caso de sucesso, cria imediatamente a primeira \texttt{TaskAssignment}
+para \texttt{dayIndex = 0}.
+A ordem das opções de cada tarefa é misturada deterministicamente com
+\texttt{TaskShuffleSeed.shuffleOptions(optionCount, userId, taskId,
+enrollmentId)} — o mesmo utilizador vê sempre a mesma ordenação ao
+regressar, mas diferentes utilizadores veem ordenações diferentes,
+eliminando o reconhecimento de padrões por posição.
+
+\subsection*{Obtenção da tarefa diária}
+
+A aplicação móvel pede a tarefa do dia ao servidor com:
+
+\begin{verbatim}
+GET /tasks/today?topicId={id}
+Authorization: Bearer <token>
+X-Timezone: Europe/Lisbon
+\end{verbatim}
+
+O cabeçalho \texttt{X-Timezone} é fundamental: as atribuições são geradas
+por dia de calendário no fuso horário \emph{do aprendente}, não do
+servidor.
+Sem este cabeçalho, um utilizador em Lisboa às 23h30 poderia receber a
+tarefa do dia seguinte se o servidor estivesse num fuso UTC.
+
+O servidor pode devolver três estados especiais além de \texttt{200 OK}:
+\texttt{202 Accepted} (geração ainda em curso),
+\texttt{404 Not Found} (tarefa já concluída hoje) e
+\texttt{409 Conflict} com o cabeçalho
+\texttt{X-Open-Struggle-Enrollment} (existe uma sessão de dificuldade
+ativa — o cliente é redirecionado para ela em vez de mostrar a tarefa).
+
+\subsection*{Pontos e sequências diárias}
+
+Ao submeter uma resposta correta pela primeira vez num dia, o servidor
+atribui \texttt{TaskTemplate.pointsReward} pontos e incrementa
+\texttt{Enrollment.streakDays}.
+Os pontos são acumulados em \texttt{UserProfile.totalPoints} e o nível
+do utilizador é calculado a partir deste total.
+Submissões erradas decrementam \texttt{wrongAttemptCount} mas não penalizam
+pontos — o sistema é encorajador, não punitivo.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Pilar II — Personalização: Criação de Conteúdo com IA}
+\label{sec:pilar_criacao_ia}
+% ═══════════════════════════════════════════════════════════════════
+
+A personalização começa na criação do conteúdo.
+Em vez de tarefas genéricas, o \textit{Play4Change} gera tarefas
+específicas para cada tópico usando um modelo de linguagem de grande
+dimensão (LLM), seguindo o enquadramento de engenharia de
+\textit{prompts} de quatro componentes da Google~\cite{google2024promptguide}:
+\textbf{Persona}, \textbf{Tarefa}, \textbf{Contexto} e \textbf{Formato}.
+
+\subsection*{Criação de tópico pelo administrador}
+
+O administrador acede ao portal web e fornece a fonte de conteúdo:
+uma URL pública ou um ficheiro PDF.
+
+\begin{verbatim}
+POST /admin/topics
+Authorization: Bearer <token_admin>
+Content-Type: application/json
+
+{
+  "title":      "Mobilidade Urbana Sustentável",
+  "url":        "https://example.org/guia-mobilidade",
+  "taskCount":  15,
+  "difficulty": "BEGINNER",
+  "language":   "pt-PT"
+}
+\end{verbatim}
+
+O servidor responde \texttt{201 Created} imediatamente com o
+\texttt{topicId} e o estado \texttt{PENDING}.
+A geração decorre integralmente em segundo plano no
+\texttt{generationExecutor}.
+
+\subsection*{As fases de geração}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    ph/.style={draw, fill=yellow!18, rounded corners=4pt,
+               minimum width=2.3cm, minimum height=1.0cm, align=center},
+    ok/.style={draw, fill=green!15, rounded corners=4pt,
+               minimum width=2.3cm, minimum height=1.0cm, align=center},
+    err/.style={draw, fill=red!15,  rounded corners=4pt,
+               minimum width=2.3cm, minimum height=1.0cm, align=center}
+  ]
+    \node[ph]  (ing) at (0,   0) {INGESTION\\{\tiny extração}};
+    \node[ph]  (ana) at (3.3, 0) {ANALYSIS\\{\tiny objetivo}};
+    \node[ph]  (gen) at (6.6, 0) {GENERATION\\{\tiny LLM}};
+    \node[ph]  (idx) at (9.9, 0) {INDEXING\\{\tiny embeddings}};
+    \node[ok]  (act) at (9.9,-2.2){ACTIVE};
+    \node[err] (fail)at (3.3,-2.2){FAILED};
+
+    \draw[->] (ing) -- (ana);
+    \draw[->] (ana) -- (gen);
+    \draw[->] (gen) -- (idx);
+    \draw[->] (idx) -- (act);
+    \draw[->, dashed, red] (gen) -- node[right,font=\tiny]{falha LLM} (fail);
+    \draw[->, dashed, red] (ana) -- node[left, font=\tiny]{\textit{timeout}} (fail);
+  \end{tikzpicture}
+  \caption{Fases do \textit{pipeline} de geração assíncrona de tópicos}
+  \label{fig:fases_geracao}
+\end{figure}
+
+\paragraph{INGESTION.}
+O \texttt{ContentExtractorPort} obtém o conteúdo da URL (remove
+marcações HTML) ou extrai texto do PDF (Apache PDFBox).
+O texto é enviado para o MinIO (\texttt{topics/\{id\}/content.txt}).
+Um evento SSE \texttt{phase-change} é publicado ao portal web.
+
+\paragraph{ANALYSIS.}
+Uma análise preliminar extrai o objetivo do módulo — o enunciado de
+aprendizagem que o \textit{prompt} de geração usará como âncora
+contextual.
+
+\paragraph{GENERATION.}
+A chamada central ao LLM.
+O \texttt{LangChain4jTaskGenerationAdapter} monta duas mensagens:
+
+\begin{description}
+  \item[Mensagem de sistema (Persona + Formato):]
+\begin{verbatim}
+You are an expert educational content designer
+specialising in gamified learning experiences.
+OUTPUT FORMAT: valid JSON array only. Schema:
+[{ "title":"...", "description":"...", "hint":"...",
+   "pointsReward": N, "options":["correta","e1","e2","e3"],
+   "correctAnswerIndex": 0 }]
+\end{verbatim}
+  A resposta correta está \emph{sempre} no índice 0 — o servidor
+  embaralha as opções antes de as enviar ao cliente, garantindo que
+  o LLM nunca é responsável pela aleatorização.
+
+  \item[Mensagem do utilizador (Tarefa + Contexto):]
+\begin{verbatim}
+Generate 15 tasks for:
+Subject: Mobilidade Urbana | Level: Beginner
+Language: pt-PT
+Note: 3 tasks already exist — generate semantically
+distinct content.
+\end{verbatim}
+\end{description}
+
+Se a resposta do LLM contiver JSON malformado ou campos em falta,
+o adaptador realiza \textbf{uma única nova tentativa} com o
+\textit{prompt} original acrescido de um parágrafo \texttt{schemaReminder}
+que recapitula o esquema obrigatório.
+Se persistir, o tópico transita para \texttt{FAILED} e um contador
+Prometheus \texttt{ai.generation.failures} é incrementado.
+
+\paragraph{INDEXING.}
+Os \textit{embeddings} vectoriais de cada tarefa gerada são calculados
+e persistidos na coluna \textit{pgvector} de \texttt{task\_templates}
+para uso futuro na desduplicação e na pesquisa de similaridade
+(explicado na Secção~\ref{sec:pgvector}).
+
+\paragraph{ACTIVE.}
+O estado do tópico transita para \texttt{ACTIVE} e um evento SSE
+\texttt{complete} é emitido — o portal web apresenta imediatamente o
+tópico como disponível para inscrição.
+
+\subsection*{Observação do progresso em tempo real (SSE)}
+
+Após receber o \texttt{201}, o portal web abre uma ligação
+\textit{Server-Sent Events}:
+
+\begin{verbatim}
+GET /admin/topics/{id}/progress
+Accept: text/event-stream
+Cache-Control: no-cache
+\end{verbatim}
+
+O Nginx é configurado com \texttt{proxy\_buffering off} e
+\texttt{X-Accel-Buffering: no} para este \textit{endpoint}, garantindo
+que os eventos chegam ao navegador imediatamente sem acumulação no
+\textit{proxy}.
+O servidor emite eventos no formato W3C SSE~\cite{w3c2021sse}:
+
+\begin{verbatim}
+event: phase-change
+data: {"phase":"GENERATION"}
+
+event: generation-progress
+data: {"completed":7,"total":15}
+
+event: complete
+data: {}
+\end{verbatim}
+
+O \textit{hook} React \texttt{useTopicProgress} lê o fluxo com a API
+\texttt{ReadableStream} (sem \textit{EventSource} de terceiros),
+renderizando uma barra de progresso em tempo real.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Pilar II — Personalização: Pesquisa de Similaridade Vectorial}
+\label{sec:pgvector}
+% ═══════════════════════════════════════════════════════════════════
+
+Esta secção explica a componente mais original do sistema do ponto de vista
+da engenharia de dados: a utilização de \textit{embeddings} e pesquisa de
+similaridade vectorial para reutilizar progressivamente conteúdo de
+remediação entre aprendentes.
+
+\subsection*{O que é um \textit{embedding}}
+
+Um \textit{embedding} é a representação de um texto como um vector de
+números reais num espaço de alta dimensão — no caso do \textit{Play4Change},
+1024 dimensões produzidas pelo modelo de \textit{embedding} do Mistral.
+Textos semanticamente semelhantes (e.g., duas perguntas sobre o mesmo
+conceito de mobilidade urbana, formuladas de forma diferente) produzem
+vectores próximos nesse espaço.
+Textos sobre temas distintos produzem vectores distantes.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small]
+    % 2D projection of embedding space
+    \draw[->] (-0.5,0) -- (7.5,0) node[right]{\small dim$_1$};
+    \draw[->] (0,-0.5) -- (0,5.5) node[above]{\small dim$_2$};
+
+    % Cluster A - mobility
+    \filldraw[blue!60]  (2.1,3.8) circle(3pt) node[right,font=\tiny]{tarefa mobilidade A};
+    \filldraw[blue!40]  (2.5,4.1) circle(3pt) node[right,font=\tiny]{tarefa mobilidade B};
+    \filldraw[blue!80]  (1.9,3.5) circle(3pt) node[right,font=\tiny]{dificuldade mobilidade};
+    \draw[dashed, blue!40] (2.2,3.8) ellipse (0.8cm and 0.5cm);
+    \node[blue!70, font=\tiny] at (2.2,2.95) {cluster mobilidade};
+
+    % Cluster B - energy
+    \filldraw[orange!70] (5.5,1.5) circle(3pt) node[right,font=\tiny]{tarefa energia A};
+    \filldraw[orange!50] (5.2,1.2) circle(3pt) node[right,font=\tiny]{tarefa energia B};
+    \draw[dashed, orange!50] (5.35,1.35) ellipse (0.55cm and 0.45cm);
+    \node[orange!70, font=\tiny] at (5.35,0.7) {cluster energia};
+
+    % Cosine angle
+    \draw[thick, blue!70,->]  (0,0) -- (2.1,3.8) node[midway,left,font=\tiny]{$\vec{a}$};
+    \draw[thick, blue!50,->]  (0,0) -- (2.5,4.1) node[midway,right,font=\tiny]{$\vec{b}$};
+    \draw[<->, green!50!black] (0.6,1.1) arc (60:58.5:1.25cm)
+      node[right,font=\tiny]{$\theta$ pequeno → sim. elevada};
+  \end{tikzpicture}
+  \caption{Projeção 2D do espaço de \textit{embeddings}: textos similares formam clusters}
+  \label{fig:embedding_space}
+\end{figure}
+
+\subsection*{Similaridade do cosseno}
+
+A métrica de proximidade usada é a \textbf{similaridade do cosseno},
+definida como:
+
+\[
+  \text{sim}(\vec{a}, \vec{b})
+    = 1 - \frac{\vec{a} \cdot \vec{b}}{\|\vec{a}\| \cdot \|\vec{b}\|}
+    \in [0,\, 1]
+\]
+
+onde o valor 1 indica vectores idênticos (ângulo de 0°) e o valor 0
+indica vectores ortogonais (ângulo de 90°, sem relação semântica).
+A vantagem desta métrica sobre a distância euclidiana é que é
+invariante à magnitude dos vectores — o comprimento absoluto do vector
+não influencia o resultado, apenas a sua direção no espaço semântico.
+
+O \textit{pgvector} implementa esta operação com o operador binário
+\texttt{<=>} que calcula a \emph{distância} do cosseno ($1 - \text{sim}$);
+a similaridade obtém-se subtraindo a um:
+
+\begin{verbatim}
+SELECT branch_id,
+       1 - (se.embedding <=> ?::vector) AS similarity
+FROM   struggle_events se
+JOIN   adaptive_branches ab ON ab.struggle_event_id = se.id
+WHERE  ab.status = 'COMPLETED'
+ORDER  BY se.embedding <=> ?::vector
+LIMIT  1;
+\end{verbatim}
+
+O cast \texttt{?::vector} converte o \textit{array} de \textit{floats}
+para o tipo nativo \textit{pgvector}, necessário porque o JDBC não
+conhece este tipo de extensão.
+
+\subsection*{O índice IVFFlat: pesquisa aproximada de vizinho mais próximo}
+
+Uma pesquisa exacta por similaridade em $n$ vectores de 1024 dimensões
+requer $O(n)$ operações de produto interno — aceitável para centenas de
+vectores, mas inviável à escala de milhões.
+O \textit{pgvector} implementa o índice \textbf{IVFFlat}
+(\textit{Inverted File Flat})~\cite{johnson2019billion} que reduz esta
+complexidade ao custo de uma pequena imprecisão (pesquisa
+\emph{aproximada}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small]
+    % Partition cells
+    \foreach \x/\y/\c in {1.5/3.5/blue!15, 4/2/orange!15, 6.5/3.5/green!15,
+                           2/1/purple!10, 5/4.5/yellow!20} {
+      \filldraw[fill=\c, draw=gray!40] (\x,\y) ellipse (1.1cm and 0.7cm);
+    }
+    % Centroids
+    \foreach \x/\y in {1.5/3.5, 4/2, 6.5/3.5, 2/1, 5/4.5} {
+      \filldraw[black] (\x,\y) circle (2.5pt);
+    }
+    \node[font=\tiny] at (1.5,3.5) [below=4pt] {centróide};
+
+    % Query vector
+    \filldraw[red!80] (4.3,2.4) circle(3pt) node[right,font=\tiny]{$\vec{q}$ (nova dificuldade)};
+
+    % Nearest cluster highlighted
+    \draw[thick, orange!70, dashed] (4,2) ellipse (1.1cm and 0.7cm);
+    \node[font=\tiny, orange!80, align=center] at (4,0.9) {cluster mais próximo\\(único inspeccionado)};
+
+    \draw[->, red!70, thick] (4.3,2.4) -- (4,2);
+  \end{tikzpicture}
+  \caption{Funcionamento do índice IVFFlat: apenas o cluster mais próximo é inspeccionado}
+  \label{fig:ivfflat}
+\end{figure}
+
+O IVFFlat divide o espaço vectorial em \texttt{lists} partições durante
+a construção do índice (usando \textit{k-means}).
+Na pesquisa, apenas as \texttt{probes} partições mais próximas do vector
+de consulta são inspeccionadas.
+Com \texttt{lists=100} e \texttt{probes=10}, a pesquisa examina apenas
+$\approx 10\%$ dos vectores, com uma taxa de revocação tipicamente
+superior a 95\%~\cite{johnson2019billion}.
+
+\subsection*{As três estratégias de reutilização}
+
+Quando é detetada uma dificuldade num aprendente, o sistema calcula o
+\textit{embedding} da dificuldade e pesquisa o ramo de remediação
+mais similar já armazenado.
+O resultado da pesquisa determina a estratégia a seguir
+(Figura~\ref{fig:reuse_decision}):
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    box/.style={draw, fill=#1, rounded corners=4pt,
+                minimum width=3.2cm, minimum height=0.9cm, align=center},
+    dec/.style={draw, diamond, fill=yellow!20,
+                minimum width=2.5cm, minimum height=0.9cm, align=center}
+  ]
+    \node[box=blue!10]    (emb)   at (0, 0)    {Embeder dificuldade\\(1024 dim.)};
+    \node[box=blue!10]    (srch)  at (0,-1.8)  {Pesquisa ANN\\pgvector IVFFlat};
+    \node[dec]            (sim)   at (0,-3.6)  {similaridade?};
+
+    \node[box=green!18]   (full)  at (-4.5,-5.4){FULL\_REUSE\\{\small sim $>$ 0{,}90}\\{\tiny 0 chamadas ao LLM}};
+    \node[box=yellow!22]  (part)  at (0,-5.4)   {PARTIAL\_REUSE\\{\small 0{,}65–0{,}90}\\{\tiny LLM parcial}};
+    \node[box=orange!18]  (fresh) at ( 4.5,-5.4){FRESH\_GENERATION\\{\small $<$ 0{,}65}\\{\tiny LLM completo}};
+
+    \node[box=gray!12]    (pers)  at (0,-7.2)   {Persistir ramo +\\embedding};
+
+    \draw[->] (emb)  -- (srch);
+    \draw[->] (srch) -- (sim);
+    \draw[->] (sim)  -| node[above,font=\tiny]{elevada}  (full);
+    \draw[->] (sim)  -- node[right,font=\tiny]{média}    (part);
+    \draw[->] (sim)  -| node[above,font=\tiny]{baixa}    (fresh);
+    \draw[->] (full)  |- (pers);
+    \draw[->] (part)  -- (pers);
+    \draw[->] (fresh) |- (pers);
+  \end{tikzpicture}
+  \caption{Decisão de reutilização com base na similaridade do cosseno}
+  \label{fig:reuse_decision}
+\end{figure}
+
+\begin{description}
+  \item[\texttt{FULL\_REUSE} (similaridade $> 0{,}90$).]
+    O ramo de remediação existente é servido diretamente ao aprendente
+    sem qualquer chamada ao LLM.
+    Este é o \emph{percurso quente}: custo zero de \textit{tokens},
+    latência mínima, conteúdo já validado.
+    O contador Prometheus
+    \texttt{ai.adaptive.reuse\{strategy="full"\}} é incrementado.
+
+  \item[\texttt{PARTIAL\_REUSE} (0{,}65–0{,}90).]
+    Uma fração do ramo existente (proporcional à similaridade) é reutilizada;
+    as restantes tarefas são geradas de novo e o ramo composto é persistido.
+    Este percurso é adequado quando o tema é o mesmo mas o contexto
+    específico difere.
+
+  \item[\texttt{FRESH\_GENERATION} ($< 0{,}65$).]
+    Não existe nenhum ramo suficientemente similar.
+    O \texttt{StruggleAnalysisPrompt} é invocado com o contexto de
+    diagnóstico completo e o novo ramo gerado é persistido — enriquecendo
+    a biblioteca para utilizadores futuros.
+\end{description}
+
+\subsection*{O volante de inércia da personalização}
+
+O mecanismo de reutilização cria um efeito de volante de inércia
+(Figura~\ref{fig:flywheel}): cada nova dificuldade diagnosticada
+aumenta a biblioteca de ramos disponíveis, tornando as futuras pesquisas
+de similaridade mais provável de retornar um resultado de alta qualidade
+sem custo de geração.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small]
+    \def\R{2.8}
+    \draw[thick, ->, gray!50] (0:\R) arc (0:355:\R);
+    \node[draw, fill=blue!10, rounded corners=4pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at ( 90:\R) {Aprendente com\\dificuldade};
+    \node[draw, fill=orange!12, rounded corners=4pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at (  0:\R) {Padrão de erro\\classificado};
+    \node[draw, fill=purple!10, rounded corners=4pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at (270:\R) {Ramo gerado ou\\reutilizado};
+    \node[draw, fill=green!12, rounded corners=4pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at (180:\R) {Ramo + \textit{embedding}\\persistidos};
+    \node[font=\bfseries\small, align=center] at (0,0)
+          {Volante de\\Personalização};
+  \end{tikzpicture}
+  \caption{O volante de inércia: cada dificuldade enriquece a biblioteca de reutilização}
+  \label{fig:flywheel}
+\end{figure}
+
+Num sistema a frio (sem dados históricos), toda a geração é inédita.
+À medida que a base de utilizadores cresce, a taxa de
+\texttt{FULL\_REUSE} aumenta organicamente, reduzindo o custo de
+\textit{tokens} e a latência, e melhorando a consistência pedagógica
+da remediação.
+É o efeito de rede aplicado à personalização pedagógica.
+
+\subsection*{Desduplicação na geração de tarefas}
+
+O mesmo mecanismo vectorial é usado durante a geração de novas tarefas
+para evitar conteúdo semântico repetido no mesmo módulo.
+Após cada tarefa ser gerada pelo LLM, o adaptador chama
+\texttt{PgVectorDeduplicationService.isDuplicate()}, que executa uma
+consulta de similaridade contra as tarefas já armazenadas do mesmo tópico.
+Uma similaridade superior a 0{,}90 descarta a nova tarefa.
+Isto garante diversidade de conteúdo sem necessidade de análise manual
+pelo administrador.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Pilar II — Personalização: Deteção de Dificuldade e Remediação}
+\label{sec:pilar_remediacao}
+% ═══════════════════════════════════════════════════════════════════
+
+A deteção de dificuldade fecha o ciclo da personalização: o sistema
+aprende com o comportamento do aprendente em tempo real e adapta
+imediatamente a sua jornada de aprendizagem.
+
+\subsection*{Quando é ativada a remediação}
+
+O servidor regista o número de tentativas erradas em
+\texttt{TaskAssignment.wrongAttemptCount}.
+Quando este valor atinge 2 e o aprendente não tem ainda um ramo
+adaptativo atribuído para esta tarefa, o
+\texttt{TaskService} invoca
+\texttt{HandleStruggleService.triggerAsync()} de forma assíncrona —
+a resposta de submissão é devolvida imediatamente ao utilizador sem
+aguardar a geração.
+
+\subsection*{Classificação do padrão de erro}
+
+O padrão de erro é inferido a partir da opção selecionada repetidamente
+e da proximidade semântica com a opção correta:
+
+\begin{table}[ht]
+  \caption{Padrões de erro e directivas do \texttt{StruggleAnalysisPrompt}}
+  \label{tab:padroes_erro}
+  \vskip 0.5em
+  \centering
+  \begin{tabular}{lp{8cm}}
+    \toprule
+    \textbf{Padrão} & \textbf{Directiva de diagnóstico} \\
+    \midrule
+    \texttt{WRONG\_CONCEPT}        & Re-explicar o conceito central de forma diferente \\
+    \texttt{PARTIAL\_UNDERSTANDING}& Focar nos passos intermédios que o aprendente falha \\
+    \texttt{KNOWLEDGE\_GAP}        & Preencher o conhecimento pré-requisito antes de regressar \\
+    \texttt{UNCLEAR\_INSTRUCTIONS} & Fornecer orientação mais explícita \\
+    \texttt{TIME\_PRESSURE}        & Usar tarefas passo-a-passo ao ritmo do aprendente \\
+    \texttt{UNKNOWN}               & Andaimamento geral do básico ao intermédio \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Fluxo de remediação na aplicação móvel}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    scr/.style={draw, fill=#1, rounded corners=4pt,
+                minimum width=3.0cm, minimum height=0.9cm, align=center},
+    api/.style={draw, fill=gray!10, rounded corners=3pt,
+                minimum width=4.6cm, minimum height=0.7cm, align=center,
+                font=\ttfamily\tiny}
+  ]
+    \node[scr=orange!12] (t1) at (0, 0)   {Tarefa — 2ª tentativa\\errada};
+    \node[api]           (s1) at (6.0, 0) {POST /tasks/\{id\}/submit\\struggleTriggered=true};
+    \node[scr=red!10]    (t2) at (0,-2.0) {Ecrã Struggle\\{\tiny lista de tarefas adaptativas}};
+    \node[api]           (s2) at (6.0,-2.0){GET /struggle/enrollment/\{id\}};
+    \node[scr=orange!10] (t3) at (0,-3.8) {Tarefa adaptativa 1};
+    \node[api]           (s3) at (6.0,-3.8){POST struggle/.../submit};
+    \node[scr=orange!10] (t4) at (0,-5.6) {Tarefa adaptativa N};
+    \node[api]           (s4) at (6.0,-5.6){POST .../submit sessionResolved=true};
+    \node[scr=green!12]  (t5) at (0,-7.4) {Home\\{\tiny replaceAll}};
+
+    \draw[->] (t1) -- node[above,font=\tiny]{submissão} (s1);
+    \draw[->] (s1.west) -- ++(-0.5,0) |- (t2.east);
+    \draw[->] (t2) -- node[above,font=\tiny]{carregar} (s2);
+    \draw[->] (s2.west) -- ++(-0.5,0) |- (t3.east);
+    \draw[->] (t3) -- node[above,font=\tiny]{responder} (s3);
+    \draw[->] (s3.west) -- ++(-0.5,0) |- (t4.east);
+    \draw[->] (t4) -- node[above,font=\tiny]{responder} (s4);
+    \draw[->] (s4.west) -- ++(-0.5,0) |- (t5.east);
+  \end{tikzpicture}
+  \caption{Sequência de ecrãs e pedidos HTTP durante uma sessão de remediação}
+  \label{fig:struggle_sequence}
+\end{figure}
+
+Quando a sessão de dificuldade fica resolvida
+(\texttt{sessionResolved = true}), o efeito
+\texttt{StruggleEffect.NavigateToHome} é emitido.
+O \texttt{DefaultRootComponent} usa \texttt{navigation.replaceAll(Config.Home)}
+em vez de \texttt{pop()}, substituindo toda a pilha para que o botão de
+retrocesso não regresse ao ecrã de dificuldade.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Pilar III — Reconhecimento: Emissão de \textit{Badges}}
+\label{sec:pilar_reconhecimento}
+% ═══════════════════════════════════════════════════════════════════
+
+O pilar de Reconhecimento transforma conquistas em artefactos verificáveis.
+O \texttt{BadgeIssuanceService} é invocado após cada submissão correta e
+avalia critérios configuráveis armazenados na tabela \texttt{badge\_criteria}:
+
+\begin{itemize}
+  \item \textbf{Conclusão de módulo} — todas as tarefas de um tópico
+    concluídas com sucesso.
+  \item \textbf{Sequência diária} — \textit{streak} de $N$ dias consecutivos.
+  \item \textbf{Limiar de pontuação} — total de pontos acima de um valor
+    configurável.
+\end{itemize}
+
+Os \textit{badges} emitidos são persistidos na tabela \texttt{user\_badges}
+com a data de conquista, o critério cumprido e o identificador do tópico
+associado.
+O aprendente visualiza os seus \textit{badges} tanto na aplicação móvel
+(ecrã de Perfil) como no portal web de administração (vista de detalhe
+do utilizador).
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Arquitetura do Cliente Móvel: Kotlin Multiplatform}
+\label{sec:kmp}
+% ═══════════════════════════════════════════════════════════════════
+
+A aplicação móvel partilha a totalidade do código de negócio, rede e
+interface entre Android e iOS através de um único projeto Kotlin
+Multiplatform.
+Apenas os componentes que dependem de APIs nativas sem abstração KMP
+existem em conjuntos de fontes específicos por plataforma.
+
+\subsection*{Estrutura de conjuntos de fontes}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    common/.style={draw, fill=blue!8, rounded corners=4pt,
+                   minimum width=10.5cm, minimum height=0.78cm,
+                   align=center, text width=10cm},
+    plat/.style={draw, fill=#1, rounded corners=4pt,
+                 minimum width=4.8cm, minimum height=0.78cm, align=center}
+  ]
+    \node[common] at (0, 0.0) {\textbf{commonMain — Interface}
+      \ Compose Multiplatform: ecrãs, animações, sistema de design};
+    \node[common] at (0,-0.9) {\textbf{commonMain — Apresentação}
+      \ Decompose (\texttt{DefaultRootComponent}, \texttt{ChildStack}), efeitos MVI};
+    \node[common] at (0,-1.8) {\textbf{commonMain — Domínio}
+      \ Repositórios (interface), modelos, \texttt{AppError}, \texttt{NetworkError}};
+    \node[common] at (0,-2.7) {\textbf{commonMain — Dados}
+      \ \texttt{HttpClientFactory} (Ktor), \texttt{TokenStorage} (interface), DTOs};
+    \node[common] at (0,-3.6) {\textbf{commonMain — DI}
+      \ Koin: \texttt{AppModule}, módulos por funcionalidade,
+      \texttt{platformModule} (expect)};
+
+    \node[plat=green!14] at (-2.6,-5.0)
+      {\textbf{androidMain}\\OkHttp, \texttt{EncryptedSharedPreferences}\\
+       \texttt{MainActivity}, \texttt{NetworkDetection}};
+    \node[plat=gray!16]  at ( 2.6,-5.0)
+      {\textbf{iosMain}\\Darwin / NSURLSession, \texttt{KeychainTokenStorage}\\
+       \texttt{MainViewController}, \texttt{NWPathMonitor}};
+
+    \foreach \y in {-0.45,-1.35,-2.25,-3.15} {
+      \draw[->, gray!50] (5.5,\y) -- (5.5,\y-0.45);
+    }
+    \draw[->, gray!50] (-2.6,-4.05) -- (-2.6,-4.6);
+    \draw[->, gray!50] ( 2.6,-4.05) -- ( 2.6,-4.6);
+  \end{tikzpicture}
+  \caption{Estrutura KMP: \texttt{commonMain} partilhado e conjuntos de fontes por plataforma}
+  \label{fig:kmp_estrutura}
+\end{figure}
+
+\subsection*{Navegação com Decompose e padrão MVI}
+
+A navegação é gerida pelo Decompose através de uma
+\texttt{StackNavigation<Config>} serializada.
+A \texttt{Config} é uma interface selada com oito alternativas
+(\texttt{Splash}, \texttt{Login}, \texttt{Home}, \texttt{Task},
+\texttt{Profile}, \texttt{About}, \texttt{Explore}, \texttt{Struggle}).
+A serialização pelo \texttt{kotlinx.serialization} permite restaurar o
+estado da pilha após mudanças de configuração Android sem
+\texttt{ViewModel} adicional.
+
+Cada ecrã segue o padrão \textbf{MVI} com três canais:
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    b/.style={draw, fill=#1, rounded corners=4pt,
+              minimum width=3.2cm, minimum height=0.9cm, align=center}
+  ]
+    \node[b=blue!10]   (view) at (0,    0)  {Ecrã Compose\\(\textit{View})};
+    \node[b=green!12]  (comp) at (5.5,  0)  {Componente\\(\textit{Presenter})};
+    \node[b=orange!12] (repo) at (5.5,-2.5) {Repositório\\(\textit{Model})};
+    \node[b=gray!12]   (state)at (0,   -2.5){\texttt{Value<State>}\\imutável};
+
+    \draw[->, thick] (view)  -- node[above,font=\tiny]{\textit{Events} (onEvent)} (comp);
+    \draw[->, thick] (comp)  -- node[right,font=\tiny]{chamadas \texttt{suspend}} (repo);
+    \draw[->, thick] (repo)  -- node[below,font=\tiny]{resultado / erro} (comp);
+    \draw[->, thick] (comp)  -- node[left, font=\tiny]{\texttt{updateState\{\}}} (state);
+    \draw[->, thick] (state) -- node[left, font=\tiny]{\texttt{subscribeAsState()}} (view);
+    \draw[->, dashed, red!60] (comp) to[bend left=25]
+            node[above,font=\tiny]{\textit{Effects} (navegar)} (view);
+  \end{tikzpicture}
+  \caption{Fluxo de dados MVI: \textit{Events} → \textit{State} → \textit{Effects}}
+  \label{fig:mvi_fluxo}
+\end{figure}
+
+O \texttt{BaseView} renderiza um \texttt{ErrorDialog} automaticamente
+quando \texttt{state.error != null}, sem lógica adicional nos ecrãs
+individuais.
+O mapeamento de erros segue a cadeia:
+\texttt{Ktor/HTTP} → \texttt{NetworkError} → \texttt{AppError}
+→ \texttt{messageKey} localizado — cada camada é agnóstica da camada
+abaixo.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Observabilidade: Micrometer, Prometheus e Grafana}
+\label{sec:dd_observabilidade}
+% ═══════════════════════════════════════════════════════════════════
+
+A observabilidade é a capacidade de inferir o estado interno de um sistema
+a partir das suas saídas externas~\cite{humble2018accelerate}.
+Num sistema com um subsistema de IA de latência não determinística, a
+observabilidade não é um acrescento ao processo de implantação mas um
+requisito de concepção.
+
+\subsection*{A pilha de observabilidade}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    b/.style={draw, fill=#1, rounded corners=4pt,
+              minimum width=3.2cm, minimum height=0.9cm, align=center}
+  ]
+    \node[b=blue!10]   (app)  at (0, 0)   {Spring Boot\\Micrometer};
+    \node[b=orange!12] (prom) at (4.5, 0) {Prometheus\\scraping 5 s};
+    \node[b=green!12]  (graf) at (9.0, 0) {Grafana\\Dashboards};
+    \node[b=red!10]    (alert)at (4.5,-2.2){Alertmanager};
+
+    \draw[->] (app)  -- node[above,font=\tiny]{/actuator/prometheus} (prom);
+    \draw[->] (prom) -- node[above,font=\tiny]{PromQL} (graf);
+    \draw[->] (prom) -- node[left, font=\tiny]{alert.rules.yml} (alert);
+    \draw[->, dashed] (alert) -- node[right,font=\tiny]{\textit{webhook}} (4.5,-3.4);
+  \end{tikzpicture}
+  \caption{Pilha de observabilidade: Micrometer → Prometheus → Grafana}
+  \label{fig:observabilidade}
+\end{figure}
+
+\subsection*{Métricas de domínio}
+
+\begin{table}[ht]
+  \caption{Métricas Prometheus personalizadas do \textit{Play4Change}}
+  \label{tab:dd_metricas}
+  \vskip 0.5em
+  \centering
+  \begin{tabular}{llp{5.5cm}}
+    \toprule
+    \textbf{Métrica} & \textbf{Tipo} & \textbf{Descrição} \\
+    \midrule
+    \texttt{ai.generation.duration}      & Temporizador &
+      Duração das chamadas ao LLM por fase \\
+    \texttt{ai.generation.failures\_total} & Contador &
+      Falhas por tipo (\texttt{schema}, \texttt{adaptive}) \\
+    \texttt{ai.adaptive.reuse}           & Contador &
+      Distribuição \texttt{full} / \texttt{partial} / \texttt{fresh} \\
+    \texttt{ai.dedup.duplicates\_skipped}& Contador &
+      Tarefas rejeitadas pela desduplicação \\
+    \texttt{struggle\_sessions\_total}   & Contador &
+      Novas sessões por \texttt{error\_pattern} \\
+    \texttt{struggle\_sessions\_created\_total} & Contador &
+      Sessões por tópico \\
+    \texttt{topic\_enrollments\_total}   & Contador &
+      Inscrições por tópico \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Regras de alerta}
+
+\begin{table}[ht]
+  \caption{Regras de alerta Prometheus (8 regras em 4 grupos)}
+  \label{tab:alertas}
+  \vskip 0.5em
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Alerta} & \textbf{Severidade} & \textbf{Condição} \\
+    \midrule
+    \texttt{ServerDown}                      & crítico & \texttt{up == 0} por 1 min \\
+    \texttt{HighHttpErrorRate}               & aviso   & erros 5xx $> 5\%$ por 2 min \\
+    \texttt{HighAiGenerationFailureRate}     & aviso   & $> 0{,}1$ falhas/s por 5 min \\
+    \texttt{AiCircuitBreakerOpen}            & crítico & disjuntor aberto (imediato) \\
+    \texttt{AiGenerationP95High}             & aviso   & latência p95 $> 90$ s por 5 min \\
+    \texttt{JvmHeapUsageHigh}               & aviso   & \textit{heap} $> 85\%$ por 5 min \\
+    \texttt{JvmHeapUsageCritical}           & crítico & \textit{heap} $> 95\%$ por 2 min \\
+    \texttt{GenerationThreadPoolQueueSaturated} & aviso & fila $\geq 20$ por 2 min \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Modelo de Segurança}
+\label{sec:dd_seguranca}
+% ═══════════════════════════════════════════════════════════════════
+
+\begin{table}[ht]
+  \caption{Mapeamento dos controlos de segurança para o OWASP Top 10 (2021)}
+  \label{tab:owasp}
+  \vskip 0.5em
+  \centering
+  \begin{tabular}{lp{9cm}}
+    \toprule
+    \textbf{Risco} & \textbf{Controlo implementado} \\
+    \midrule
+    A01 Controlo de acesso quebrado &
+      \texttt{@AuthenticationPrincipal} vincula cada recurso ao principal
+      autenticado; \texttt{/admin/**} requer papel \texttt{ADMIN} \\
+    A02 Falhas criptográficas &
+      SHA-256 para \textit{magic link}; HTTPS/TLS obrigatório; sem
+      credenciais em texto simples \\
+    A03 Injeção &
+      Todo o acesso à base de dados via JPA ou \texttt{JdbcTemplate}
+      parametrizado; valores pgvector com \texttt{?::vector} \\
+    A05 Configuração incorreta &
+      Cabeçalhos de segurança Nginx; CORS restrito a origens conhecidas;
+      Actuator apenas na porta interna \\
+    A07 Falhas de autenticação &
+      \textit{Magic link} sem palavra-passe; token de utilização única;
+      limitação de taxa \\
+    A09 Registo e monitorização &
+      Registos estruturados SLF4J + MDC; alertas Prometheus sobre erros \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Adicionalmente, as respostas de erro de domínio não expõem pilhas de
+chamadas ou estado interno — o \texttt{@RestControllerAdvice} mapeia
+todas as exceções para o esquema \texttt{\{field, reason\}} sem campos
+de diagnóstico em produção.
+
+% ═══════════════════════════════════════════════════════════════════
+\section{Superfície Completa da API REST}
+\label{sec:dd_api_rest}
+% ═══════════════════════════════════════════════════════════════════
+
+\begin{table}[ht]
+  \caption{Superfície completa da API REST do \textit{Play4Change}}
+  \label{tab:api_completa}
+  \vskip 0.5em
+  \centering
+  \footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Método e Caminho} & \textbf{Ator} & \textbf{Finalidade} \\
+    \midrule
+    \texttt{POST /auth/magic-link}               & Qualquer & Solicitar \textit{magic link} \\
+    \texttt{GET  /auth/verify}                   & Qualquer & Redirecionar para \textit{deep link} \\
+    \texttt{POST /auth/magic-link/verify}        & Qualquer & Verificar token → par JWT \\
+    \texttt{POST /auth/refresh}                  & Qualquer & Renovar \textit{token} de acesso \\
+    \texttt{POST /auth/logout}                   & Qualquer & Revogar \textit{token} de atualização \\
+    \midrule
+    \texttt{POST /admin/topics}                  & Admin. & Criar tópico a partir de URL \\
+    \texttt{POST /admin/topics/pdf}              & Admin. & Criar tópico a partir de PDF \\
+    \texttt{GET  /admin/topics}                  & Admin. & Listar tópicos (paginado) \\
+    \texttt{GET  /admin/topics/\{id\}}           & Admin. & Detalhes e registo de fases \\
+    \texttt{GET  /admin/topics/\{id\}/progress}  & Admin. & Fluxo SSE de geração \\
+    \texttt{POST /admin/topics/\{id\}/regenerate}& Admin. & Reiniciar \textit{pipeline} \\
+    \texttt{GET  /admin/topics/\{id\}/tasks}     & Admin. & Listar modelos de tarefas \\
+    \texttt{PUT  /admin/tasks/\{id\}}            & Admin. & Editar modelo de tarefa \\
+    \texttt{GET  /admin/topics/\{id\}/struggle-tasks} & Admin. & Listar tarefas adaptativas \\
+    \texttt{GET  /admin/topics/\{id\}/prerequisites}& Admin. & Obter pré-requisitos \\
+    \texttt{POST /admin/topics/\{id\}/prerequisites}& Admin. & Definir pré-requisitos (DFS) \\
+    \texttt{GET  /admin/learning-graph}          & Admin. & DAG completo de pré-requisitos \\
+    \texttt{GET  /admin/users}                   & Admin. & Listar utilizadores \\
+    \texttt{GET  /admin/users/\{id\}}            & Admin. & Detalhes e estatísticas \\
+    \texttt{POST /admin/users/\{id\}/promote}    & Admin. & Promover para administrador \\
+    \midrule
+    \texttt{POST /user/enroll}                   & Aprendente & Inscrever em tópico \\
+    \texttt{GET  /tasks/today}                   & Aprendente & Obter tarefa do dia \\
+    \texttt{POST /tasks/\{id\}/submit}           & Aprendente & Submeter resposta \\
+    \texttt{GET  /user/roadmap}                  & Aprendente & Mapa de aprendizagem \\
+    \texttt{GET  /user/topics}                   & Aprendente & Tópicos disponíveis \\
+    \texttt{GET  /struggle/enrollment/\{id\}}    & Aprendente & Sessão de dificuldade \\
+    \texttt{POST /struggle/\{s\}/tasks/\{t\}/submit}& Aprendente & Submeter tarefa adaptativa \\
+    \texttt{GET  /user/badges}                   & Aprendente & \textit{Badges} conquistados \\
+    \texttt{GET  /user/profile}                  & Aprendente & Perfil e pontuação \\
+    \texttt{PUT  /user/profile/name}             & Aprendente & Atualizar nome \\
+    \texttt{GET  /public/stats}                  & Público & Estatísticas da página inicial \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Referências arquiteturais.}
+A arquitectura hexagonal é descrita por Cockburn~\cite{cockburn2005hexagonal}
+e aplicada com \textit{Domain-Driven Design}~\cite{evans2003ddd}.
+O tratamento funcional de erros usa o tipo \texttt{Either} da
+Arrow~\cite{arrow2024}.
+O \textit{streaming} SSE segue a especificação W3C~\cite{w3c2021sse}.
+A pesquisa vectorial usa a extensão \textit{pgvector}~\cite{pgvector2024}
+com indexação IVFFlat~\cite{johnson2019billion}.
+A engenharia de \textit{prompts} segue o Guia de Prompting da
+Google~\cite{google2024promptguide}.
+Os ramos adaptativos fundamentam-se na teoria de andaimamento de
+Vygotsky~\cite{vygotsky1978mind} e na aprendizagem por mestria de
+Bloom~\cite{bloom1984mastery}.

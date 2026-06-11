@@ -1,0 +1,94 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% frontpage.clo
+%% ISEL report configuration file
+%%
+%% Costumization for the FRONTPAGE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\printcoverpage{
+
+\thispagestyle{empty}
+\newgeometry{tmargin=1.5cm,bmargin=1.5cm,lmargin=2cm,rmargin=2cm}
+
+% --- Logos row ---
+\noindent
+\includegraphics[height=2.25cm]{\@universitylogo}%
+\hfill
+\includegraphics[height=2.25cm]{IPL}%
+\hfill
+\includegraphics[height=1.8cm]{UREKA}
+
+\vspace{2cm}
+
+\begin{center}
+\fontfamily{ptm}
+% Name of Department
+	\fontsize{14}{16.8}\selectfont
+	\textbf{\@department}
+\end{center}
+
+\vspace{3cm}
+
+\begin{center}
+\fontfamily{ptm}
+
+% Title of Dissertation
+	\fontsize{24}{28}\selectfont
+	\textbf{\titlemain}\\[0.4cm]
+	\fontsize{16}{20}\selectfont
+	\textbf{\titlesub}
+
+\vspace{3cm}
+
+% Name of Authors
+	\fontsize{13}{14.4}\selectfont
+	\ctable[
+		cap=,
+		caption=,
+		label=,
+		pos=h,
+		maxwidth=1\linewidth,
+		doinside=\hspace*{-0.1cm},
+	]{rX}{}{
+		\printauthor[]{1}
+		\printauthor[]{2}
+		\printauthor[]{3}
+}
+
+\vspace{1cm}
+
+%% Degree
+	\fontsize{12}{13}\selectfont
+	\@presentationtext
+
+\vspace{2cm}
+
+% Advisers
+	\fontsize{11}{14.4}\selectfont
+	\ctable[
+		cap=,
+		caption=,
+		label=,
+		pos=h,
+		maxwidth=1\linewidth,
+		doinside=\hspace*{-0.1cm},
+	]{rX}{}{
+		\printadviser[]{1}
+		\printadviser[]{2}
+		\printadviser[]{3}
+}
+
+\end{center}
+
+\vspace{0pt plus 3fill}
+
+\begin{center}
+% Date
+\fontsize{10}{12.2}\selectfont
+\textbf{\@theday ~ -- ~ \@themonth ~ -- ~  \@theyear}
+\end{center}
+
+\restoregeometry
+\cleardoublepage %\newpage
+\thispagestyle{empty}
+}

@@ -1,0 +1,853 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated as
+% required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+\datalist[entry]{debug/global//global/global/global}
+  \entry{arrow2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=A}{%
+         family={{Arrow Contributors}},
+         familyi={A\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{A1}
+    \strng{fullhash}{A1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{A}
+    \field{sortinithash}{A}
+    \field{title}{Arrow: Functional companion to Kotlin's standard library}
+    \verb{url}
+    \verb https://arrow-kt.io/
+    \endverb
+    \field{year}{2024}
+  \endentry
+
+  \entry{bloom1984mastery}{article}{}{}
+    \name{author}{1}{}{%
+      {{hash=BBS}{%
+         family={Bloom},
+         familyi={B\bibinitperiod},
+         given={Benjamin\bibnamedelima S.},
+         giveni={B\bibinitperiod\bibinitdelim S\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{BBS1}
+    \strng{fullhash}{BBS1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{B}
+    \field{sortinithash}{B}
+    \verb{doi}
+    \verb 10.3102/0013189X013006004
+    \endverb
+    \field{number}{6}
+    \field{pages}{4\bibrangedash 16}
+    \field{title}{The 2 Sigma Problem: The Search for Methods of Group Instruction as Effective as One-to-One Tutoring}
+    \field{volume}{13}
+    \field{journaltitle}{Educational Researcher}
+    \field{year}{1984}
+  \endentry
+
+  \entry{bloom1984sigma}{article}{}{}
+    \name{author}{1}{}{%
+      {{hash=BBS}{%
+         family={Bloom},
+         familyi={B\bibinitperiod},
+         given={Benjamin\bibnamedelima S.},
+         giveni={B\bibinitperiod\bibinitdelim S\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{BBS1}
+    \strng{fullhash}{BBS1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{B}
+    \field{sortinithash}{B}
+    \field{number}{6}
+    \field{pages}{4\bibrangedash 16}
+    \field{title}{The 2 sigma problem: The search for methods of group instruction as effective as one-to-one tutoring}
+    \field{volume}{13}
+    \field{journaltitle}{Educational Researcher}
+    \field{year}{1984}
+  \endentry
+
+  \entry{brooke1996sus}{inproceedings}{}{}
+    \name{author}{1}{}{%
+      {{hash=BJ}{%
+         family={Brooke},
+         familyi={B\bibinitperiod},
+         given={John},
+         giveni={J\bibinitperiod},
+      }}%
+    }
+    \name{editor}{4}{}{%
+      {{hash=JPW}{%
+         family={Jordan},
+         familyi={J\bibinitperiod},
+         given={P.\bibnamedelima W.},
+         giveni={P\bibinitperiod\bibinitdelim W\bibinitperiod},
+      }}%
+      {{hash=TB}{%
+         family={Thomas},
+         familyi={T\bibinitperiod},
+         given={B.},
+         giveni={B\bibinitperiod},
+      }}%
+      {{hash=WBA}{%
+         family={Weerdmeester},
+         familyi={W\bibinitperiod},
+         given={B.\bibnamedelima A.},
+         giveni={B\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+      {{hash=MIL}{%
+         family={McClelland},
+         familyi={M\bibinitperiod},
+         given={I.\bibnamedelima L.},
+         giveni={I\bibinitperiod\bibinitdelim L\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{2}{%
+      {Taylor}%
+      {Francis}%
+    }
+    \strng{namehash}{BJ1}
+    \strng{fullhash}{BJ1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{B}
+    \field{sortinithash}{B}
+    \field{booktitle}{Usability Evaluation in Industry}
+    \field{pages}{189\bibrangedash 194}
+    \field{title}{{SUS}: A quick and dirty usability scale}
+    \field{year}{1996}
+  \endentry
+
+  \entry{cockburn2005hexagonal}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=CA}{%
+         family={Cockburn},
+         familyi={C\bibinitperiod},
+         given={Alistair},
+         giveni={A\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{CA1}
+    \strng{fullhash}{CA1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{C}
+    \field{sortinithash}{C}
+    \field{title}{Hexagonal Architecture}
+    \verb{url}
+    \verb https://alistair.cockburn.us/hexagonal-architecture/
+    \endverb
+    \field{year}{2005}
+  \endentry
+
+  \entry{coursera2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=C}{%
+         family={{Coursera Inc.}},
+         familyi={C\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{C1}
+    \strng{fullhash}{C1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{C}
+    \field{sortinithash}{C}
+    \field{title}{Coursera --- Build skills with online courses from top institutions}
+    \verb{url}
+    \verb https://www.coursera.org
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{27}
+    \field{urlmonth}{05}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{deterding2011game}{inproceedings}{}{}
+    \name{author}{4}{}{%
+      {{hash=DS}{%
+         family={Deterding},
+         familyi={D\bibinitperiod},
+         given={Sebastian},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=DD}{%
+         family={Dixon},
+         familyi={D\bibinitperiod},
+         given={Dan},
+         giveni={D\bibinitperiod},
+      }}%
+      {{hash=KR}{%
+         family={Khaled},
+         familyi={K\bibinitperiod},
+         given={Rilla},
+         giveni={R\bibinitperiod},
+      }}%
+      {{hash=NL}{%
+         family={Nacke},
+         familyi={N\bibinitperiod},
+         given={Lennart},
+         giveni={L\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{DS+1}
+    \strng{fullhash}{DSDDKRNL1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{D}
+    \field{sortinithash}{D}
+    \field{booktitle}{Proceedings of the 15th International Academic MindTrek Conference}
+    \field{pages}{9\bibrangedash 15}
+    \field{title}{From game design elements to gamefulness: defining gamification}
+    \field{year}{2011}
+  \endentry
+
+  \entry{duolingo2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=D}{%
+         family={{Duolingo Inc.}},
+         familyi={D\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{D1}
+    \strng{fullhash}{D1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{D}
+    \field{sortinithash}{D}
+    \field{title}{Duolingo --- Learn a language for free}
+    \verb{url}
+    \verb https://www.duolingo.com
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{27}
+    \field{urlmonth}{05}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{edx2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=e}{%
+         family={{edX Inc.}},
+         familyi={e\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{e1}
+    \strng{fullhash}{e1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{E}
+    \field{sortinithash}{E}
+    \field{title}{edX --- Free online courses \& education}
+    \verb{url}
+    \verb https://www.edx.org
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{27}
+    \field{urlmonth}{05}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{eur2022micro}{report}{}{}
+    \name{author}{1}{}{%
+      {{hash=E}{%
+         family={{European Commission}},
+         familyi={E\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{E1}
+    \strng{fullhash}{E1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{E}
+    \field{sortinithash}{E}
+    \field{title}{European approach to micro-credentials for lifelong learning and employability}
+    \list{institution}{1}{%
+      {European Commission}%
+    }
+    \field{type}{techreport}
+    \field{year}{2022}
+  \endentry
+
+  \entry{evans2003ddd}{book}{}{}
+    \name{author}{1}{}{%
+      {{hash=EE}{%
+         family={Evans},
+         familyi={E\bibinitperiod},
+         given={Eric},
+         giveni={E\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {Addison-Wesley}%
+    }
+    \strng{namehash}{EE1}
+    \strng{fullhash}{EE1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{E}
+    \field{sortinithash}{E}
+    \field{title}{Domain-Driven Design: Tackling Complexity in the Heart of Software}
+    \field{year}{2003}
+  \endentry
+
+  \entry{fielding2000rest}{thesis}{}{}
+    \name{author}{1}{}{%
+      {{hash=FRT}{%
+         family={Fielding},
+         familyi={F\bibinitperiod},
+         given={Roy\bibnamedelima Thomas},
+         giveni={R\bibinitperiod\bibinitdelim T\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{FRT1}
+    \strng{fullhash}{FRT1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{F}
+    \field{sortinithash}{F}
+    \field{title}{Architectural styles and the design of network-based software architectures}
+    \list{institution}{1}{%
+      {University of California, Irvine}%
+    }
+    \field{type}{phdthesis}
+    \field{year}{2000}
+  \endentry
+
+  \entry{google2024promptguide}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=G}{%
+         family={{Google}},
+         familyi={G\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{G1}
+    \strng{fullhash}{G1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{G}
+    \field{sortinithash}{G}
+    \field{title}{Google Workspace with Gemini: Prompting Guide}
+    \verb{url}
+    \verb https://services.google.com/fh/files/misc/workspace_with_gemini_promp
+    \verb ting_guide.pdf
+    \endverb
+    \field{year}{2024}
+  \endentry
+
+  \entry{hamari2014does}{article}{}{}
+    \name{author}{3}{}{%
+      {{hash=HJ}{%
+         family={Hamari},
+         familyi={H\bibinitperiod},
+         given={Juho},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=KJ}{%
+         family={Koivisto},
+         familyi={K\bibinitperiod},
+         given={Jonna},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=SH}{%
+         family={Sarsa},
+         familyi={S\bibinitperiod},
+         given={Harri},
+         giveni={H\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{HJKJSH1}
+    \strng{fullhash}{HJKJSH1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{H}
+    \field{sortinithash}{H}
+    \field{pages}{3025\bibrangedash 3034}
+    \field{title}{Does gamification work? --- A literature review of empirical studies on gamification}
+    \field{journaltitle}{Proceedings of the 47th Hawaii International Conference on System Sciences}
+    \field{year}{2014}
+  \endentry
+
+  \entry{humble2018accelerate}{book}{}{}
+    \name{author}{3}{}{%
+      {{hash=FN}{%
+         family={Forsgren},
+         familyi={F\bibinitperiod},
+         given={Nicole},
+         giveni={N\bibinitperiod},
+      }}%
+      {{hash=HJ}{%
+         family={Humble},
+         familyi={H\bibinitperiod},
+         given={Jez},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=KG}{%
+         family={Kim},
+         familyi={K\bibinitperiod},
+         given={Gene},
+         giveni={G\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {IT Revolution Press}%
+    }
+    \strng{namehash}{FNHJKG1}
+    \strng{fullhash}{FNHJKG1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{H}
+    \field{sortinithash}{H}
+    \field{isbn}{978-1942788331}
+    \field{title}{Accelerate: The Science of Lean Software and DevOps}
+    \field{year}{2018}
+  \endentry
+
+  \entry{johnson2019billion}{article}{}{}
+    \name{author}{3}{}{%
+      {{hash=JJ}{%
+         family={Johnson},
+         familyi={J\bibinitperiod},
+         given={Jeff},
+         giveni={J\bibinitperiod},
+      }}%
+      {{hash=DM}{%
+         family={Douze},
+         familyi={D\bibinitperiod},
+         given={Matthijs},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=JH}{%
+         family={J{\'e}gou},
+         familyi={J\bibinitperiod},
+         given={Herv{\'e}},
+         giveni={H\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{JJDMJH1}
+    \strng{fullhash}{JJDMJH1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{J}
+    \field{sortinithash}{J}
+    \verb{doi}
+    \verb 10.1109/TBDATA.2019.2921572
+    \endverb
+    \field{number}{3}
+    \field{pages}{535\bibrangedash 547}
+    \field{title}{Billion-Scale Similarity Search with {GPUs}}
+    \field{volume}{7}
+    \field{journaltitle}{IEEE Transactions on Big Data}
+    \field{year}{2019}
+  \endentry
+
+  \entry{jordan2015mooc}{article}{}{}
+    \name{author}{1}{}{%
+      {{hash=JK}{%
+         family={Jordan},
+         familyi={J\bibinitperiod},
+         given={Katy},
+         giveni={K\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{JK1}
+    \strng{fullhash}{JK1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{J}
+    \field{sortinithash}{J}
+    \field{number}{3}
+    \field{pages}{341\bibrangedash 358}
+    \field{title}{Massive open online course completion rates revisited: Assessment, length and attrition}
+    \field{volume}{16}
+    \field{journaltitle}{The International Review of Research in Open and Distributed Learning}
+    \field{year}{2015}
+  \endentry
+
+  \entry{kahoot2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=K}{%
+         family={{Kahoot! AS}},
+         familyi={K\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{K1}
+    \strng{fullhash}{K1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{K}
+    \field{sortinithash}{K}
+    \field{title}{Kahoot! --- Learning games}
+    \verb{url}
+    \verb https://kahoot.com
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{27}
+    \field{urlmonth}{05}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{kasneci2023chatgpt}{article}{}{}
+    \true{moreauthor}
+    \true{morelabelname}
+    \name{author}{10}{}{%
+      {{hash=KE}{%
+         family={Kasneci},
+         familyi={K\bibinitperiod},
+         given={Enkelejda},
+         giveni={E\bibinitperiod},
+      }}%
+      {{hash=SK}{%
+         family={Se{\ss}ler},
+         familyi={S\bibinitperiod},
+         given={Kathrin},
+         giveni={K\bibinitperiod},
+      }}%
+      {{hash=KS}{%
+         family={K{\"u}chemann},
+         familyi={K\bibinitperiod},
+         given={Stefan},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=BM}{%
+         family={Bannert},
+         familyi={B\bibinitperiod},
+         given={Maria},
+         giveni={M\bibinitperiod},
+      }}%
+      {{hash=DD}{%
+         family={Dementieva},
+         familyi={D\bibinitperiod},
+         given={Daryna},
+         giveni={D\bibinitperiod},
+      }}%
+      {{hash=FF}{%
+         family={Fischer},
+         familyi={F\bibinitperiod},
+         given={Frank},
+         giveni={F\bibinitperiod},
+      }}%
+      {{hash=GU}{%
+         family={Gasser},
+         familyi={G\bibinitperiod},
+         given={Urs},
+         giveni={U\bibinitperiod},
+      }}%
+      {{hash=GG}{%
+         family={Groh},
+         familyi={G\bibinitperiod},
+         given={Georg},
+         giveni={G\bibinitperiod},
+      }}%
+      {{hash=GS}{%
+         family={G{\"u}nnemann},
+         familyi={G\bibinitperiod},
+         given={Stephan},
+         giveni={S\bibinitperiod},
+      }}%
+      {{hash=HE}{%
+         family={H{\"u}llermeier},
+         familyi={H\bibinitperiod},
+         given={Eyke},
+         giveni={E\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{KE+1}
+    \strng{fullhash}{KESKKSBMDDFFGUGGGSHE+1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{K}
+    \field{sortinithash}{K}
+    \field{pages}{102274}
+    \field{title}{ChatGPT for good? On opportunities and challenges of large language models for education}
+    \field{volume}{103}
+    \field{journaltitle}{Learning and Individual Differences}
+    \field{year}{2023}
+  \endentry
+
+  \entry{khanacademy2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=K}{%
+         family={{Khan Academy}},
+         familyi={K\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{K2}
+    \strng{fullhash}{K2}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{K}
+    \field{sortinithash}{K}
+    \field{title}{Khan Academy --- Free online courses, lessons \& practice}
+    \verb{url}
+    \verb https://www.khanacademy.org
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{27}
+    \field{urlmonth}{05}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{neirotti2014current}{article}{}{}
+    \name{author}{5}{}{%
+      {{hash=NP}{%
+         family={Neirotti},
+         familyi={N\bibinitperiod},
+         given={Paolo},
+         giveni={P\bibinitperiod},
+      }}%
+      {{hash=DMA}{%
+         family={De\bibnamedelima Marco},
+         familyi={D\bibinitperiod\bibinitdelim M\bibinitperiod},
+         given={Alberto},
+         giveni={A\bibinitperiod},
+      }}%
+      {{hash=CAC}{%
+         family={Cagliano},
+         familyi={C\bibinitperiod},
+         given={Anna\bibnamedelima Corinna},
+         giveni={A\bibinitperiod\bibinitdelim C\bibinitperiod},
+      }}%
+      {{hash=MG}{%
+         family={Mangano},
+         familyi={M\bibinitperiod},
+         given={Giulio},
+         giveni={G\bibinitperiod},
+      }}%
+      {{hash=SF}{%
+         family={Scorrano},
+         familyi={S\bibinitperiod},
+         given={Francesco},
+         giveni={F\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{NP+1}
+    \strng{fullhash}{NPDMACACMGSF1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{N}
+    \field{sortinithash}{N}
+    \field{pages}{25\bibrangedash 36}
+    \field{title}{Current trends in Smart City initiatives: Some stylised facts}
+    \field{volume}{38}
+    \field{journaltitle}{Cities}
+    \field{year}{2014}
+  \endentry
+
+  \entry{owasp2021}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=O}{%
+         family={{OWASP Foundation}},
+         familyi={O\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{O1}
+    \strng{fullhash}{O1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{O}
+    \field{sortinithash}{O}
+    \field{title}{{OWASP} Top Ten 2021}
+    \verb{url}
+    \verb https://owasp.org/www-project-top-ten/
+    \endverb
+    \field{year}{2021}
+    \field{urlday}{27}
+    \field{urlmonth}{05}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{owasp2021a05}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=O}{%
+         family={{OWASP Foundation}},
+         familyi={O\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{O1}
+    \strng{fullhash}{O1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{O}
+    \field{sortinithash}{O}
+    \field{title}{A05:2021 --- Security Misconfiguration}
+    \verb{url}
+    \verb https://owasp.org/Top10/A05_2021-Security_Misconfiguration/
+    \endverb
+    \field{year}{2021}
+  \endentry
+
+  \entry{owasp2021a07}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=O}{%
+         family={{OWASP Foundation}},
+         familyi={O\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{O1}
+    \strng{fullhash}{O1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{O}
+    \field{sortinithash}{O}
+    \field{title}{A07:2021 --- Identification and Authentication Failures}
+    \verb{url}
+    \verb https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Fa
+    \verb ilures/
+    \endverb
+    \field{year}{2021}
+  \endentry
+
+  \entry{pgvector2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=KA}{%
+         family={Kane},
+         familyi={K\bibinitperiod},
+         given={Andrew},
+         giveni={A\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{KA1}
+    \strng{fullhash}{KA1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{P}
+    \field{sortinithash}{P}
+    \field{title}{pgvector: Open-source vector similarity search for PostgreSQL}
+    \verb{url}
+    \verb https://github.com/pgvector/pgvector
+    \endverb
+    \field{year}{2024}
+  \endentry
+
+  \entry{un2015sdg}{report}{}{}
+    \name{author}{1}{}{%
+      {{hash=U}{%
+         family={{United Nations}},
+         familyi={U\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{U1}
+    \strng{fullhash}{U1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{U}
+    \field{sortinithash}{U}
+    \field{number}{A/RES/70/1}
+    \field{title}{Transforming our world: the 2030 Agenda for Sustainable Development}
+    \list{institution}{1}{%
+      {United Nations}%
+    }
+    \field{type}{techreport}
+    \field{year}{2015}
+  \endentry
+
+  \entry{ureka2024}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=U}{%
+         family={{U!REKA Alliance}},
+         familyi={U\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{U2}
+    \strng{fullhash}{U2}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{U}
+    \field{sortinithash}{U}
+    \field{title}{U!REKA --- University Research and Knowledge Alliance}
+    \verb{url}
+    \verb https://ureka.eu
+    \endverb
+    \field{year}{2024}
+    \field{urlday}{27}
+    \field{urlmonth}{05}
+    \field{urlyear}{2026}
+  \endentry
+
+  \entry{vanlehn2011relative}{article}{}{}
+    \name{author}{1}{}{%
+      {{hash=VK}{%
+         family={VanLehn},
+         familyi={V\bibinitperiod},
+         given={Kurt},
+         giveni={K\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{VK1}
+    \strng{fullhash}{VK1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{V}
+    \field{sortinithash}{V}
+    \field{number}{4}
+    \field{pages}{197\bibrangedash 221}
+    \field{title}{The relative effectiveness of human tutoring, intelligent tutoring systems, and other tutoring systems}
+    \field{volume}{46}
+    \field{journaltitle}{Educational Psychologist}
+    \field{year}{2011}
+  \endentry
+
+  \entry{vygotsky1978mind}{book}{}{}
+    \name{author}{1}{}{%
+      {{hash=VL}{%
+         family={Vygotsky},
+         familyi={V\bibinitperiod},
+         given={Lev},
+         giveni={L\bibinitperiod},
+      }}%
+    }
+    \list{publisher}{1}{%
+      {Harvard University Press}%
+    }
+    \strng{namehash}{VL1}
+    \strng{fullhash}{VL1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{V}
+    \field{sortinithash}{V}
+    \field{isbn}{978-0674576292}
+    \field{title}{Mind in Society: The Development of Higher Psychological Processes}
+    \field{year}{1978}
+  \endentry
+
+  \entry{w3c2021sse}{online}{}{}
+    \name{author}{1}{}{%
+      {{hash=W}{%
+         family={{W3C}},
+         familyi={W\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{W1}
+    \strng{fullhash}{W1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{W}
+    \field{sortinithash}{W}
+    \field{title}{Server-Sent Events}
+    \verb{url}
+    \verb https://www.w3.org/TR/eventsource/
+    \endverb
+    \field{year}{2021}
+  \endentry
+\enddatalist
+\endinput

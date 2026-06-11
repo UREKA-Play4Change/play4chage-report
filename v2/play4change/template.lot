@@ -1,0 +1,27 @@
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Análise comparativa de plataformas de aprendizagem}}{7}{table.caption.8}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Requisitos funcionais do Play4Change}}{11}{table.caption.11}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Requisitos não funcionais do Play4Change}}{11}{table.caption.12}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Stack tecnológico do Play4Change}}{20}{table.caption.19}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Principais grupos de \textit {endpoints} da API REST}}{23}{table.caption.22}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Métricas de domínio personalizadas do Play4Change}}{25}{table.caption.24}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Padrões de erro e directivas do \texttt {StruggleAnalysisPrompt}}}{39}{table.caption.36}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Métricas Prometheus personalizadas do \textit {Play4Change}}}{42}{table.caption.41}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Regras de alerta Prometheus (8 regras em 4 grupos)}}{42}{table.caption.42}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Mapeamento dos controlos de segurança para o OWASP Top 10 (2021)}}{43}{table.caption.43}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Superfície completa da API REST do \textit {Play4Change}}}{44}{table.caption.44}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Indicadores de desempenho do Play4Change}}{46}{table.caption.45}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Eficácia do mecanismo de aprendizagem adaptativa}}{46}{table.caption.46}%
+\addvspace {10\p@ }

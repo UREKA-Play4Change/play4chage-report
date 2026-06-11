@@ -1,0 +1,2196 @@
+%
+%  chapter_deepdive.tex
+%  Aprofundamento Técnico: Por Detrás do Play4Change
+%
+%  Este capítulo percorre cada interação significativa da plataforma —
+%  desde o cliente até à API, serviços de aplicação, agente de IA e base
+%  de dados — documentando contratos HTTP, conteúdo de prompts, caminhos
+%  de erro e instrumentação de observabilidade.
+%
+\chapter{Aprofundamento Técnico: Por Detrás do Sistema}
+\label{cha:deepdive}
+
+\section{Enquadramento}
+\label{sec:deepdive_enquadramento}
+
+Os capítulos anteriores descreveram \emph{o que} o \textit{Play4Change} faz.
+O presente capítulo explica \emph{como} o faz — percorrendo cada ação
+relevante no portal de administração e na jornada do aprendente desde o
+momento em que uma interação é iniciada até ao momento em que os dados
+são escritos na base de dados e uma resposta é devolvida ao cliente.
+
+A plataforma serve \textbf{três tipos de cliente} com superfícies
+tecnológicas distintas (Figura~\ref{fig:clientes_visao_geral}):
+
+\begin{description}
+  \item[\textit{Portal Web} de Administração] implementado em React
+    TypeScript com TanStack Query, reservado aos administradores de
+    conteúdo; é o único cliente com capacidade de criação de tópicos,
+    visualização de progresso SSE em tempo real e gestão de utilizadores.
+
+  \item[Aplicação Móvel] implementada em Kotlin Multiplatform com Compose
+    Multiplatform para Android e iOS; é a superfície primária dos
+    aprendentes — inscrição em tópicos, resolução de tarefas diárias,
+    progressão no mapa de aprendizagem e remediação adaptativa.
+
+  \item[API REST Spring Boot] serve ambos os clientes acima através do
+    mesmo conjunto de \textit{endpoints} (com controlo de acesso por
+    papel); não existe uma API separada por tipo de cliente.
+\end{description}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    client/.style={draw, rounded corners=5pt, fill=#1,
+                   minimum width=3.2cm, minimum height=1.2cm, align=center},
+    srv/.style={draw, rounded corners=5pt, fill=green!12,
+                minimum width=4cm, minimum height=1.4cm, align=center},
+    db/.style={draw, rounded corners=3pt, fill=gray!12,
+               minimum width=2.4cm, minimum height=0.9cm, align=center}
+  ]
+    \node[client=blue!12]    (web)   at (-4.5, 0) {Portal Web\\{\small React + TypeScript}\\{\tiny Administrador}};
+    \node[client=orange!15]  (mob)   at ( 4.5, 0) {App Móvel\\{\small KMP + Compose}\\{\tiny Aprendente}};
+    \node[srv]               (api)   at (0,   -2.8){Spring Boot API\\{\small REST + SSE}\\{\tiny HTTPS / JSON}};
+    \node[db]                (pg)    at (-2.8,-5.2){PostgreSQL\\{\tiny + pgvector}};
+    \node[db]                (minio) at ( 0,  -5.2){MinIO\\{\tiny S3-compatível}};
+    \node[db]                (ai)    at ( 2.8,-5.2){Mistral AI\\{\tiny LangChain4j}};
+
+    \draw[->] (web)  -- node[left, font=\tiny]{HTTPS + JWT} (api);
+    \draw[->] (mob)  -- node[right,font=\tiny]{HTTPS + JWT} (api);
+    \draw[->] (api)  -- (pg);
+    \draw[->] (api)  -- (minio);
+    \draw[->] (api)  -- (ai);
+    \draw[->, dashed, color=blue!60] (api) -- node[above,font=\tiny,sloped]{SSE} (web);
+  \end{tikzpicture}
+  \caption{Visão geral dos três clientes e dos serviços de suporte do \textit{Play4Change}}
+  \label{fig:clientes_visao_geral}
+\end{figure}
+
+Para cada fluxo, a análise cobre: o pedido HTTP exato emitido; a sequência
+de serviços de aplicação invocados; os dados persistidos; os \textit{prompts}
+de IA injetados (quando aplicável); a resposta devolvida no percurso de
+sucesso; e o tratamento de erros em cada caminho de falha.
+O capítulo cobre explicitamente os dois clientes — portal web e aplicação
+móvel — identificando as diferenças de implementação sempre que relevante.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Os Três Pilares: Perspetiva de Engenharia}
+\label{sec:tres_pilares}
+
+O \textit{Play4Change} está organizado em torno de três pilares de desenho:
+\textbf{Envolvimento}, \textbf{Personalização} e \textbf{Reconhecimento}.
+Do ponto de vista da engenharia, cada pilar corresponde a um subsistema
+distinto.
+
+\begin{description}
+  \item[Envolvimento] é concretizado pela camada de gamificação:
+    atribuição diária de tarefas (\texttt{TaskAssignment}), pontos de
+    experiência, contadores de sequência diária (\textit{streak}) e a
+    visualização do mapa de aprendizagem no cliente móvel.
+    O servidor impõe uma atribuição por dia por tópico, atribuindo pontos
+    apenas na primeira submissão correta.
+
+  \item[Personalização] é a contribuição de investigação central do
+    sistema, concretizada por dois mecanismos cooperantes: o
+    \textit{pipeline} generativo de IA (LangChain4j + Mistral), que cria
+    tarefas específicas por tópico e ramos de remediação adaptativos a
+    pedido, e o \textit{motor de similaridade vectorial} (\textit{pgvector}),
+    que reutiliza progressivamente ramos gerados anteriormente sempre que
+    o perfil de dificuldade de um aprendente corresponde ao de um perfil
+    passado.
+    Desta forma, o sistema torna-se mais inteligente a cada aprendente que
+    serve: um padrão de dificuldade registado por um utilizador enriquece
+    a biblioteca de ramos reutilizáveis disponíveis para todos os
+    utilizadores futuros.
+
+  \item[Reconhecimento] é implementado pelo subsistema de
+    \textit{badges} (\texttt{BadgeIssuanceService}), que avalia critérios
+    configuráveis — conclusão de módulo, comprimento de sequência diária,
+    limiares de pontuação — após cada submissão de tarefa, emitindo
+    \textit{badges} digitais verificáveis armazenados em PostgreSQL.
+\end{description}
+
+O restante do capítulo organiza-se em torno destes pilares, começando
+pela fundação de autenticação comum a ambos os tipos de ator.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Autenticação: O Protocolo \textit{Magic Link}}
+\label{sec:auth_deepdive}
+
+O \textit{Play4Change} adopta uma estratégia de autenticação sem palavra-passe
+(\textit{magic link}), eliminando o armazenamento de credenciais e a
+superfície de ataque associada a ataques de reutilização de
+credenciais~\cite{owasp2021a07}.
+
+\subsection*{Passo 1 — Pedido de ligação}
+
+O administrador ou aprendente submete o seu endereço de correio eletrónico.
+O \textit{frontend} web envia:
+
+\begin{verbatim}
+POST /auth/magic-link
+Content-Type: application/json
+
+{ "email": "alice@example.com" }
+\end{verbatim}
+
+O \texttt{AuthController} delega no \texttt{MagicLinkService}, que:
+(i)~localiza ou cria o registo de utilizador;
+(ii)~gera um \textit{token} aleatório criptograficamente seguro e armazena
+o seu resumo SHA-256 com um TTL de 15 minutos;
+(iii)~envia o \textit{e-mail} com a ligação de autenticação via API Resend.
+A resposta é \texttt{202 Accepted} com uma mensagem genérica — a mesma
+resposta é devolvida independentemente de o endereço existir ou não,
+impedindo ataques de enumeração de utilizadores~\cite{owasp2021a05}.
+Um \texttt{RateLimitService} impõe um máximo de três pedidos por endereço
+por hora.
+
+\subsection*{Passo 2 — Clique na ligação}
+
+O \textit{e-mail} contém uma ligação para \texttt{GET /auth/verify?token=\{raw\}}.
+O servidor \emph{não} consome o \textit{token} neste passo; em vez disso,
+emite:
+
+\begin{verbatim}
+HTTP/1.1 302 Found
+Location: play4change://auth/verify?token={raw}
+\end{verbatim}
+
+No cliente móvel, o sistema operativo interceta o esquema URI personalizado
+e abre a aplicação nativa.
+No portal \textit{web}, o \textit{frontend} interceta o redirecionamento
+através da página de \textit{callback} OAuth (\texttt{AuthCallbackPage}).
+
+\subsection*{Passo 3 — Verificação do \textit{token}}
+
+O cliente envia o \textit{token} em claro:
+
+\begin{verbatim}
+POST /auth/magic-link/verify
+Content-Type: application/json
+
+{ "token": "{raw}" }
+\end{verbatim}
+
+O \texttt{MagicLinkService} recalcula o resumo SHA-256 do \textit{token}
+recebido, consulta o \texttt{MagicLinkTokenJpaRepository} em busca de um
+registo correspondente não expirado e, em caso de sucesso, marca o
+\textit{token} como consumido (utilização única).
+O \texttt{TokenService} emite então um \textit{token} de acesso JWT
+(curta duração, 15--30 minutos) e um \textit{token} de atualização
+(TTL de 7 dias) armazenado em PostgreSQL.
+A resposta é:
+
+\begin{verbatim}
+HTTP/1.1 200 OK
+{
+  "accessToken": "<JWT>",
+  "refreshToken": "<opaque>",
+  "expiresIn": 900
+}
+\end{verbatim}
+
+No \textit{frontend} web, o \texttt{apiClient.ts} armazena o \textit{token}
+de acesso em \texttt{sessionStorage} e o \textit{token} de atualização
+num \textit{cookie} com os atributos
+\texttt{SameSite=Strict; Secure}, mitigando ataques
+CSRF~\cite{owasp2021a01,west2016samesite}.
+
+Na aplicação móvel, a interface \texttt{TokenStorage} abstrai o mecanismo
+de persistência segura com implementações distintas por plataforma:
+
+\begin{itemize}
+  \item \textbf{Android} — \texttt{EncryptedSharedPreferencesTokenStorage}
+    utiliza a API \texttt{EncryptedSharedPreferences} do Jetpack Security,
+    que aplica encriptação AES-256-GCM às chaves e AES-256-SIV aos valores,
+    com a chave-mestra armazenada no \textit{Android Keystore}.
+
+  \item \textbf{iOS} — \texttt{KeychainTokenStorage} acede diretamente à
+    \textit{Security Framework} do sistema via \textit{Kotlin/Native CInterop}.
+    A classe usa \texttt{kSecUseDataProtectionKeychain = true} (obrigatório
+    em iOS 13+ e no simulador iOS 26.2) e
+    \texttt{kSecAttrAccessibleAfterFirstUnlock}, que permite a renovação de
+    \textit{tokens} em segundo plano após o primeiro desbloqueio do
+    dispositivo pós-arranque.
+    A estratégia de escrita aplica \texttt{SecItemAdd} e, em caso de
+    \texttt{errSecDuplicateItem} (reinstalação da aplicação), recorre a
+    \texttt{SecItemUpdate}, evitando que uma reinstalação provoque erros
+    silenciosos de persistência.
+\end{itemize}
+
+\subsection*{Passo 4 — Renovação silenciosa}
+
+\paragraph{Portal web.}
+Os interceptores de resposta Axios detetam \texttt{401 Unauthorized}
+em pedidos que não sejam de autenticação.
+O interceptor emite \texttt{POST /auth/refresh} usando o \textit{token}
+de atualização armazenado.
+Os pedidos concorrentes que chegam durante a renovação são colocados em
+fila através de um padrão de subscritor; assim que o novo par de
+\textit{tokens} é obtido, todos os pedidos em fila são reenviados com o
+novo \textit{token} de acesso.
+Se a renovação falhar, \texttt{clearTokens()} apaga todas as credenciais
+armazenadas e dispara um \texttt{CustomEvent("auth:session-expired")} que
+a árvore React trata via \textit{React Router}, preservando o encaminhamento
+SPA sem recarregar a página.
+
+\paragraph{Aplicação móvel.}
+O \texttt{HttpClientFactory} instala o \textit{plugin} \texttt{Auth} do
+Ktor com a estratégia \texttt{bearer}.
+O bloco \texttt{loadTokens} carrega o par de \textit{tokens} a partir do
+\texttt{TokenStorage} no início de cada pedido.
+O bloco \texttt{refreshTokens} é invocado automaticamente pelo Ktor quando
+o servidor devolve \texttt{401}: envia \texttt{POST /auth/refresh} com o
+\textit{token} de atualização e armazena o novo par.
+Erros de rede transitórios durante a renovação não limpam os \textit{tokens}
+— o pedido original falha e o utilizador pode tentar novamente.
+Se a renovação falhar com um erro de servidor (não transitório), os
+\textit{tokens} são apagados e o \texttt{SessionEventBus.sessionExpired()}
+é emitido num \texttt{MutableSharedFlow}.
+O \texttt{DefaultRootComponent} observa este fluxo e invoca
+\texttt{navigation.replaceAll(Config.Login)}, redirecionando o utilizador
+para o ecrã de autenticação sem destruir e recriar a \textit{Activity}
+Android.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    client/.style={draw, fill=blue!10, rounded corners=3pt,
+                   minimum width=2.8cm, minimum height=0.7cm, align=center},
+    server/.style={draw, fill=green!10, rounded corners=3pt,
+                   minimum width=2.8cm, minimum height=0.7cm, align=center},
+    ext/.style={draw, fill=orange!10, rounded corners=3pt,
+                minimum width=2.8cm, minimum height=0.7cm, align=center}
+  ]
+    \node[client] (browser) at (0,0)    {Browser / Aplicação};
+    \node[server] (api)     at (5.5,0)  {Spring Boot API};
+    \node[ext]    (email)   at (10.5,0) {Resend (E-mail)};
+    \node[ext]    (db)      at (10.5,-5){PostgreSQL};
+
+    \draw[dashed] (0,-0.35) -- (0,-9.5);
+    \draw[dashed] (5.5,-0.35) -- (5.5,-9.5);
+    \draw[dashed] (10.5,-0.35) -- (10.5,-9.5);
+
+    \draw[->] (0,-1)   -- node[above,font=\tiny]{POST /auth/magic-link} (5.5,-1);
+    \draw[->] (5.5,-1.7) -- node[above,font=\tiny]{enviar e-mail} (10.5,-1.7);
+    \draw[->] (5.5,-2.4) -- node[above,font=\tiny]{guardar token SHA-256} (10.5,-2.4);
+    \draw[->] (5.5,-3.1) -- node[above,font=\tiny]{202 Accepted} (0,-3.1);
+    \draw[->] (0,-4)   -- node[above,font=\tiny]{GET /auth/verify?token=X} (5.5,-4);
+    \draw[->] (5.5,-4.7) -- node[above,font=\tiny]{302 → play4change://} (0,-4.7);
+    \draw[->] (0,-5.7) -- node[above,font=\tiny]{POST /auth/magic-link/verify} (5.5,-5.7);
+    \draw[->] (5.5,-6.4) -- node[above,font=\tiny]{verificar SHA-256} (10.5,-6.4);
+    \draw[->] (10.5,-7.1) -- node[above,font=\tiny]{marcar consumido} (5.5,-7.1);
+    \draw[->] (5.5,-7.8) -- node[above,font=\tiny]{200 OK \{accessToken, refreshToken\}} (0,-7.8);
+    \draw[->] (0,-9)   -- node[above,font=\tiny]{Pedido API (+ Bearer token)} (5.5,-9);
+    \draw[->] (5.5,-9.5) -- node[above,font=\tiny]{200 OK / 401 → renovação} (0,-9.5);
+  \end{tikzpicture}
+  \caption{Sequência de autenticação por \textit{magic link}}
+  \label{fig:auth_sequence}
+\end{figure}
+
+\subsection*{Tratamento do \textit{deep link} na aplicação móvel}
+
+Quando o utilizador toca na ligação do \textit{e-mail} num dispositivo
+móvel, o sistema operativo interceta o esquema URI
+\texttt{play4change://auth/verify?token=\{raw\}} e abre a aplicação.
+
+No Android, a \texttt{MainActivity} recebe o \texttt{Intent} no método
+\texttt{onCreate()} (arranque frio) ou \texttt{onNewIntent()} (aplicação
+já em execução).
+O método \texttt{handleIntent()} extrai o parâmetro \texttt{token} da
+\textit{query string} quando o caminho começa em \texttt{/auth/verify}:
+
+\begin{verbatim}
+val token = intent.data
+    ?.takeIf { it.path?.startsWith("/auth/verify") == true }
+    ?.getQueryParameter("token") ?: return
+root.handleDeepLink(token)
+\end{verbatim}
+
+O \texttt{DefaultRootComponent.handleDeepLink()} verifica o \textit{token}
+com \texttt{POST /auth/magic-link/verify} e navega para
+\texttt{Config.Home} em caso de sucesso.
+Se a verificação falhar \emph{e} não existir já uma sessão ativa
+(i.e., \texttt{tokenStorage.getAccessToken() == null}), navega para
+\texttt{Config.Login} — caso contrário não interrompe a sessão existente,
+cobrindo o cenário em que o utilizador toca na ligação num segundo
+dispositivo enquanto já está autenticado noutro.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Arquitetura do Cliente Móvel: Kotlin Multiplatform}
+\label{sec:kmp_arquitetura}
+
+A aplicação móvel do \textit{Play4Change} é construída com
+\textbf{Kotlin Multiplatform} (KMP), partilhando lógica de negócio,
+camada de rede, módulos de injeção de dependências e código de interface
+de utilizador entre Android e iOS através de um único conjunto de fontes
+\texttt{commonMain}.
+Apenas os componentes que dependem de APIs nativas não abstraídas
+permanecem em conjuntos de fontes específicos por plataforma
+(Figura~\ref{fig:kmp_estrutura}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    common/.style={draw, fill=blue!10, rounded corners=4pt,
+                   minimum width=10cm, minimum height=0.85cm,
+                   align=center, text width=9.5cm},
+    platform/.style={draw, fill=#1, rounded corners=4pt,
+                     minimum width=4.5cm, minimum height=0.85cm, align=center},
+    lbl/.style={font=\bfseries\small}
+  ]
+    % commonMain layers
+    \node[common] (ui)   at (0,  0)   {\textbf{commonMain — Interface (Compose Multiplatform)}\\
+                                        Ecrãs, componentes de design, animações};
+    \node[common] (pres) at (0,-1.1)  {\textbf{commonMain — Apresentação (Decompose + MVI)}\\
+                                        \texttt{DefaultRootComponent}, \texttt{BaseComponent}, efeitos, eventos};
+    \node[common] (dom)  at (0,-2.2)  {\textbf{commonMain — Domínio}\\
+                                        repositórios (interface), modelos, \texttt{AppError}, \texttt{NetworkError}};
+    \node[common] (data) at (0,-3.3)  {\textbf{commonMain — Dados}\\
+                                        \texttt{HttpClientFactory}, \texttt{TokenStorage} (interface), DTOs, Ktor};
+    \node[common] (di)   at (0,-4.4)  {\textbf{commonMain — Injeção (Koin)}\\
+                                        \texttt{AppModule}, módulos de funcionalidade, \texttt{platformModule} (expect)};
+
+    % Platform-specific
+    \node[platform=green!15]  (and) at (-2.6,-5.8) {\textbf{androidMain}\\
+                                        OkHttp, \texttt{EncryptedSharedPreferences},\\
+                                        \texttt{MainActivity}, NetworkDetection};
+    \node[platform=gray!18]   (ios) at ( 2.6,-5.8) {\textbf{iosMain}\\
+                                        Darwin, \texttt{KeychainTokenStorage},\\
+                                        \texttt{MainViewController}, NetworkDetection};
+
+    \draw[->] (ui)   -- (pres);
+    \draw[->] (pres) -- (dom);
+    \draw[->] (dom)  -- (data);
+    \draw[->] (data) -- (di);
+    \draw[->] (di.south) ++(-1.5,0) -- (and.north);
+    \draw[->] (di.south) ++( 1.5,0) -- (ios.north);
+  \end{tikzpicture}
+  \caption{Estrutura de conjuntos de fontes KMP da aplicação \textit{Play4Change}}
+  \label{fig:kmp_estrutura}
+\end{figure}
+
+\subsection*{Padrão \textit{expect}/\textit{actual}}
+
+O KMP compila o código \texttt{commonMain} para cada plataforma alvo.
+As declarações \texttt{expect} no código partilhado definem contratos que
+as implementações \texttt{actual} em cada plataforma devem satisfazer.
+Os três pontos de variabilidade no \textit{Play4Change} são:
+
+\begin{description}
+  \item[\texttt{TokenStorage}] Interface partilhada; implementada por
+    \texttt{EncryptedSharedPreferencesTokenStorage} (Android) e
+    \texttt{KeychainTokenStorage} (iOS).
+    O módulo Koin da plataforma (\texttt{platformModule}) regista a
+    implementação correta em tempo de compilação — o código partilhado
+    nunca depende de uma implementação concreta.
+
+  \item[\texttt{HttpEngineFactory}] Declaração \texttt{expect fun
+    platformHttpClient(block)}: devolve um \texttt{HttpClient} com motor
+    OkHttp no Android e Darwin (NSURLSession) no iOS.
+    O motor Darwin é nativo em iOS e não requer dependência de terceiros.
+
+  \item[\texttt{NetworkDetection}] Verifica a disponibilidade de rede
+    antes de cada pedido: \texttt{ConnectivityManager} no Android,
+    \texttt{NWPathMonitor} no iOS.
+    Um \texttt{NetworkError.NoConnection} é emitido sem realizar o pedido
+    HTTP, poupando tempo de \textit{timeout}.
+\end{description}
+
+\subsection*{Injeção de dependências com Koin}
+
+A injeção de dependências é gerida pelo Koin.
+O grafo de módulos divide-se em dois níveis: o \texttt{AppModule}
+partilhado (que cria o \texttt{HttpClient}, regista os repositórios HTTP
+e configura o \texttt{SessionEventBus}) e o \texttt{platformModule}
+(declaração \texttt{expect} no \texttt{commonMain}, implementada por cada
+plataforma para fornecer a \texttt{TokenStorage} e o \texttt{NetworkConfig}
+com o URL base correto).
+Módulos de funcionalidade (\texttt{AuthModule}, \texttt{TaskModule},
+\texttt{StruggleModule}, etc.) registam os seus componentes de apresentação
+em âmbito \textit{factory}, garantindo que cada instância de ecrã recebe
+o seu próprio \texttt{DefaultXxxComponent}.
+
+\begin{table}[ht]
+  \caption{Módulos Koin e responsabilidades na aplicação móvel}
+  \label{tab:koin_modules}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lp{8cm}}
+    \toprule
+    \textbf{Módulo} & \textbf{Responsabilidade} \\
+    \midrule
+    \texttt{platformModule} (actual) &
+      \texttt{NetworkConfig} (URL base), \texttt{TokenStorage} (plataforma) \\
+    \texttt{CoreModule} &
+      \texttt{HttpClient} (via \texttt{HttpClientFactory}),
+      \texttt{SessionEventBus} \\
+    \texttt{AuthModule} &
+      \texttt{AuthRepository}, \texttt{DefaultLoginComponent} \\
+    \texttt{HomeModule} &
+      \texttt{HomeRepository}, \texttt{DefaultHomeComponent} \\
+    \texttt{TaskModule} &
+      \texttt{TaskRepository}, \texttt{DefaultTaskComponent} \\
+    \texttt{StruggleModule} &
+      \texttt{StruggleRepository}, \texttt{DefaultStruggleComponent} \\
+    \texttt{ExploreModule} &
+      \texttt{ExploreRepository} (lista de tópicos + inscrição) \\
+    \texttt{ProfileModule} &
+      \texttt{ProfileRepository}, \texttt{DefaultProfileComponent} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Navegação no Cliente Móvel: Decompose}
+\label{sec:decompose_navegacao}
+
+A navegação na aplicação móvel é gerida pela biblioteca
+\textbf{Decompose}, que modela a pilha de ecrãs como uma máquina de
+estados serializada — compatível com o ciclo de vida Android e com a
+destruição de ecrã em iOS.
+
+\subsection*{\texttt{DefaultRootComponent}}
+
+O \texttt{DefaultRootComponent} implementa a interface \texttt{RootComponent}
+e serve como único ponto de orquestração de navegação.
+Mantém uma \texttt{StackNavigation<Config>} que representa a pilha de ecrãs.
+A \texttt{Config} é uma interface selada serializada com oito alternativas:
+
+\begin{verbatim}
+sealed interface Config {
+    Splash | Login | Home
+    Task(userTaskId: String)
+    Profile | About | Explore
+    Struggle(enrollmentId: String)
+}
+\end{verbatim}
+
+A serialização \texttt{kotlinx.serialization} permite que o Decompose
+persista e restaure o estado da pilha de navegação através de alterações de
+configuração Android (rotação do ecrã, modo multi-janela) sem necessidade
+de \texttt{ViewModel} ou \texttt{SavedStateHandle}.
+
+\subsection*{Animações de transição}
+
+O \texttt{App.kt} envolve a pilha em \texttt{AnimatedContent} com uma
+especificação de transição personalizada baseada em \texttt{CubicBezierEasing}.
+A direção da animação é determinada pela comparação do tamanho da pilha:
+um aumento de tamanho (\textit{push}) desliza da direita para a esquerda;
+uma diminuição (\textit{pop}) inverte a direção.
+Esta transição é idêntica nas duas plataformas — o Compose Multiplatform
+renderiza-a nativamente no motor de compositor de cada sistema operativo.
+
+\subsection*{Fluxo de ecrãs}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    scr/.style={draw, fill=#1, rounded corners=5pt,
+                minimum width=2.8cm, minimum height=0.9cm, align=center},
+    ev/.style={font=\tiny, align=center}
+  ]
+    % Nodes
+    \node[scr=yellow!20]  (splash)   at (0,    0)   {Splash};
+    \node[scr=blue!10]    (login)    at (-3.2,-1.8) {Login};
+    \node[scr=green!15]   (home)     at ( 0,  -1.8) {Home};
+    \node[scr=orange!15]  (task)     at (-3.2,-3.8) {Task};
+    \node[scr=red!10]     (struggle) at ( 0,  -3.8) {Struggle};
+    \node[scr=gray!15]    (explore)  at ( 3.2,-1.8) {Explore};
+    \node[scr=gray!15]    (profile)  at ( 3.2,-3.8) {Profile};
+
+    % Transitions
+    \draw[->] (splash) -- node[left,ev]{sem sessão} (login);
+    \draw[->] (splash) -- node[right,ev]{sessão ativa} (home);
+    \draw[->, dashed, color=red] (login)  -- node[above,ev]{link verificado} (home);
+    \draw[->] (home)   -- node[left,ev]{tarefa} (task);
+    \draw[->] (home)   -- node[right,ev]{explorar} (explore);
+    \draw[->] (home)   -- node[right,ev]{perfil} (profile);
+    \draw[->] (task)   -- node[left,ev]{dificuldade\\detetada} (struggle);
+    \draw[->] (struggle) -- node[above,ev]{concluído} (home);
+    \draw[->, dashed, color=red] (home) to[bend right=40]
+              node[right,ev]{sessão expirada} (login);
+  \end{tikzpicture}
+  \caption{Grafo de ecrãs da aplicação móvel gerido pelo Decompose}
+  \label{fig:decompose_nav}
+\end{figure}
+
+A transição \texttt{Splash → Login} ou \texttt{Splash → Home} é decidida
+pelo \texttt{DefaultSplashComponent}: se o \texttt{TokenStorage} contiver
+um \textit{token} de acesso válido, o efeito \texttt{SplashEffect.NavigateToHome}
+é emitido; caso contrário, \texttt{SplashEffect.NavigateToLogin}.
+A transição de expiração de sessão (linha a tracejado vermelho) é
+despoletada pelo \texttt{SessionEventBus} independentemente do ecrã ativo
+— o \texttt{DefaultRootComponent} observa o fluxo num
+\texttt{CoroutineScope(Dispatchers.Main + SupervisorJob())} e invoca
+\texttt{navigation.replaceAll(Config.Login)}.
+
+\subsection*{Padrão MVI no cliente móvel}
+
+Cada funcionalidade segue o padrão \textbf{MVI}
+(\textit{Model–View–Intent}) com três tipos de mensagem:
+
+\begin{description}
+  \item[\textit{Events}] Intenções do utilizador (clique num botão,
+    submissão de resposta) enviadas do ecrã para o componente via
+    \texttt{onEvent(E)}.
+  \item[\textit{State}] Estado imutável do ecrã exposto como
+    \texttt{Value<S>} (do Decompose), subscrito pelo ecrã via
+    \texttt{subscribeAsState()}. Inclui sempre \texttt{isLoading: Boolean}
+    e \texttt{error: AppError?}, geridos pelo \texttt{BaseView} de forma
+    uniforme.
+  \item[\textit{Effects}] Efeitos de navegação de uso único (e.g.,
+    \texttt{NavigateToStruggle(enrollmentId)}) emitidos via
+    \texttt{SharedFlow} e tratados pelo \texttt{App.kt} com
+    \texttt{LaunchedEffect(component)}.
+\end{description}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    box/.style={draw, rounded corners=4pt, fill=#1,
+                minimum width=3.0cm, minimum height=0.9cm, align=center}
+  ]
+    \node[box=blue!10]    (view)  at (0,    0) {Ecrã Compose\\(\textit{View})};
+    \node[box=green!12]   (comp)  at (5.5,  0) {Componente\\(\textit{Presenter})};
+    \node[box=orange!12]  (repo)  at (5.5, -2.5){Repositório HTTP\\(\textit{Model})};
+    \node[box=gray!12]    (state) at (0,   -2.5){\texttt{Value<State>}\\(imutável)};
+
+    \draw[->, thick]              (view)  -- node[above,font=\tiny]{\textit{Events} (onEvent)} (comp);
+    \draw[->, thick]              (comp)  -- node[right,font=\tiny]{chamadas suspend} (repo);
+    \draw[->, thick]              (repo)  -- node[below,font=\tiny]{Result / exceção} (comp);
+    \draw[->, thick]              (comp)  -- node[left, font=\tiny]{updateState\{\}} (state);
+    \draw[->, thick]              (state) -- node[left, font=\tiny]{subscribeAsState()} (view);
+    \draw[->, dashed, color=red!60] (comp) to[bend left=25]
+            node[above,font=\tiny]{\textit{Effects} (navigate)} (view);
+  \end{tikzpicture}
+  \caption{Fluxo de dados MVI na camada de apresentação do cliente móvel}
+  \label{fig:mvi_fluxo}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{O \textit{Pipeline} de Pedidos do Servidor Spring Boot}
+\label{sec:pipeline_spring}
+
+Antes de analisar fluxos funcionais específicos, é fundamental compreender
+o caminho que \emph{qualquer} pedido HTTP percorre desde a chegada ao
+servidor até à emissão da resposta.
+O \textit{Play4Change} utiliza o Spring Boot com o servidor \textit{embedded}
+Apache Tomcat.
+Um pedido atravessa oito camadas distintas em sequência antes de atingir
+o controlador de domínio (Figura~\ref{fig:pipeline_spring}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    layer/.style={draw, fill=#1, rounded corners=4pt,
+                  minimum width=10.5cm, minimum height=0.8cm, align=center,
+                  text width=10cm},
+    arrow/.style={->, thick, color=gray!60}
+  ]
+    % Draw layers top-to-bottom (request direction)
+    \node[layer=orange!15]  (nginx)   at (0, 0.0) {%
+      \textbf{1. Nginx} — proxy inverso, terminação TLS, desativação de \textit{buffering} SSE};
+    \node[layer=yellow!20]  (tomcat)  at (0,-1.1) {%
+      \textbf{2. Tomcat} (\textit{embedded}) — aceitação TCP, gestão de fios de execução};
+    \node[layer=red!12]     (ratelim) at (0,-2.2) {%
+      \textbf{3. \texttt{RateLimitFilter}} \small[\texttt{@Order(HIGHEST\_PRECEDENCE)}]
+      — limita pedidos \texttt{/auth/**} por IP};
+    \node[layer=red!8]      (reqid)   at (0,-3.3) {%
+      \textbf{4. \texttt{RequestIdFilter}} \small[\texttt{@Order(1)}]
+      — gera \texttt{X-Request-Id}, injeta no MDC};
+    \node[layer=blue!10]    (cors)    at (0,-4.4) {%
+      \textbf{5. Spring Security — \texttt{CorsFilter}}
+      — valida origem, emite cabeçalhos \texttt{Access-Control-*}};
+    \node[layer=blue!15]    (jwt)     at (0,-5.5) {%
+      \textbf{6. \texttt{JwtAuthFilter}} \small[\texttt{OncePerRequestFilter}]
+      — analisa \texttt{Bearer}, povoa \texttt{SecurityContextHolder}};
+    \node[layer=blue!20]    (authz)   at (0,-6.6) {%
+      \textbf{7. Spring Security — Autorização}
+      — matéria de rotas: \texttt{permitAll} / \texttt{hasRole("ADMIN")} / \texttt{authenticated()}};
+    \node[layer=green!12]   (metrics) at (0,-7.7) {%
+      \textbf{8. \texttt{WebMvcMetricsFilter}} (auto-configurado)
+      — regista \texttt{http\_server\_requests\_seconds\_*} no Prometheus};
+    \node[layer=purple!10]  (disp)    at (0,-8.8) {%
+      \textbf{9. \texttt{DispatcherServlet}} — mapeamento de controlador, negociação de conteúdo};
+    \node[layer=teal!10]    (logpre)  at (0,-9.9) {%
+      \textbf{10. \texttt{LoggingInterceptor.preHandle()}}
+      — regista o \textit{timestamp} de início em \texttt{request.getAttribute}};
+    \node[layer=teal!15]    (ctrl)    at (0,-11.0){%
+      \textbf{11. Controlador + Validação Bean} (\texttt{@Valid})
+      — desserialização Jackson, restrições JSR-380};
+    \node[layer=teal!20]    (svc)     at (0,-12.1){%
+      \textbf{12. Serviço de Aplicação} — lógica de domínio, \texttt{Either<AppError,T>}};
+    \node[layer=teal!15]    (logpost) at (0,-13.2){%
+      \textbf{13. \texttt{LoggingInterceptor.afterCompletion()}}
+      — regista método, caminho, estado HTTP e duração em ms};
+    \node[layer=orange!10]  (advice)  at (0,-14.3){%
+      \textbf{14. \texttt{@RestControllerAdvice}}
+      — mapeia exceções não capturadas para respostas de erro estruturadas};
+
+    % Arrows between layers
+    \foreach \y/\ny in {0/-1.1,-1.1/-2.2,-2.2/-3.3,-3.3/-4.4,-4.4/-5.5,
+                        -5.5/-6.6,-6.6/-7.7,-7.7/-8.8,-8.8/-9.9,-9.9/-11.0,
+                        -11.0/-12.1,-12.1/-13.2,-13.2/-14.3} {
+      \draw[arrow] (5.6,\y-0.4) -- (5.6,\ny+0.4);
+    }
+  \end{tikzpicture}
+  \caption{\textit{Pipeline} de pedido-resposta do servidor Spring Boot do \textit{Play4Change}}
+  \label{fig:pipeline_spring}
+\end{figure}
+
+\subsection*{Camada 1 — Nginx}
+
+O Nginx atua como \textit{proxy} inverso à frente do Tomcat.
+As suas responsabilidades no \textit{Play4Change} são:
+(i)~terminação TLS (o Tomcat vê tráfego HTTP em texto simples internamente);
+(ii)~definição dos cabeçalhos de segurança \texttt{X-Frame-Options},
+\texttt{X-Content-Type-Options} e \texttt{Referrer-Policy};
+(iii)~configuração de \texttt{proxy\_buffering off} e
+\texttt{X-Accel-Buffering: no} nos \textit{endpoints} SSE, garantindo
+que os eventos são enviados ao cliente sem acumulação no \textit{buffer}
+do \textit{proxy}.
+
+\subsection*{Camada 2 — Apache Tomcat (\textit{embedded})}
+
+O Tomcat aceita a ligação TCP, lê os bytes HTTP e entrega um objeto
+\texttt{HttpServletRequest} à cadeia de filtros.
+O conjunto de fios de execução de pedidos do Tomcat é independente do
+\texttt{generationExecutor} da IA: pedidos de longa duração de geração
+de tópicos não bloqueiam a capacidade do servidor em processar outros
+pedidos.
+
+\subsection*{Camada 3 — \texttt{RateLimitFilter} (\texttt{HIGHEST\_PRECEDENCE})}
+
+Este filtro é o \emph{primeiro componente Spring} a executar
+(\texttt{@Order(Ordered.HIGHEST\_PRECEDENCE)} = \texttt{Integer.MIN\_VALUE}).
+Aplica-se exclusivamente a caminhos que comecem por \texttt{/auth/}.
+O \texttt{RateLimitService} mantém um conjunto de \textit{buckets}
+de fichas por IP de cliente (extraído via \texttt{IpExtractor.extractClientIp()},
+que respeita o cabeçalho \texttt{X-Forwarded-For} definido pelo Nginx).
+Se a ficha não puder ser consumida, a resposta \texttt{429 Too Many
+Requests} é emitida com o cabeçalho \texttt{Retry-After} e nenhum
+filtro posterior é invocado.
+
+\begin{verbatim}
+HTTP/1.1 429 Too Many Requests
+Retry-After: 47
+Content-Type: application/json
+
+{ "message": "Too many requests. Please wait before trying again." }
+\end{verbatim}
+
+\subsection*{Camada 4 — \texttt{RequestIdFilter} (\texttt{@Order(1)})}
+
+Este filtro gera um identificador único por pedido de oito carateres
+(extraído de um UUID aleatório) e injeta-o no Contexto de Diagnóstico
+Mapeado (MDC) do SLF4J com a chave \texttt{req-id}.
+Como o MDC é propagado automaticamente para todas as afirmações de registo
+produzidas durante a execução do pedido, qualquer linha de registo do
+servidor pode ser correlacionada com um pedido específico sem adicionar
+contexto manual.
+O identificador é também colocado no cabeçalho de resposta
+\texttt{X-Request-Id}, permitindo que os clientes incluam o valor nas
+suas próprias comunicações de depuração.
+O bloco \texttt{try/finally} garante que o MDC é sempre limpo — omitir
+esta limpeza provocaria fugas de valores desatualizados entre pedidos
+reutilizando o mesmo fio de execução do conjunto.
+
+\subsection*{Camada 5 — \texttt{CorsFilter} (Spring Security)}
+
+O \texttt{WebMvcConfig} define uma fonte de configuração CORS:
+origens permitidas configúráveis via \texttt{app.cors.allowed-origins}
+(por omissão: \texttt{localhost:5173} e \texttt{localhost:3000}),
+métodos explicitamente listados (\texttt{GET}, \texttt{POST}, \texttt{PUT},
+\texttt{PATCH}, \texttt{DELETE}, \texttt{OPTIONS}), e
+\texttt{allowCredentials = true} necessário para que o \textit{browser}
+envie o \textit{cookie} \texttt{SameSite=Strict} do \textit{token} de
+atualização em pedidos entre origens.
+Os pedidos \textit{pre-flight} \texttt{OPTIONS} são intercetados aqui e
+respondidos diretamente com cabeçalhos \texttt{Access-Control-*} sem
+alcançar o controlador.
+
+\subsection*{Camada 6 — \texttt{JwtAuthFilter}}
+
+Este filtro, que estende \texttt{OncePerRequestFilter}, é inserido
+\emph{antes} do \texttt{UsernamePasswordAuthenticationFilter} pelo
+\texttt{SecurityConfig}:
+
+\begin{verbatim}
+.addFilterBefore(jwtAuthFilter,
+    UsernamePasswordAuthenticationFilter::class.java)
+\end{verbatim}
+
+A lógica é a seguinte:
+
+\begin{enumerate}
+  \item Se o caminho pertencer à lista \texttt{ALWAYS\_PUBLIC} ou à lista
+    Swagger (em perfil não-produção), o filtro é ignorado e a cadeia
+    prossegue.
+  \item Se o cabeçalho \texttt{Authorization} começar por \texttt{Bearer },
+    o \textit{token} é passado ao \texttt{TokenService.parseAccessToken()}.
+    Em caso de sucesso, um \texttt{UsernamePasswordAuthenticationToken}
+    com o papel do utilizador é colocado no \texttt{SecurityContextHolder}.
+    Qualquer exceção durante a análise (expiração, assinatura inválida,
+    \textit{claims} em falta) desencadeia a emissão imediata de um
+    \texttt{401} e o retorno — a cadeia de filtros \emph{não} prossegue.
+  \item Se não existir cabeçalho \texttt{Authorization}, o contexto é
+    deixado vazio e a cadeia continua.
+    O Spring Security trata este caso na camada de autorização (Camada 7).
+\end{enumerate}
+
+\subsection*{Camada 7 — Autorização Spring Security}
+
+O \texttt{SecurityConfig} define as regras de autorização por rota:
+
+\begin{verbatim}
+/auth/**             → permitAll
+/api/stats/public    → permitAll
+/actuator/health     → permitAll
+/actuator/prometheus → permitAll
+/swagger-ui/**       → permitAll (não-prod) | hasRole("ADMIN") (prod)
+/admin/**            → hasRole("ADMIN")
+qualquer outro       → authenticated()
+\end{verbatim}
+
+Se o principal autenticado não satisfizer a regra aplicável, o
+\texttt{AuthenticationEntryPoint} (sem autenticação → \texttt{401}) ou o
+\texttt{AccessDeniedHandler} (autenticado mas papel insuficiente → \texttt{403})
+emite a resposta de erro, ambos produzindo um corpo JSON estruturado.
+
+\subsection*{Camada 8 — \texttt{WebMvcMetricsFilter}}
+
+Auto-configurado pelo arranque do Spring Boot Actuator (via dependência
+Micrometer), este filtro regista automaticamente o contador e o histograma
+\texttt{http\_server\_requests\_seconds} com as etiquetas \texttt{method},
+\texttt{uri} (padrão de rota, e.g. \texttt{/admin/topics/\{id\}}),
+\texttt{status} e \texttt{outcome}.
+O \texttt{LoggingInterceptor} \emph{não} duplica este registo de propósito —
+os comentários do código explicam que dois registos com conjuntos de
+chaves de etiquetas diferentes corromperiam a família de métricas no
+Prometheus.
+
+\subsection*{Camada 9 — \texttt{DispatcherServlet}}
+
+O \texttt{DispatcherServlet} realiza o mapeamento de controladores
+(resolvendo o método anotado com \texttt{@PostMapping} / \texttt{@GetMapping}
+que corresponde ao padrão URI e ao método HTTP), a negociação de conteúdo
+(seleccionando Jackson para corpos JSON, \texttt{SseEmitter} para fluxos
+SSE) e a resolução de argumentos de método (parâmetros \texttt{@PathVariable},
+\texttt{@RequestBody}, \texttt{@AuthenticationPrincipal}).
+
+\subsection*{Camada 10 — \texttt{LoggingInterceptor.preHandle()}}
+
+O Spring MVC invoca \texttt{preHandle()} em cada interceptor registado
+\emph{antes} de o método do controlador ser executado.
+O \texttt{LoggingInterceptor} regista o \textit{timestamp} de início de
+milissegundos em \texttt{request.setAttribute("request.timer.start", now)}
+e emite uma linha de registo de nível \texttt{DEBUG}:
+\texttt{"--> POST /admin/topics"}.
+
+\subsection*{Camada 11 — Controlador + Validação Bean}
+
+O método do controlador é invocado com os argumentos já resolvidos.
+Quando um parâmetro está anotado com \texttt{@Valid}, o Hibernate Validator
+valida todas as restrições JSR-380 (e.g., \texttt{@NotBlank},
+\texttt{@Min(1)}) antes de invocar o corpo do método.
+Uma falha de validação lança \texttt{MethodArgumentNotValidException}, que
+é capturada pelo \texttt{@RestControllerAdvice} (Camada 14) e mapeada para
+uma resposta \texttt{400 Bad Request} com a lista de erros de campo.
+
+\subsection*{Camada 12 — Serviço de Aplicação}
+
+O controlador delega no serviço de aplicação, que executa a lógica de
+domínio devolvendo \texttt{Either<AppError, T>}.
+O controlador desdobra o resultado: o ramo \texttt{Right} é mapeado para
+uma resposta de sucesso; o ramo \texttt{Left} é mapeado para o código de
+estado HTTP definido pelo subtipo de \texttt{AppError}
+(ver Tabela~\ref{tab:codigos_erro}).
+Esta abordagem torna os percursos de erro \emph{estruturalmente visíveis}
+em tempo de compilação — sem tratamento de exceções implícito que possa
+ser silenciosamente ignorado.
+
+\subsection*{Camada 13 — \texttt{LoggingInterceptor.afterCompletion()}}
+
+Após o método do controlador completar (com sucesso ou com exceção),
+\texttt{afterCompletion()} calcula a duração decorrida, recuperando o
+\textit{timestamp} armazenado pelo \texttt{preHandle()}, e emite a linha
+de registo final:
+\texttt{"<-- POST /admin/topics → 201 [143ms]"}.
+Esta linha, combinada com o \texttt{req-id} no MDC, fornece uma rastreabilidade
+completa de ponta a ponta de cada pedido nos registos estruturados.
+
+\subsection*{Camada 14 — \texttt{@RestControllerAdvice}}
+
+O \texttt{AuthExceptionHandler}, anotado com \texttt{@RestControllerAdvice},
+trata as exceções não capturadas que escapam ao controlador.
+Os mapeamentos cobrem:
+
+\begin{itemize}
+  \item \texttt{IllegalArgumentException} → \texttt{400}
+    (erros de validação de domínio não cobertos por Bean Validation)
+  \item \texttt{SecurityException} → \texttt{401}
+    (violações de segurança explícitas)
+  \item \texttt{IllegalStateException} → \texttt{502 Bad Gateway}
+    (erros de serviços \textit{upstream} — o corpo \emph{não} expõe a
+    mensagem de exceção original para evitar fugas de URLs ou detalhes
+    internos de fornecedores)
+  \item \texttt{HttpMessageNotReadableException} → \texttt{400}
+    (corpo de pedido JSON malformado)
+  \item \texttt{MethodArgumentNotValidException} → \texttt{400}
+    (falha de Bean Validation, com lista detalhada de erros de campo)
+  \item \texttt{ObjectOptimisticLockingFailureException} → \texttt{409}
+    (colisão de bloqueio otimista em operações concorrentes)
+\end{itemize}
+
+\subsection*{Fluxo paralelo: executor de geração assíncrona}
+
+Os pedidos de criação de tópico e de processamento de dificuldade não
+bloqueiam o fio de execução do Tomcat para aguardar o resultado da IA.
+O \texttt{AsyncConfig} configura um \texttt{ThreadPoolTaskExecutor}
+dedicado com o nome \texttt{generationExecutor}:
+
+\begin{verbatim}
+@Bean("generationExecutor")
+fun generationExecutor(): Executor = ThreadPoolTaskExecutor().apply {
+    corePoolSize  = poolSize      // padrão: 3
+    maxPoolSize   = poolSize      // sem crescimento adicional
+    setQueueCapacity(25)          // máximo de 25 pedidos em espera
+    setThreadNamePrefix("gen-")   // visível em JVM thread dumps
+    initialize()
+}
+\end{verbatim}
+
+Quando a fila atingir a capacidade (25 tarefas pendentes), novos pedidos
+de geração são rejeitados com \texttt{503 Service Unavailable} e o alerta
+Prometheus \texttt{GenerationThreadPoolQueueSaturated} é disparado.
+Os nomes dos fios de execução \texttt{gen-1}, \texttt{gen-2}, \texttt{gen-3}
+são visíveis em despejos de pilha da JVM, facilitando o diagnóstico de
+bloqueios ou fugas de fios de execução.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    comp/.style={draw, rounded corners=3pt, fill=#1,
+                 minimum width=3.6cm, minimum height=0.9cm, align=center},
+    note/.style={font=\tiny, align=center}
+  ]
+    % Synchronous path
+    \node[comp=orange!15] (req)   at (0, 0)    {Pedido HTTP};
+    \node[comp=blue!10]   (filt)  at (0,-1.5)  {Filtros (1--8)};
+    \node[comp=green!10]  (ctrl)  at (0,-3.0)  {Controlador};
+    \node[comp=teal!10]   (svc)   at (0,-4.5)  {Serviço de Aplicação};
+    \node[comp=orange!10] (resp)  at (0,-6.0)  {\texttt{201 Created}};
+
+    % Async path
+    \node[comp=yellow!20] (exec)  at (5.5,-3.0) {\texttt{generateAsync()}\\submete tarefa};
+    \node[comp=purple!10] (pool)  at (5.5,-4.5) {\texttt{gen-1..3}\\conjunto de fios};
+    \node[comp=red!10]    (llm)   at (5.5,-6.0) {LLM Mistral\\(IA)};
+    \node[comp=blue!10]   (sse)   at (5.5,-7.5) {Eventos SSE\\para clientes};
+
+    % Sync flow
+    \draw[->] (req)  -- (filt);
+    \draw[->] (filt) -- (ctrl);
+    \draw[->] (ctrl) -- (svc);
+    \draw[->] (svc)  -- (resp);
+
+    % Branch to async
+    \draw[->, dashed] (svc) -- node[above,font=\tiny]{async} (exec);
+    \draw[->] (exec) -- (pool);
+    \draw[->] (pool) -- (llm);
+    \draw[->] (llm)  -- (sse);
+
+    % Labels
+    \node[note] at (-2.2,-3.0) {fio Tomcat\\(bloqueante)};
+    \node[note] at (7.8,-4.5) {fio \texttt{gen-*}\\(independente)};
+  \end{tikzpicture}
+  \caption{Separação entre o percurso síncrono HTTP e o executor de geração assíncrona}
+  \label{fig:sinc_async}
+\end{figure}
+
+Esta separação é a razão pela qual a criação de um tópico devolve
+imediatamente \texttt{201 Created}: o fio de execução do Tomcat retorna
+ao conjunto assim que o trabalho de geração é submetido ao
+\texttt{generationExecutor}, estando disponível para servir outros pedidos
+enquanto os fios \texttt{gen-*} se ocupam da chamada ao LLM.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Portal de Administração: Criação de Tópico a partir de URL}
+\label{sec:topic_criacao_url}
+
+A criação de um tópico a partir de um endereço URL constitui o fluxo
+primário de autoria de conteúdo para os administradores. Envolve o
+\textit{frontend} web, a API REST, dois serviços externos (extrator de
+conteúdo e Mistral AI), o armazenamento de objetos MinIO e o PostgreSQL.
+
+\subsection*{Pedido HTTP}
+
+\begin{verbatim}
+POST /admin/topics
+Authorization: Bearer <token_de_acesso>
+Content-Type: application/json
+
+{
+  "title":       "Introdução à Mobilidade Urbana",
+  "description": "Conceitos fundamentais de transporte sustentável",
+  "category":    "Cidade Inteligente",
+  "url":         "https://example.org/guia-mobilidade",
+  "taskCount":   15,
+  "difficulty":  "BEGINNER",
+  "language":    "pt-PT"
+}
+\end{verbatim}
+
+\subsection*{Validação}
+
+O \texttt{TopicController.createFromUrl()} valida o corpo do pedido via
+Bean Validation (\texttt{@Valid}).
+O \texttt{TopicManagementService} executa então a validação de domínio:
+\texttt{taskCount > 0} (caso contrário, \texttt{400 Bad Request} com
+\texttt{\{field:"taskCount", reason:"must be greater than 0"\}}).
+
+\subsection*{Extração de conteúdo}
+
+O \texttt{ContentExtractorPort.extractFromUrl(url)} obtém a página, remove
+as marcações HTML e devolve texto simples.
+Se a obtenção falhar — erro de rede, 404, corpo vazio — o serviço levanta
+\texttt{BadRequest.InvalidField("url", "could not fetch content: \ldots")}
+que o controlador mapeia para uma resposta \texttt{400}.
+Se o texto extraído for vazio (página renderizada pelo lado do cliente sem
+conteúdo no servidor), é devolvido um \texttt{400} distinto:
+\texttt{"url returned no extractable text"}.
+
+\subsection*{Armazenamento de objetos}
+
+O texto extraído é carregado para o MinIO com a chave
+\texttt{topics/\{topicId\}/content.txt} via \texttt{FileStoragePort}.
+Uma falha no MinIO levanta \texttt{InternalServerError.UnexpectedException}
+→ \texttt{500}.
+O URL do objeto MinIO devolvido é guardado como \texttt{Topic.contentSourceRef}.
+
+\subsection*{Registo na base de dados}
+
+É guardada uma entidade \texttt{Topic} com:
+
+\begin{verbatim}
+id            = <UUID>
+status        = PENDING
+currentPhase  = INGESTION
+createdBy     = <adminId do JWT>
+language      = "pt-PT"
+audienceLevel = BEGINNER
+taskCount     = 15
+\end{verbatim}
+
+\subsection*{Resposta imediata}
+
+\begin{verbatim}
+HTTP/1.1 201 Created
+{
+  "id": "<topicId>",
+  "status": "PENDING",
+  "currentPhase": "INGESTION",
+  ...
+}
+\end{verbatim}
+
+O identificador do tópico é devolvido \emph{imediatamente} — o
+\textit{pipeline} de geração por IA é executado de forma \emph{assíncrona},
+pelo que a resposta HTTP não é bloqueada.
+
+\subsection*{\textit{Pipeline} de geração assíncrona}
+
+O \texttt{orchestrator.generateAsync(topicId)} submete uma tarefa ao
+executor \texttt{@Async("generationExecutor")}, um conjunto de
+\textit{threads} delimitado (capacidade da fila: 25) dedicado ao trabalho
+de geração.
+O orquestrador conduz o tópico através de quatro fases
+(Figura~\ref{fig:pipeline_geracao}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    phase/.style={draw, rounded corners=4pt, fill=yellow!20,
+                  minimum width=2.4cm, minimum height=1cm, align=center},
+    arrow/.style={->, thick}
+  ]
+    \node[phase] (ing)  at (0,0)    {INGESTION\\{\tiny obter e guardar}};
+    \node[phase] (ana)  at (3.3,0)  {ANALYSIS\\{\tiny extrair objetivos}};
+    \node[phase] (gen)  at (6.6,0)  {GENERATION\\{\tiny LLM + dedup}};
+    \node[phase] (idx)  at (9.9,0)  {INDEXING\\{\tiny embeder e guardar}};
+    \node[phase,fill=green!20]  (act)  at (6.6,-2.2) {ACTIVE};
+    \node[phase,fill=red!20]    (fail) at (3.3,-2.2) {FAILED};
+
+    \draw[arrow] (ing) -- (ana);
+    \draw[arrow] (ana) -- (gen);
+    \draw[arrow] (gen) -- (idx);
+    \draw[arrow] (idx) -- (act);
+    \draw[arrow, dashed, color=red] (gen) -- node[right,font=\tiny]{erro IA} (fail);
+    \draw[arrow, dashed, color=red] (ana) -- node[left,font=\tiny]{\textit{timeout}} (fail);
+  \end{tikzpicture}
+  \caption{Fases do \textit{pipeline} de geração de tópicos}
+  \label{fig:pipeline_geracao}
+\end{figure}
+
+\paragraph{INGESTION → ANALYSIS.}
+O \texttt{PhaseTransitionService.transitionTo(ANALYSIS)} regista a duração
+gasta na fase INGESTION no \texttt{TopicPhaseLog}, atualiza
+\texttt{Topic.currentPhase} e publica um evento SSE \texttt{phase-change}
+para os clientes a escutar.
+
+\paragraph{ANALYSIS → GENERATION.}
+Uma passagem de análise extrai o objetivo do módulo a partir do texto,
+utilizado posteriormente no \textit{prompt} de IA.
+
+\paragraph{GENERATION.}
+A chamada central ao LLM.
+O \texttt{LangChain4jTaskGenerationAdapter.generateTasks()} monta duas
+mensagens (ver Secção~\ref{sec:engenharia_prompts}) e invoca
+\texttt{chatModel.generate()}.
+O adaptador analisa o \textit{array} JSON de resposta, descartando os
+elementos que falham a validação.
+Se houver menos tarefas válidas do que o solicitado, \textbf{é realizada
+uma única nova tentativa} com o \textit{prompt} original acrescido de um
+parágrafo \texttt{schemaReminder}:
+
+\begin{verbatim}
+Your previous response was incomplete or malformed.
+Please respond with EXACTLY 15 tasks in the JSON array
+schema above. Every task must have: title, description,
+hint, pointsReward, options (4 items), and
+correctAnswerIndex set to 0. No extra fields. Valid JSON only.
+\end{verbatim}
+
+Se, após a nova tentativa, não existir nenhuma tarefa válida, o adaptador
+devolve
+\texttt{Either.Left(ServiceUnavailable.DependencyUnavailable("mistral-ai-schema"))}
+e o orquestrador transita o tópico para \texttt{FAILED}.
+
+Cada tarefa analizada com sucesso é verificada quanto a duplicação
+semântica via
+\texttt{PgVectorDeduplicationService.isDuplicate()} (similaridade do
+cosseno $> 0{,}90$ no espaço de \textit{embeddings} do mesmo módulo).
+Tarefas duplicadas são marcadas \texttt{GenerationStatus.DUPLICATE} e
+excluídas da persistência; as tarefas inéditas são guardadas como
+registos \texttt{TaskTemplate} e emitidas para o fluxo SSE como eventos
+\texttt{generation-progress}.
+
+\paragraph{INDEXING.}
+Os \textit{embeddings} das tarefas são persistidos na coluna
+\textit{pgvector} de \texttt{task\_templates} via \texttt{JdbcTemplate}
+(o tipo da extensão vectorial requer o cast \texttt{::vector} no SQL).
+
+\paragraph{ACTIVE.}
+O \texttt{Topic.status} é atualizado para \texttt{ACTIVE} e um evento
+SSE final \texttt{complete} é emitido.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Portal de Administração: Criação de Tópico a partir de PDF}
+\label{sec:topic_criacao_pdf}
+
+O percurso de PDF difere do percurso de URL apenas na extração de conteúdo
+e na codificação HTTP.
+
+\begin{verbatim}
+POST /admin/topics/pdf
+Authorization: Bearer <token_de_acesso>
+Content-Type: multipart/form-data
+
+--boundary
+Content-Disposition: form-data; name="title"
+Introdução à Mobilidade Urbana
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="guia.pdf"
+Content-Type: application/pdf
+<bytes binários do PDF>
+\end{verbatim}
+
+O controlador delega no \texttt{TopicManagementService.createFromPdf()}.
+O \texttt{ContentExtractorPort.extractFromPdf(bytes)} utiliza o Apache
+PDFBox para extrair o texto do binário; um resultado vazio (PDF de imagem
+digitalizada sem OCR) devolve \texttt{400 "PDF contains no extractable
+text"}.
+Em caso de sucesso, os bytes do PDF são carregados para o MinIO com a
+chave \texttt{topics/\{topicId\}/content.pdf} (MIME:
+\texttt{application/pdf}) e o \textit{pipeline} prossegue de forma
+idêntica ao percurso de URL.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Observação da Geração: \textit{Server-Sent Events}}
+\label{sec:sse_deepdive}
+
+Após a resposta \texttt{201}, o \textit{frontend} web armazena o
+\texttt{topicId} devolvido e ativa o \textit{hook}
+\texttt{useTopicProgress(topicId)}, que abre uma ligação SSE:
+
+\begin{verbatim}
+GET /admin/topics/{id}/progress
+Authorization: Bearer <token_de_acesso>
+Accept: text/event-stream
+Cache-Control: no-cache
+\end{verbatim}
+
+O servidor responde com \texttt{Content-Type: text/event-stream} e
+\texttt{X-Accel-Buffering: no} — instrução ao \textit{proxy} inverso
+Nginx para desativar o \textit{buffering} de resposta, garantindo que os
+eventos são enviados imediatamente em vez de acumulados.
+
+O \textit{hook} cliente lê o fluxo linha a linha usando a API
+\texttt{ReadableStream} (sem biblioteca \textit{EventSource} de terceiros),
+analisando o formato de fio SSE padrão do W3C~\cite{w3c2021sse}:
+
+\begin{verbatim}
+event: phase-change
+data: {"phase":"ANALYSIS"}
+
+event: generation-progress
+data: {"completed":7,"total":15}
+
+event: complete
+data: {}
+\end{verbatim}
+
+O componente React \texttt{TopicProgressStepper} volta a renderizar a cada
+alteração de estado, mostrando a fase atual e uma barra de progresso.
+Se a ligação SSE cair (erro de rede, reinício do servidor), o \textit{hook}
+define \texttt{failed: true} — salvo se o \texttt{AbortError} tiver origem
+no efeito de limpeza — e a navegação é redirecionada para a página de
+detalhe do tópico, onde está disponível a opção de nova tentativa.
+
+O \texttt{SseTopicEventPublisher} do lado do servidor mantém um
+\texttt{Map<String, SseEmitter>}; um \textit{emitter} é registado em cada
+chamada \texttt{GET /progress} e removido quando o \textit{emitter}
+termina ou expira por \textit{timeout}.
+Se o tópico já se encontrar \texttt{ACTIVE} quando a ligação SSE chegar,
+\texttt{ssePublisher.completed()} dispara imediatamente; se já estiver
+\texttt{FAILED}, \texttt{ssePublisher.failed()} dispara com a razão de
+falha armazenada.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Portal de Administração: Gestão de Utilizadores}
+\label{sec:gestao_utilizadores}
+
+\begin{table}[ht]
+  \caption{Pontos de extremidade de gestão de utilizadores do administrador}
+  \label{tab:admin_user_endpoints}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{llp{5.8cm}}
+    \toprule
+    \textbf{Método e Caminho} & \textbf{Estado} & \textbf{Resposta / Comportamento} \\
+    \midrule
+    \texttt{GET /admin/users?page=\&size=} & 200 &
+      \texttt{AdminUserPage} (lista paginada com e-mail, papel, data de registo) \\
+    \texttt{GET /admin/users/\{id\}} & 200 / 404 &
+      \texttt{AdminUserDetail} (perfil e estatísticas) \\
+    \texttt{POST /admin/users/\{id\}/promote} & 200 / 404 &
+      Eleva o papel do utilizador para \texttt{ADMIN}; devolve
+      \texttt{AdminUserFull} atualizado \\
+    \texttt{GET /admin/users/\{id\}/enrollments} & 200 &
+      \texttt{AdminUserEnrollment[]} com estado, título do tópico e
+      percentagem de progresso \\
+    \texttt{GET /admin/users/\{id\}/badges} & 200 &
+      \texttt{AdminUserBadge[]} com nome do \textit{badge}, data de
+      conquista e tópico associado \\
+    \texttt{GET /admin/users/\{id\}/enrollments/\{eid\}/roadmap} & 200 &
+      \texttt{AdminRoadmapNode[]} — tarefas ordenadas com estado de
+      conclusão \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A operação de \textbf{promoção} é a mais sensível: altera o âmbito de
+permissões do utilizador para todos os pedidos subsequentes.
+O Spring Security lê o papel a partir das \textit{claims} do JWT; o novo
+papel produz efeito no \emph{próximo} início de sessão (o \textit{token}
+de acesso atual reflete o papel no momento da emissão).
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Portal de Administração: Gestão de Tarefas e Grafo de Aprendizagem}
+\label{sec:tarefas_grafo}
+
+\subsection*{Visualização e edição de tarefas}
+
+\begin{verbatim}
+GET  /admin/topics/{id}/tasks               → TaskTemplate[]
+GET  /admin/topics/{id}/struggle-tasks      → AdaptiveTaskAdmin[]
+GET  /admin/topics/{id}/struggle-path-stats → StrugglePathStats[]
+PUT  /admin/tasks/{templateId}              → TaskTemplate (atualizado)
+PUT  /admin/adaptive-tasks/{taskId}         → AdaptiveTaskAdmin (atualizado)
+\end{verbatim}
+
+Um \texttt{PUT} a um modelo de tarefa incrementa
+\texttt{TaskTemplate.version}, valor que é transportado para os novos
+registos de \texttt{TaskAssignment}.
+Os aprendentes que já possuem uma atribuição sobre a versão anterior não
+são afetados; apenas as novas atribuições criadas após a atualização
+apresentam o conteúdo editado.
+
+\subsection*{Pré-requisitos e deteção de ciclos}
+
+\begin{verbatim}
+GET  /admin/topics/{id}/prerequisites
+POST /admin/topics/{id}/prerequisites
+     { "prerequisiteIds": ["<id1>","<id2>"] }
+GET  /admin/learning-graph  → { edges: [{topicId, prerequisiteId}] }
+\end{verbatim}
+
+O \texttt{TopicManagementService.setPrerequisites()} executa um algoritmo
+de deteção de ciclos baseado em DFS antes de persistir.
+Se a adição dos pré-requisitos solicitados criasse um ciclo no grafo de
+aprendizagem, é devolvido:
+
+\begin{verbatim}
+400 Bad Request
+{
+  "field": "prerequisiteIds",
+  "reason": "setting these prerequisites would create a cycle
+             in the learning graph"
+}
+\end{verbatim}
+
+O \textit{frontend} web renderiza o grafo completo com
+\texttt{LearningPathDagView}, uma visualização DAG personalizada em SVG.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Jornada do Aprendente: Inscrição num Tópico}
+\label{sec:inscricao_deepdive}
+
+A inscrição é iniciada pelo aprendente na aplicação móvel através do ecrã
+\textbf{Explore} (\texttt{ExploreScreen}), que lista os tópicos ativos
+disponíveis.
+O \texttt{HttpExploreRepository} emite o seguinte pedido quando o utilizador
+toca em «Inscrever»:
+
+\begin{verbatim}
+POST /user/enroll
+Authorization: Bearer <token_do_aprendente>
+Content-Type: application/json
+
+{ "topicId": "<uuid>" }
+\end{verbatim}
+
+O \texttt{EnrollmentService.enroll()} aplica quatro guardas em sequência:
+
+\begin{enumerate}
+  \item \textbf{O tópico tem de estar ACTIVE.}
+    Se o estado for \texttt{PENDING}, \texttt{GENERATING} ou \texttt{FAILED}:
+    \texttt{400 InvalidField("topicId","topic is not active")}.
+
+  \item \textbf{O tópico não pode ter expirado.}
+    \texttt{Topic.isExpired()} verifica \texttt{expiresAt < now}:
+    \texttt{400 InvalidField("topicId","topic has expired")}.
+
+  \item \textbf{Todos os pré-requisitos têm de estar concluídos.}
+    Se algum pré-requisito não constar no conjunto de inscrições concluídas
+    do utilizador:
+    \texttt{400 InvalidField("topicId","prerequisites not completed: [\ldots]")}.
+
+  \item \textbf{Sem inscrição duplicada.}
+    Se já existir uma inscrição ativa: \texttt{409 Conflict}.
+    Se existir uma inscrição \emph{em pausa}, o serviço reativa-a em vez
+    de criar uma duplicada.
+\end{enumerate}
+
+Em caso de sucesso, o \texttt{EnrollmentService} cria o registo de
+\texttt{Enrollment} e imediatamente a \emph{primeira atribuição de tarefa}
+para \texttt{dayIndex = 0}.
+A ordem das opções é misturada deterministicamente usando
+\texttt{TaskShuffleSeed.shuffleOptions(optionCount, userId, taskId,
+enrollmentId)}, garantindo que o mesmo utilizador vê sempre a mesma
+mistura ao voltar à plataforma enquanto utilizadores distintos veem
+ordenações diferentes — eliminando o reconhecimento trivial de padrões
+que a ordem fixa de opções possibilita.
+O contador Prometheus \texttt{topic\_enrollments\_total} é incrementado.
+
+\begin{verbatim}
+HTTP/1.1 201 Created
+{
+  "id": "<enrollmentId>",
+  "topicId": "<topicId>",
+  "status": "ACTIVE",
+  "currentDayIndex": 0,
+  "streakDays": 0,
+  ...
+}
+\end{verbatim}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Jornada do Aprendente: Obtenção e Submissão de Tarefa (App Móvel)}
+\label{sec:submissao_dificuldade}
+
+\subsection*{Obtenção da tarefa diária}
+
+O ecrã \texttt{Home} apresenta ao aprendente o tópico em que está inscrito.
+Quando o utilizador toca em «Resolver tarefa de hoje», o componente dispara
+\texttt{HomeEffect.NavigateToTask(userTaskId)} e o
+\texttt{DefaultRootComponent} empurra \texttt{Config.Task(userTaskId)}
+para a pilha de navegação.
+O \texttt{HttpTaskRepository.getTask(topicId)} emite:
+
+\begin{verbatim}
+GET /tasks/today?topicId={topicId}
+Authorization: Bearer <token_do_aprendente>
+X-Timezone: Europe/Lisbon
+\end{verbatim}
+
+O cabeçalho \texttt{X-Timezone} é definido com
+\texttt{TimeZone.currentSystemDefault().id} do Kotlin Multiplatform, que
+resolve o fuso horário local sem depender de APIs de plataforma adicionais.
+O servidor usa-o para calcular se a atribuição do dia corrente já foi
+gerada (as atribuições são geradas por dia de calendário no fuso horário
+do aprendente).
+
+O servidor pode responder com três estados especiais além de
+\texttt{200 OK}:
+
+\begin{table}[ht]
+  \caption{Respostas especiais de \texttt{GET /tasks/today} tratadas pelo cliente móvel}
+  \label{tab:task_estados}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{llp{6.5cm}}
+    \toprule
+    \textbf{Estado HTTP} & \textbf{\texttt{NetworkError}} & \textbf{Comportamento no ecrã} \\
+    \midrule
+    \texttt{202 Accepted} & \texttt{TaskGenerationPending} &
+      Mostra estado de espera «O conteúdo ainda está a ser gerado» \\
+    \texttt{404 Not Found} & \texttt{NoTaskAvailable} &
+      Mostra estado vazio «Já concluíste a tarefa de hoje!» \\
+    \texttt{409 Conflict} & \texttt{StruggleOpen(enrollmentId)} &
+      Emite \texttt{TaskEffect.NavigateToStruggle(enrollmentId)}\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+O cabeçalho \texttt{X-Open-Struggle-Enrollment} da resposta \texttt{409}
+transporta o \texttt{enrollmentId} necessário para abrir a sessão de
+remediação ativa.
+
+\subsection*{Submissão da resposta}
+
+O aprendente seleciona uma das quatro opções apresentadas.
+O \texttt{HttpTaskRepository.submitAnswer()} emite:
+
+\begin{verbatim}
+POST /user/tasks/{assignmentId}/submit
+Authorization: Bearer <token_do_aprendente>
+Content-Type: application/json
+X-Timezone: Europe/Lisbon
+
+{ "selectedOption": 2 }
+\end{verbatim}
+
+O \texttt{TaskService} resolve a atribuição, consulta a ordem misturada
+de opções para determinar a opção canónica selecionada, compara com
+\texttt{TaskTemplate.correctAnswer} e atualiza a atribuição:
+
+\begin{verbatim}
+submittedAt       = agora
+status            = COMPLETED
+isCorrect         = true | false
+pointsAwarded     = template.pointsReward | 0
+wrongAttemptCount += 1   (se incorreto)
+\end{verbatim}
+
+\paragraph{Deteção de dificuldade.}
+Se \texttt{wrongAttemptCount $\geq$ 2} e o aprendente não tiver ainda
+um ramo adaptativo atribuído para esta tarefa,
+\texttt{HandleStruggleService.triggerAsync()} é invocado.
+O padrão de erro é classificado com base na opção selecionada:
+
+\begin{itemize}
+  \item \texttt{WRONG\_CONCEPT} — resposta consistentemente errada, sem
+    proximidade à correta
+  \item \texttt{PARTIAL\_UNDERSTANDING} — opção próxima escolhida
+    repetidamente
+  \item \texttt{READING\_ERROR} — conceito correto mas formulação errada
+  \item \texttt{TIME\_PRESSURE} — submissão rápida sem padrão consistente
+\end{itemize}
+
+A resposta de submissão ao aprendente é \texttt{200 OK} com o resultado;
+a geração adaptativa decorre em segundo plano sem bloquear a resposta.
+
+\paragraph{Tratamento da dificuldade no cliente móvel.}
+O DTO de submissão inclui o campo \texttt{struggleTriggered: Boolean}.
+O \texttt{DefaultTaskComponent} verifica este campo: se for \texttt{true},
+emite o efeito \texttt{TaskEffect.NavigateToStruggle(enrollmentId)}.
+O \texttt{DefaultRootComponent} trata este efeito empurrando
+\texttt{Config.Struggle(enrollmentId)} para a pilha, levando o aprendente
+ao ecrã de remediação adaptativa (Figura~\ref{fig:mobile_task_flow}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    scr/.style={draw, fill=#1, rounded corners=4pt,
+                minimum width=3.2cm, minimum height=0.9cm, align=center},
+    ev/.style={font=\tiny, align=center, text width=2.8cm}
+  ]
+    \node[scr=green!12]   (home)     at (0, 0)   {Home\\{\tiny lista de tópicos}};
+    \node[scr=blue!10]    (task)     at (0,-2.2) {Task\\{\tiny 4 opções embaralhadas}};
+    \node[scr=orange!15]  (result)   at (-3.5,-4.2){Resultado\\{\tiny correto / errado}};
+    \node[scr=red!10]     (struggle) at ( 3.5,-4.2){Struggle\\{\tiny ramo adaptativo}};
+    \node[scr=gray!12]    (empty)    at (0,-4.2) {Vazio\\{\tiny já concluído}};
+
+    \draw[->] (home)   -- node[left,ev]{NavigateToTask} (task);
+    \draw[->] (task)   -- node[left,ev]{isCorrect=true\\ou errado\\ $<$2 vezes} (result);
+    \draw[->] (task)   -- node[right,ev]{struggleTriggered\\=true} (struggle);
+    \draw[->] (task.south) -- node[right,ev]{404 NoTask\\Available} (empty);
+    \draw[->] (result) to[bend right=35] node[left,ev]{nova tarefa\\amanhã} (home);
+    \draw[->] (struggle) to[bend left=35] node[right,ev]{session\\Resolved} (home);
+  \end{tikzpicture}
+  \caption{Fluxo de navegação na jornada de tarefa do aprendente (app móvel)}
+  \label{fig:mobile_task_flow}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Personalização por IA: O \textit{Pipeline} de Ramos Adaptativos}
+\label{sec:pipeline_adaptativo}
+
+Quando é detetada uma dificuldade, o sistema inicia a personalização
+adaptativa (Figura~\ref{fig:fluxo_adaptativo}).
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    box/.style={draw, rounded corners=3pt, fill=blue!8,
+                minimum width=3.2cm, minimum height=0.8cm, align=center},
+    decision/.style={draw, diamond, fill=yellow!20,
+                     minimum width=2.8cm, minimum height=0.8cm, align=center},
+    result/.style={draw, rounded corners=3pt, fill=green!15,
+                   minimum width=2.8cm, minimum height=0.7cm, align=center}
+  ]
+    \node[box] (embed)  at (0, 0)   {1. Embeder dificuldade\\{\tiny 1024 dim. — Mistral}};
+    \node[box] (search) at (0,-1.8) {2. Pesquisa ANN pgvector\\{\tiny distância do cosseno}};
+    \node[decision] (sim) at (0,-3.6) {similaridade?};
+
+    \node[result] (full)  at (-4.2,-5.4) {FULL\_REUSE\\{\tiny sim $>$ 0{,}90}};
+    \node[result] (part)  at (0,-5.4)    {PARTIAL\_REUSE\\{\tiny 0{,}65 -- 0{,}90}};
+    \node[result] (fresh) at (4.2,-5.4)  {FRESH\_GENERATION\\{\tiny $<$ 0{,}65}};
+
+    \node[box] (persist) at (0,-7.2) {3. Persistir ramo e \textit{embedding}};
+    \node[box] (save)    at (0,-9.0) {4. Guardar StruggleSession\\com AdaptiveTasks};
+
+    \draw[->] (embed) -- (search);
+    \draw[->] (search) -- (sim);
+    \draw[->] (sim) -| node[above,font=\tiny]{elevada} (full);
+    \draw[->] (sim) -- node[right,font=\tiny]{média} (part);
+    \draw[->] (sim) -| node[above,font=\tiny]{baixa} (fresh);
+    \draw[->] (full)  |- (persist);
+    \draw[->] (part)  -- (persist);
+    \draw[->] (fresh) |- (persist);
+    \draw[->] (persist) -- (save);
+  \end{tikzpicture}
+  \caption{Fluxo de decisão na geração de ramos adaptativos}
+  \label{fig:fluxo_adaptativo}
+\end{figure}
+
+\subsection*{Passo 1 — Incorporação da dificuldade}
+
+É construída uma representação textual da dificuldade:
+\texttt{"\{errorPattern\} \{taskDescription\} \{subjectDomain\}"}.
+Este texto é incorporado pelo modelo de \textit{embedding} do Mistral,
+produzindo um vetor de 1024 dimensões em ponto flutuante.
+O \textit{embedding} é validado: se a sua dimensionalidade diferir de 1024
+(por exemplo, por alteração de versão da API do modelo), o adaptador lança
+uma \texttt{IllegalArgumentException} que é capturada e mapeada para
+\texttt{ServiceUnavailable}.
+
+\subsection*{Passo 2 — Pesquisa por similaridade}
+
+O \texttt{PgVectorDeduplicationService.findSimilarStruggle()} executa:
+
+\begin{verbatim}
+SELECT ab.id AS branch_id,
+       1 - (se.embedding <=> ?::vector) AS similarity
+FROM   struggle_events se
+JOIN   adaptive_branches ab ON ab.struggle_event_id = se.id
+WHERE  ab.status = 'COMPLETED'
+ORDER  BY se.embedding <=> ?::vector
+LIMIT  1;
+\end{verbatim}
+
+O operador \texttt{<=>} é o operador de distância do cosseno do
+\textit{pgvector}.
+O \texttt{1 -} converte distância em similaridade.
+Um índice aproximado de vizinho mais próximo (IVFFlat) na coluna
+\texttt{struggle\_events.embedding} mantém esta consulta abaixo do
+milissegundo mesmo à escala~\cite{johnson2019billion}.
+
+\subsection*{Passo 3 — Estratégia de reutilização}
+
+\begin{description}
+  \item[\texttt{FULL\_REUSE} (similaridade $>$ 0{,}90).]
+    O ramo adaptativo armazenado é carregado diretamente a partir de
+    \texttt{adaptive\_tasks}.
+    Não é realizada nenhuma chamada ao LLM; o sistema explora
+    integralmente a geração anterior.
+    Este é o \textit{percurso quente} — custo zero de \textit{tokens}.
+
+  \item[\texttt{PARTIAL\_REUSE} (0{,}65 -- 0{,}90).]
+    Uma fração do ramo armazenado (proporcional ao valor de similaridade)
+    é reutilizada; a restante parte é gerada de novo via
+    \texttt{StruggleAnalysisPrompt}.
+    Um novo registo de ramo é persistido combinando ambos os conjuntos.
+
+  \item[\texttt{FRESH\_GENERATION} ($<$ 0{,}65).]
+    Não existe nenhuma dificuldade suficientemente similar.
+    É realizada uma chamada completa ao LLM usando
+    \texttt{StruggleAnalysisPrompt}, o resultado é persistido como um
+    novo ramo e o seu \textit{embedding} é armazenado de forma a que
+    utilizadores futuros com dificuldades similares possam beneficiar.
+\end{description}
+
+Cada estratégia de reutilização é rastreada pelo contador Prometheus
+\texttt{ai.adaptive.reuse\{strategy="full"|"partial"|"fresh"\}},
+permitindo observar a taxa de crescimento do mecanismo de personalização.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Jornada do Aprendente: Remediação Adaptativa no Cliente Móvel}
+\label{sec:struggle_mobile}
+
+Quando o aprendente chega ao ecrã \textbf{Struggle}, o
+\texttt{DefaultStruggleComponent} carrega a sessão de remediação ativa:
+
+\begin{verbatim}
+GET /struggle/enrollment/{enrollmentId}
+Authorization: Bearer <token_do_aprendente>
+\end{verbatim}
+
+O \texttt{HttpStruggleRepository.getSession()} desserializa o
+\texttt{StruggleSessionDto}, mapeando cada \texttt{AdaptiveTaskDto} para
+um modelo de domínio \texttt{AdaptiveTask}.
+A sessão contém o campo \texttt{errorPattern} (e.g.,
+\texttt{"WRONG\_CONCEPT"}), que o ecrã usa para apresentar uma mensagem
+contextualizada ao aprendente.
+
+O aprendente resolve cada tarefa adaptativa de forma sequencial.
+Cada submissão envia:
+
+\begin{verbatim}
+POST /struggle/{sessionId}/tasks/{taskId}/submit
+Authorization: Bearer <token_do_aprendente>
+Content-Type: application/json
+
+{ "selectedOption": 1 }
+\end{verbatim}
+
+A resposta inclui \texttt{sessionResolved: Boolean}.
+Quando \texttt{true}, o \texttt{DefaultStruggleComponent} emite
+\texttt{StruggleEffect.NavigateToHome}, que o \texttt{DefaultRootComponent}
+trata com \texttt{navigation.replaceAll(Config.Home)} — substituindo toda
+a pilha para evitar que o aprendente regresse ao ecrã de dificuldade com
+o botão de retrocesso.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    box/.style={draw, fill=#1, rounded corners=4pt,
+                minimum width=4.2cm, minimum height=0.9cm, align=center},
+    api/.style={draw, fill=gray!10, rounded corners=4pt,
+                minimum width=4.2cm, minimum height=0.7cm, align=center}
+  ]
+    \node[box=red!10]    (s1) at (0, 0)    {StruggleScreen\\{\tiny lista de tarefas adaptativas}};
+    \node[api]           (g1) at (5.8, 0)  {\texttt{GET /struggle/enrollment/\{id\}}};
+    \node[box=orange!12] (s2) at (0,-2.0)  {Tarefa adaptativa 1\\{\tiny opções embaralhadas}};
+    \node[api]           (g2) at (5.8,-2.0){\texttt{POST .../tasks/\{id\}/submit}};
+    \node[box=orange!12] (s3) at (0,-3.5)  {Tarefa adaptativa N};
+    \node[api]           (g3) at (5.8,-3.5){\texttt{POST .../tasks/\{id\}/submit}\\{\tiny sessionResolved=true}};
+    \node[box=green!12]  (s4) at (0,-5.0)  {Home\\{\tiny replaceAll}};
+
+    \draw[->] (s1) -- node[above,font=\tiny]{carregar} (g1);
+    \draw[->] (g1.west) -- ++(-0.5,0) |- (s2.east);
+    \draw[->] (s2) -- node[above,font=\tiny]{submeter} (g2);
+    \draw[->] (g2.west) -- ++(-0.5,0) |- (s3.east);
+    \draw[->] (s3) -- node[above,font=\tiny]{submeter} (g3);
+    \draw[->] (g3.west) -- ++(-0.5,0) |- (s4.east);
+  \end{tikzpicture}
+  \caption{Fluxo de ecrã e pedidos HTTP durante uma sessão de remediação adaptativa}
+  \label{fig:struggle_flow}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Criação de Conteúdo: Engenharia de \textit{Prompts}}
+\label{sec:engenharia_prompts}
+
+Os \textit{prompts} do LLM do \textit{Play4Change} são elaborados segundo
+o enquadramento de quatro componentes descrito pela Google no seu Guia de
+\textit{Prompting} do Workspace~\cite{google2024promptguide}:
+\textbf{Persona}, \textbf{Tarefa}, \textbf{Contexto} e \textbf{Formato}.
+Cada componente está conscientemente presente em ambos os \textit{prompts}
+utilizados pela plataforma.
+
+\subsection*{\textit{Prompt} de geração de tarefas}
+
+\paragraph{Persona (mensagem de sistema):}
+
+\begin{verbatim}
+You are an expert educational content designer
+specialising in gamified learning experiences.
+You create engaging daily multiple-choice tasks
+that teach real skills through practice, not memorisation.
+\end{verbatim}
+
+Este enquadramento prepara o modelo para priorizar a aplicabilidade
+prática em detrimento de factos de memorização, alinhando-se com a teoria
+de aprendizagem construtivista~\cite{vygotsky1978mind} e com os princípios
+de aprendizagem por mestria~\cite{bloom1984mastery}.
+
+\paragraph{Formato (mensagem de sistema):}
+
+\begin{verbatim}
+OUTPUT FORMAT: Respond with a valid JSON array only.
+No preamble. No explanation.
+Schema:
+[{
+  "title": "string (max 60 chars)",
+  "description": "string (max 300 chars)",
+  "hint": "string (max 150 chars)",
+  "pointsReward": number (10-100),
+  "options": ["correta","errada1","errada2","errada3"],
+  "correctAnswerIndex": 0
+}]
+\end{verbatim}
+
+A imposição de JSON analisável automaticamente diretamente na instrução de
+formato elimina a necessidade de heurísticas de pós-processamento na
+maioria dos casos.
+A convenção \texttt{correctAnswerIndex: 0} delega a mistura das opções ao
+servidor, garantindo que o modelo nunca é responsável pela aleatorização.
+
+\paragraph{Tarefa + Contexto (mensagem do utilizador):}
+
+\begin{verbatim}
+Generate 15 multiple-choice learning tasks for:
+
+Subject Domain: Mobilidade Urbana
+Module Objective: Compreender os princípios do transporte sustentável
+Audience Level: Beginner — assumes no prior knowledge,
+                uses simple language, concrete examples
+Language: pt-PT
+
+Important: 3 tasks already exist for this module.
+Generate semantically distinct tasks that complement
+the existing content.
+\end{verbatim}
+
+A variável de contexto \texttt{existingEmbeddings.size} alerta o modelo
+para evitar sobreposição semântica, complementando a desduplicação por
+cosseno executada após a geração.
+
+\subsection*{\textit{Prompt} de análise de dificuldade}
+
+O \textit{prompt} de dificuldade estende o mesmo enquadramento com contexto
+de diagnóstico mais rico.
+O papel de sistema muda de designer de conteúdo para treinador de
+aprendizagem adaptativa:
+
+\begin{verbatim}
+You are an expert adaptive learning coach. A student
+is struggling with a specific task in their learning
+journey. Your job is to create a short sequence of
+simpler subtasks that scaffold the student back to success.
+
+PRINCIPLES:
+- Diagnose the root cause from the error pattern
+- Start with the simplest possible related concept
+- Each subtask builds on the previous one
+- The final subtask returns to the original task level
+- Be encouraging — frame tasks as achievable steps
+\end{verbatim}
+
+A mensagem do utilizador fornece o contexto de diagnóstico completo,
+incluindo o \texttt{ErrorPattern} classificado:
+
+\begin{verbatim}
+Diagnosed Struggle Type: The student misunderstands the
+core concept. Start by re-explaining it differently.
+\end{verbatim}
+
+Os seis valores de \texttt{ErrorPattern} mapeiam cada um para uma
+diretriz de diagnóstico distinta:
+
+\begin{table}[ht]
+  \caption{Diretivas de diagnóstico por padrão de erro no \texttt{StruggleAnalysisPrompt}}
+  \label{tab:padroes_erro}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lp{8cm}}
+    \toprule
+    \textbf{Padrão} & \textbf{Diretiva do \textit{prompt}} \\
+    \midrule
+    \texttt{CONCEPTUAL\_MISUNDERSTANDING} &
+      Re-explicar o conceito central de forma diferente \\
+    \texttt{PROCEDURAL\_ERROR} &
+      Focar no procedimento / passos corretos \\
+    \texttt{KNOWLEDGE\_GAP} &
+      Preencher o conhecimento pré-requisito antes de regressar \\
+    \texttt{UNCLEAR\_INSTRUCTIONS} &
+      Fornecer orientação mais clara e explícita \\
+    \texttt{TIME\_PRESSURE} &
+      Usar tarefas de prática passo a passo ao ritmo do aprendente \\
+    \texttt{UNKNOWN} &
+      Fornecer andaimamento geral do básico ao intermédio \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Validação de esquema e nova tentativa}
+
+Se a resposta do LLM tiver campos em falta ou JSON malformado,
+\texttt{parseTasksFromJson()} devolve menos tarefas do que as solicitadas.
+O adaptador acrescenta então \texttt{TaskGenerationPrompt.schemaReminder()}
+à mensagem do utilizador e realiza uma única nova tentativa.
+Se esta também falhar, o contador
+\texttt{ai.generation.failures\{type="schema\_validation"\}} é
+incrementado e é devolvido um \texttt{503}.
+A estratégia de nova tentativa é conservadora (uma tentativa, sem
+\textit{back-off} exponencial) porque a geração pelo Mistral é sensível à
+latência e múltiplas tentativas bloqueariam a fila do conjunto de
+\textit{threads}.
+
+\subsection*{O volante de inércia da personalização}
+
+A Figura~\ref{fig:volante_personalizacao} ilustra como o sistema acumula
+inteligência pedagógica ao longo do tempo.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small]
+    \def\r{2.8}
+    \draw[thick, ->] (0:\r) arc (0:350:\r);
+    \node[draw, fill=blue!10, rounded corners=3pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at (90:\r) {Aprendente tem\\dificuldade};
+    \node[draw, fill=orange!10, rounded corners=3pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at (0:\r) {Padrão de erro\\classificado};
+    \node[draw, fill=purple!10, rounded corners=3pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at (270:\r) {Ramo gerado\\ou reutilizado};
+    \node[draw, fill=green!10, rounded corners=3pt, align=center,
+          minimum width=2.2cm, minimum height=0.8cm]
+          at (180:\r) {Ramo e \textit{embedding}\\persistidos};
+    \node[align=center, font=\bfseries\small] at (0,0)
+          {Volante de\\Personalização};
+  \end{tikzpicture}
+  \caption{O volante de inércia da personalização: cada dificuldade enriquece a reutilização futura}
+  \label{fig:volante_personalizacao}
+\end{figure}
+
+Cada vez que um aprendente revela uma dificuldade, o ramo adaptativo
+resultante é incorporado e armazenado.
+Quando o aprendente seguinte encontra uma dificuldade semanticamente
+similar — independentemente do tópico ou língua — o sistema recupera o
+ramo anterior em vez de gerar um novo.
+À medida que a base de utilizadores cresce, a taxa de reutilização aumenta,
+reduzindo as chamadas ao LLM e a latência, e melhorando a consistência da
+experiência adaptativa.
+O arranque a frio (sem dados históricos) produz exclusivamente geração
+inédita; o percurso quente emerge organicamente a partir do uso acumulado.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Observabilidade: Métricas, \textit{Dashboards} e Alertas}
+\label{sec:observabilidade_deepdive}
+
+\subsection*{O que significa observabilidade no \textit{Play4Change}}
+
+A observabilidade é a capacidade de inferir o estado interno de um sistema
+a partir das suas saídas externas~\cite{humble2018accelerate}.
+No \textit{Play4Change}, cujo subsistema mais crítico é um agente de IA
+com latência não determinística e modos de falha parcial, a observabilidade
+não é um acrescento ao processo de implantação mas um requisito de desenho.
+Três camadas de instrumentação são implementadas: \textbf{Micrometer}
+(recolha de métricas JVM), \textbf{Prometheus} (armazenamento de séries
+temporais e alertas) e \textbf{Grafana} (\textit{dashboards} e
+visualização).
+
+\subsection*{Métricas de domínio}
+
+Para além dos valores predefinidos do Spring Boot Actuator (memória
+\textit{heap} JVM, conjuntos de \textit{threads}, histogramas de latência
+HTTP), são definidas sete métricas de domínio específicas:
+
+\begin{table}[ht]
+  \caption{Métricas Prometheus personalizadas no \textit{Play4Change}}
+  \label{tab:metricas}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{llp{5.5cm}}
+    \toprule
+    \textbf{Métrica} & \textbf{Tipo} & \textbf{Descrição} \\
+    \midrule
+    \texttt{ai.generation.duration} & Temporizador &
+      Duração da chamada ao LLM, rotulada por
+      \texttt{generation\_phase} (GENERATION / ANALYSIS) \\
+    \texttt{ai.generation.failures\_total} & Contador &
+      Falhas do LLM por tipo
+      (\texttt{schema\_validation}, \texttt{fixed\_path}, \texttt{adaptive}) \\
+    \texttt{ai.adaptive.reuse} & Contador &
+      Distribuição de estratégia de reutilização
+      (\texttt{full}, \texttt{partial}, \texttt{fresh}) \\
+    \texttt{ai.dedup.duplicates\_skipped} & Contador &
+      Tarefas rejeitadas pela desduplicação por cosseno \\
+    \texttt{struggle\_sessions\_total} & Contador &
+      Novas sessões de dificuldade por \texttt{error\_pattern} \\
+    \texttt{struggle\_sessions\_created\_total} & Contador &
+      Sessões de dificuldade por tópico \\
+    \texttt{topic\_enrollments\_total} & Contador &
+      Inscrições por tópico \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Regras de alertas}
+
+O Prometheus avalia oito regras de alerta definidas em
+\texttt{alert.rules.yml}, abrangendo quatro níveis de severidade:
+
+\begin{table}[ht]
+  \caption{Regras de alerta Prometheus do \textit{Play4Change}}
+  \label{tab:alertas}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Alerta} & \textbf{Severidade} & \textbf{Condição} \\
+    \midrule
+    \texttt{ServerDown} & crítico &
+      \texttt{up\{job="spring-boot"\} == 0} durante 1min \\
+    \texttt{HighHttpErrorRate} & aviso &
+      Taxa de erros 5xx $> 5\%$ durante 2min \\
+    \texttt{HighAiGenerationFailureRate} & aviso &
+      $> 0{,}1$ falhas/s durante 5min \\
+    \texttt{AiCircuitBreakerOpen} & crítico &
+      Estado do disjuntor aberto (imediato) \\
+    \texttt{AiGenerationP95High} & aviso &
+      Latência p95 $> 90$s durante 5min \\
+    \texttt{JvmHeapUsageHigh} & aviso &
+      \textit{heap} $> 85\%$ durante 5min \\
+    \texttt{JvmHeapUsageCritical} & crítico &
+      \textit{heap} $> 95\%$ durante 2min \\
+    \texttt{GenerationThreadPoolQueueSaturated} & aviso &
+      Fila $\geq 20$ tarefas durante 2min \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{\textit{Dashboards} Grafana}
+
+Três \textit{dashboards} Grafana são provisionados como JSON
+(Infraestrutura como Código):
+
+\begin{itemize}
+  \item \textbf{Plataforma \textit{Play4Change}} — vista operacional de
+    alto nível: taxa de pedidos HTTP, taxa de erros, inscrições ativas,
+    \textit{badges} emitidos por hora.
+  \item \textbf{Latência de IA} — durações das fases de geração,
+    histogramas p50/p95/p99, distribuição da estratégia de reutilização,
+    poupanças por desduplicação.
+  \item \textbf{Fluxo do Aprendente} — funil de inscrições, taxa de
+    sessões de dificuldade por tópico, evolução da reutilização de ramos
+    adaptativos ao longo do tempo.
+\end{itemize}
+
+Os \textit{dashboards} são provisionados via API de provisionamento do
+Grafana (ficheiros YAML em
+\texttt{infra/grafana/provisioning/dashboards/}), sendo criados
+automaticamente no arranque do contentor sem necessidade de importação
+manual.
+Esta abordagem garante que uma nova implantação é imediatamente observável
+sem configuração adicional.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    comp/.style={draw, rounded corners=4pt, fill=gray!10,
+                 minimum width=2.6cm, minimum height=0.9cm, align=center}
+  ]
+    \node[comp] (app)   at (0,0)    {Spring Boot\\Actuator};
+    \node[comp] (prom)  at (4.2,0)  {Prometheus\\(scraping a 5s)};
+    \node[comp] (graf)  at (8.4,0)  {Grafana\\Dashboards};
+    \node[comp] (alert) at (4.2,-2.2){Alertmanager};
+
+    \draw[->] (app)  -- node[above,font=\tiny]{/actuator/prometheus} (prom);
+    \draw[->] (prom) -- node[above,font=\tiny]{consultas PromQL} (graf);
+    \draw[->] (prom) -- node[left, font=\tiny]{alert.rules.yml} (alert);
+    \draw[->, dashed] (alert) -- node[right,font=\tiny]{\textit{webhook}/e-mail} (4.2,-3.4);
+  \end{tikzpicture}
+  \caption{Pilha de observabilidade: Micrometer → Prometheus → Grafana}
+  \label{fig:pilha_observabilidade}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Arquitetura de Segurança}
+\label{sec:seguranca_deepdive}
+
+\subsection*{Segurança do transporte}
+
+Todo o tráfego é encaminhado através do Nginx, que atua como
+\textit{proxy} inverso com terminação TLS.
+A configuração do Nginx impõe HTTPS e define os cabeçalhos
+\texttt{X-Frame-Options: DENY}, \texttt{X-Content-Type-Options: nosniff}
+e \texttt{Referrer-Policy: no-referrer}, mitigando ataques de
+\textit{clickjacking}, deteção de MIME e fuga de \textit{referrer}.
+
+\subsection*{Armazenamento de \textit{tokens}}
+
+Os \textit{tokens} de acesso são armazenados em \texttt{sessionStorage},
+que é isolado por separador do navegador e eliminado ao fechar o
+separador, limitando a janela de exposição.
+Os \textit{tokens} de atualização são armazenados num \textit{cookie} com
+\texttt{SameSite=Strict; Secure; path=/}.
+O atributo \texttt{SameSite=Strict} impede o envio do \textit{cookie}
+em pedidos entre domínios, mitigando efetivamente CSRF sem a necessidade
+de um \textit{token} CSRF separado~\cite{west2016samesite}.
+
+\subsection*{Mapeamento OWASP Top 10}
+
+\begin{table}[ht]
+  \caption{Controlos do OWASP Top 10 (2021) implementados no \textit{Play4Change}}
+  \label{tab:owasp}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lp{8.5cm}}
+    \toprule
+    \textbf{Risco} & \textbf{Controlo implementado} \\
+    \midrule
+    A01 Controlo de Acesso Quebrado &
+      \texttt{@AuthenticationPrincipal} vincula cada recurso ao principal
+      autenticado; \textit{endpoints} de administração protegidos por
+      verificações de papel do Spring Security \\
+    A02 Falhas Criptográficas &
+      SHA-256 para \textit{tokens} de \textit{magic link}; HTTPS/TLS para
+      transporte; sem credenciais em texto simples armazenadas \\
+    A03 Injeção &
+      Todo o acesso à base de dados via JPA ou \texttt{JdbcTemplate}
+      parametrizado; valores \textit{pgvector} convertidos via
+      \texttt{?::vector} e não por concatenação de strings \\
+    A05 Configuração de Segurança Incorreta &
+      Cabeçalhos de segurança Nginx; CORS restrito a origens conhecidas;
+      \textit{endpoints} do Spring Boot Actuator apenas na porta interna \\
+    A07 Falhas de Identificação e Autenticação &
+      \textit{Magic link} sem palavra-passe elimina reutilização de
+      credenciais; consumo único do \textit{token}; limitação de taxa nos
+      pedidos de ligação \\
+    A09 Registo e Monitorização de Segurança &
+      Registos estruturados SLF4J em cada ramo de lógica de negócio;
+      alertas Prometheus sobre taxas de erro e falhas de autenticação \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Fuga de informação em respostas de erro}
+
+O \textit{endpoint} de \textit{magic link} devolve a mesma resposta
+\texttt{202 Accepted} independentemente de o endereço de correio eletrónico
+ser conhecido ou não, impedindo enumeração de utilizadores.
+Todas as respostas de erro de domínio seguem o esquema estruturado
+\texttt{\{field, reason\}} sem expor ao cliente qualquer pilha de chamadas
+ou estado interno.
+As respostas \texttt{500 Internal Server Error} não contêm corpo em
+ambiente de produção.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Tratamento de Erros: Uma Visão Sistémica}
+\label{sec:tratamento_erros}
+
+\subsection*{Tratamento funcional de erros com \textit{Arrow Either}}
+
+O servidor utiliza o tipo de retorno \texttt{Either<AppError,~T>} da
+biblioteca Arrow~\cite{arrow2024} em toda a camada de aplicação.
+Cada subclasse de \texttt{AppError} carrega uma propriedade
+\texttt{httpStatus} que o controlador utiliza para definir o código de
+estado HTTP.
+O compilador Kotlin obriga todos os locais de chamada a tratar ambos os
+ramos, tornando os percursos de erro estruturalmente visíveis e impedindo
+a propagação silenciosa.
+
+\begin{table}[ht]
+  \caption{Hierarquia de erros de domínio e códigos de estado HTTP}
+  \label{tab:codigos_erro}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Classe de erro} & \textbf{Estado HTTP} & \textbf{Causa típica} \\
+    \midrule
+    \texttt{BadRequest.InvalidField} & 400 &
+      Falha de validação (campo em falta, valor inválido) \\
+    \texttt{Unauthorized} & 401 &
+      \textit{Token} de acesso ausente ou expirado \\
+    \texttt{Forbidden} & 403 &
+      Autenticado mas com papel insuficiente \\
+    \texttt{NotFound.ResourceNotFound} & 404 &
+      Entidade não existe \\
+    \texttt{Conflict.ConcurrentModification} & 409 &
+      Inscrição duplicada, regeneração concorrente \\
+    \texttt{RateLimited} & 429 &
+      Taxa de pedidos de \textit{magic link} excedida \\
+    \texttt{InternalServerError} & 500 &
+      Falha de carregamento para o MinIO, exceção inesperada \\
+    \texttt{ServiceUnavailable.DependencyUnavailable} & 503 &
+      API Mistral indisponível, falha de validação de esquema \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection*{Modos de falha da IA}
+
+A camada de IA introduz modos de falha ausentes nas APIs REST convencionais:
+
+\begin{enumerate}
+  \item \textbf{\textit{Timeout} de rede} — \texttt{withTimeoutOrNull(60\_000)}
+    cancela a coroutine; a sessão de dificuldade é abandonada (estado
+    \texttt{ABANDONED}).
+  \item \textbf{Falha de validação de esquema} — \textit{array} JSON com
+    campos obrigatórios em falta. Uma nova tentativa com
+    \texttt{schemaReminder}; se persistir → \texttt{503}.
+  \item \textbf{Discrepância de dimensão do \textit{embedding}} — alteração
+    de versão da API do modelo devolve um vetor de tamanho diferente.
+    \texttt{IllegalArgumentException} capturada → \texttt{503}.
+  \item \textbf{Disjuntor aberto} — Resilience4j acciona o disjuntor após
+    falhas repetidas; as chamadas subsequentes são curto-circuitadas
+    imediatamente → \texttt{503}.
+    O alerta Prometheus \texttt{AiCircuitBreakerOpen} é disparado.
+  \item \textbf{Geração parcial} — algumas tarefas são analisadas
+    corretamente, outras falham. As tarefas válidas são persistidas; se o
+    total ficar abaixo do solicitado, o tópico transita na mesma para
+    \texttt{ACTIVE} com um número reduzido de tarefas (degradação
+    aceitável).
+\end{enumerate}
+
+\subsection*{Tratamento de erros no portal web}
+
+No \textit{frontend} React, \texttt{useCreateTopicFromUrl} e
+\texttt{useCreateTopicFromPdf} são mutações do TanStack Query.
+O sinalizador \texttt{isError} activa uma mensagem de erro \textit{inline}
+que extrai o \texttt{\{field, reason\}} estruturado da resposta de erro
+Axios quando disponível, ou recorre a uma cadeia de caracteres genérica
+localizada.
+O componente \texttt{ErrorBoundary} captura erros de renderização não
+tratados e apresenta uma interface de recuperação, impedindo uma página em
+branco em caso de falha inesperada.
+
+\subsection*{Tratamento de erros na aplicação móvel}
+
+No cliente móvel, os erros seguem uma pipeline de transformação em três
+etapas antes de chegarem à camada de apresentação
+(Figura~\ref{fig:mobile_erros}):
+
+\begin{enumerate}
+  \item \textbf{Camada de rede → \texttt{NetworkError}} —
+    O \texttt{NetworkErrorMapper} transforma o código de estado HTTP ou a
+    exceção Ktor no tipo selado \texttt{NetworkError}
+    (e.g., \texttt{401} → \texttt{Unauthorized},
+    \texttt{ConnectTimeoutException} → \texttt{Timeout},
+    \texttt{409} com cabeçalho de dificuldade → \texttt{StruggleOpen}).
+
+  \item \textbf{\texttt{NetworkError} → \texttt{AppError}} —
+    O método de extensão \texttt{NetworkError.toAppError()} converte para
+    o tipo selado de domínio \texttt{AppError}, independente de HTTP.
+    Este mapeamento mantém a camada de apresentação agnóstica em relação ao
+    protocolo de transporte.
+
+  \item \textbf{\texttt{AppError} → mensagem localizada} —
+    O \texttt{AppError.messageKey} é resolvido para a cadeia de
+    caracteres localizada pelo sistema de recursos do Compose Multiplatform.
+    O \texttt{BaseView} renderiza um \texttt{ErrorDialog} automaticamente
+    quando \texttt{state.error != null}, sem necessidade de lógica
+    adicional nos ecrãs individuais.
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[>=Stealth, font=\small,
+    box/.style={draw, fill=#1, rounded corners=4pt,
+                minimum width=3.5cm, minimum height=0.9cm, align=center}
+  ]
+    \node[box=red!10]    (net) at (0,0)    {Ktor / Exceção\\HTTP};
+    \node[box=orange!12] (ne)  at (4.2,0)  {\texttt{NetworkError}\\(selado, 8 casos)};
+    \node[box=yellow!18] (ae)  at (8.4,0)  {\texttt{AppError}\\(selado, agnóstico)};
+    \node[box=green!12]  (ui)  at (8.4,-2.2){\texttt{ErrorDialog}\\+ \texttt{messageKey}};
+
+    \draw[->] (net) -- node[above,font=\tiny]{\texttt{toNetworkError()}} (ne);
+    \draw[->] (ne)  -- node[above,font=\tiny]{\texttt{toAppError()}} (ae);
+    \draw[->] (ae)  -- node[right,font=\tiny]{\texttt{BaseView}} (ui);
+  \end{tikzpicture}
+  \caption{Pipeline de transformação de erros no cliente móvel KMP}
+  \label{fig:mobile_erros}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Superfície Completa da API REST}
+\label{sec:api_completa}
+
+\begin{table}[ht]
+  \caption{Superfície completa da API REST do \textit{Play4Change}}
+  \label{tab:api_completa}
+  \vskip0.5em
+  \centering
+  \footnotesize
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Método e Caminho} & \textbf{Ator} & \textbf{Finalidade} \\
+    \midrule
+    \texttt{POST /auth/magic-link}               & Qualquer & Solicitar \textit{magic link} \\
+    \texttt{GET  /auth/verify}                   & Qualquer & Redirecionamento para \textit{deep link} móvel \\
+    \texttt{POST /auth/magic-link/verify}        & Qualquer & Verificar \textit{token} → par JWT \\
+    \texttt{POST /auth/refresh}                  & Qualquer & Renovar \textit{token} de acesso \\
+    \texttt{POST /auth/logout}                   & Qualquer & Revogar \textit{token} de atualização \\
+    \midrule
+    \texttt{GET  /admin/me}                      & Admin. & Perfil do administrador atual \\
+    \texttt{POST /admin/topics}                  & Admin. & Criar tópico a partir de URL \\
+    \texttt{POST /admin/topics/pdf}              & Admin. & Criar tópico a partir de PDF \\
+    \texttt{GET  /admin/topics}                  & Admin. & Listar tópicos (paginado) \\
+    \texttt{GET  /admin/topics/\{id\}}           & Admin. & Detalhes do tópico e registo de fases \\
+    \texttt{GET  /admin/topics/\{id\}/progress}  & Admin. & Fluxo SSE de geração \\
+    \texttt{POST /admin/topics/\{id\}/regenerate}& Admin. & Reiniciar \textit{pipeline} de geração \\
+    \texttt{GET  /admin/topics/\{id\}/tasks}     & Admin. & Listar modelos de tarefas \\
+    \texttt{PUT  /admin/tasks/\{id\}}            & Admin. & Editar modelo de tarefa \\
+    \texttt{GET  /admin/topics/\{id\}/struggle-tasks} & Admin. & Listar tarefas adaptativas \\
+    \texttt{PUT  /admin/adaptive-tasks/\{id\}}   & Admin. & Editar tarefa adaptativa \\
+    \texttt{GET  /admin/topics/\{id\}/struggle-path-stats} & Admin. & Estatísticas de dificuldade \\
+    \texttt{GET  /admin/topics/\{id\}/prerequisites}& Admin. & Obter pré-requisitos \\
+    \texttt{POST /admin/topics/\{id\}/prerequisites}& Admin. & Definir pré-requisitos \\
+    \texttt{GET  /admin/learning-graph}          & Admin. & DAG completo de pré-requisitos \\
+    \texttt{GET  /admin/topics/\{id\}/badges}    & Admin. & Estatísticas de \textit{badges} por tópico \\
+    \texttt{GET  /admin/users}                   & Admin. & Listar utilizadores (paginado) \\
+    \texttt{GET  /admin/users/\{id\}}            & Admin. & Detalhes e estatísticas do utilizador \\
+    \texttt{POST /admin/users/\{id\}/promote}    & Admin. & Promover para papel de administrador \\
+    \texttt{GET  /admin/users/\{id\}/enrollments}& Admin. & Lista de inscrições do utilizador \\
+    \texttt{GET  /admin/users/\{id\}/badges}     & Admin. & Lista de \textit{badges} do utilizador \\
+    \texttt{GET  /admin/users/\{id\}/enrollments/\{eid\}/roadmap} & Admin. & Mapa de aprendizagem \\
+    \midrule
+    \texttt{POST /user/enroll}                   & Aprendente & Inscrever em tópico \\
+    \texttt{POST /user/tasks/\{id\}/submit}      & Aprendente & Submeter resposta a tarefa \\
+    \texttt{GET  /user/roadmap}                  & Aprendente & Mapa de aprendizagem do aprendente \\
+    \texttt{GET  /user/topics}                   & Aprendente & Tópicos disponíveis \\
+    \texttt{GET  /user/struggle/\{sessionId\}}   & Aprendente & Tarefas do ramo adaptativo \\
+    \texttt{POST /user/struggle/\{taskId\}/submit}& Aprendente & Submeter tarefa adaptativa \\
+    \texttt{GET  /user/badges}                   & Aprendente & \textit{Badges} conquistados \\
+    \texttt{GET  /user/profile}                  & Aprendente & Perfil e preferências \\
+    \texttt{PUT  /user/profile/name}             & Aprendente & Atualizar nome de apresentação \\
+    \texttt{GET  /public/stats}                  & Público & Estatísticas da página de entrada \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Referências arquiteturais.}
+A arquitetura do servidor segue a Arquitetura Hexagonal (Portas e
+Adaptadores)~\cite{cockburn2005hexagonal} e o
+\textit{Domain-Driven Design}~\cite{evans2003ddd}.
+O tratamento funcional de erros adopta o padrão \textit{Either} da
+biblioteca Arrow~\cite{arrow2024}.
+O \textit{streaming} SSE reactivo assenta na especificação W3C de
+\textit{Server-Sent Events}~\cite{w3c2021sse}.
+A pesquisa por similaridade vectorial utiliza a extensão PostgreSQL
+\textit{pgvector}~\cite{pgvector2024} com indexação aproximada de
+vizinho mais próximo pelo algoritmo IVFFlat~\cite{johnson2019billion}.
+A engenharia de \textit{prompts} segue o enquadramento de quatro
+componentes do Guia de \textit{Prompting} da Google~\cite{google2024promptguide}
+(Persona, Tarefa, Contexto, Formato).
+A estratégia de ramos adaptativos assenta na teoria do andaimamento
+pedagógico~\cite{vygotsky1978mind} e nos princípios de aprendizagem
+por mestria~\cite{bloom1984mastery}.
