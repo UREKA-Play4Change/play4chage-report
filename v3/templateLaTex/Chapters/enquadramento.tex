@@ -1,0 +1,147 @@
+%
+% enquadramento.tex
+% Capítulo 2 — Enquadramento / Estado da arte
+%
+\chapter{Enquadramento e Estado da Arte}
+\label{cha:enquadramento}
+
+\section{Conceitos fundamentais}
+\label{sec:conceitos-fundamentais}
+
+Antes de se analisar o panorama de soluções existentes, é importante clarificar três conceitos que estruturam toda a proposta do \emph{Play4Change}: a gamificação, a aprendizagem adaptativa e o papel da inteligência artificial na personalização da aprendizagem. Estes três conceitos não são independentes --- pelo contrário, é precisamente da sua articulação que nasce a lógica dos três pilares (reconhecimento, envolvimento e personalização) já apresentados na Secção~\ref{sec:pilares-solucao}.
+
+\subsection*{Gamificação}
+
+A gamificação consiste na aplicação de elementos e mecânicas tipicamente associados a jogos --- como pontos, níveis, distintivos, tabelas de classificação ou sequências de progresso --- a contextos que não são, em si, jogos, com o objetivo de aumentar a motivação e o envolvimento dos utilizadores~\cite{ott2019gamification}. No domínio da educação digital, a gamificação é frequentemente usada precisamente para responder ao problema do abandono: ao tornar o processo de aprendizagem mais apelativo e ao reconhecer visivelmente o progresso da pessoa, procura-se que esta sinta vontade de continuar. É desta lógica que nasce, em larga medida, o pilar do \textbf{reconhecimento} no \emph{Play4Change}.
+
+A literatura sobre gamificação em contextos educativos revela resultados promissores, mas também aponta limites importantes. O estudo de revisão sistemática de Toda et al.~\cite{ott2019gamification}, que analisou mais de uma década de investigação, conclui que os elementos da chamada tríade \emph{PBL} (\emph{Points, Badges, Leaderboards}) têm impacto positivo no envolvimento e na persistência a curto prazo, mas que o seu efeito sustentado depende criticamente do modo como são integrados no contexto pedagógico. Em particular, os autores alertam para um risco que o design de qualquer plataforma gamificada deve considerar: o da motivação extrínseca --- aprender para ganhar pontos ou subir numa tabela --- substituir gradualmente a motivação intrínseca, sobretudo em utilizadores que, à partida, já estariam motivados a aprender.
+
+Esta tensão entre motivação extrínseca e intrínseca é central na Teoria da Autodeterminação (\emph{Self-Determination Theory})~\cite{deci1985intrinsic}, que identifica três necessidades psicológicas básicas cujo suporte favorece a motivação duradoura: a \textbf{autonomia} (sentir que as próprias escolhas fazem sentido), a \textbf{competência} (sentir-se capaz e em crescimento) e a \textbf{relação} (sentir-se ligado aos outros). Uma plataforma que se limita a acumular pontos satisfaz potencialmente apenas a competência, e de forma superficial; o \emph{Play4Change} procura alargar este espectro: as sequências de dias consecutivos (\emph{streaks}) apelam à autonomia ao tornar o regresso uma decisão da própria pessoa, os distintivos reconhecem competência genuína (só são atribuídos quando se domina um tópico a um nível mínimo), e a estrutura de tópicos relacionados com a vida cívica real procura tornar a aprendizagem significativa para além do jogo em si.
+
+\subsection*{Aprendizagem adaptativa}
+
+A aprendizagem adaptativa designa abordagens em que o percurso, o ritmo ou o nível de dificuldade dos conteúdos se ajustam ao desempenho e às necessidades de cada pessoa, em vez de seguirem um percurso único e igual para todos~\cite{vanlehn2011relative}. Em vez de um modelo ``tamanho único'', a ideia é que cada pessoa avance ao seu próprio ritmo, recebendo mais apoio onde sente mais dificuldade e podendo avançar mais depressa onde já domina a matéria. Este conceito está diretamente na base do pilar da \textbf{personalização}.
+
+O ponto de partida histórico para compreender a importância da adaptação no ensino é o chamado \emph{problema das 2 sigma}, identificado por Bloom em 1984~\cite{bloom1984sigma}: num estudo controlado, os alunos que receberam tutoria individual regular apresentaram desempenhos 2 desvios padrão acima dos alunos em regime de ensino convencional em grupo --- um resultado notável, que Bloom apelidou de ``o maior problema da pedagogia'', dada a impossibilidade prática de escalar a tutoria individual. A questão que se seguiu --- e que tem orientado décadas de investigação em tecnologia educacional --- foi: \emph{como escalar os benefícios da tutoria individual a custo acessível?}
+
+Os Sistemas de Tutoria Inteligente (\emph{Intelligent Tutoring Systems}, ITS) emergiram precisamente como resposta a esta questão. VanLehn~\cite{vanlehn2011relative}, numa revisão abrangente de 2011, mostra que os ITS com retroalimentação ao nível do passo (\emph{step-level feedback}) --- ou seja, sistemas que reagem imediatamente a cada interação do utilizador, e não apenas à resposta final --- conseguem ganhos de 0,4 a 1,0 desvio padrão em relação ao ensino convencional. Embora aquém dos 2 sigma da tutoria humana, este resultado valida a abordagem adaptativa como alternativa viável e escalável, especialmente quando combinada com a disponibilidade permanente que o \emph{software} pode oferecer.
+
+A aprendizagem por mestria (\emph{mastery learning})~\cite{bloom1968learning} é outro conceito central: o utilizador não avança para um tópico novo antes de demonstrar que domina o anterior, o que força uma progressão sólida em vez de uma superficial. No \emph{Play4Change}, esta lógica aplica-se tanto à progressão entre tópicos (só se acede ao tópico~$B$ depois de dominar o tópico~$A$, verificado através de um grafo de pré-requisitos) como à geração de percursos de reforço quando um erro recorrente é detetado. A adaptação dá-se, portanto, a dois níveis: na estrutura do percurso a longo prazo e na geração de conteúdo de apoio em resposta a dificuldades concretas em tempo real.
+
+\subsection*{Inteligência artificial na personalização da aprendizagem}
+
+A inteligência artificial tem vindo a tornar a aprendizagem adaptativa cada vez mais viável e acessível, ao permitir analisar o desempenho de cada utilizador e gerar ou ajustar conteúdos de forma praticamente individual --- algo que seria muito difícil de fazer manualmente, à escala de milhares de utilizadores~\cite{kasneci2023chatgpt}. É também esta capacidade que torna possível um dos objetivos centrais do \emph{Play4Change}: que cada pessoa sinta que a aplicação ``percebe'' onde tem mais dificuldade e a ajuda a esclarecer essas dúvidas, em vez de a confrontar com um conjunto fixo e genérico de exercícios.
+
+Os Modelos de Linguagem de Grande Dimensão (\emph{Large Language Models}, LLM) tornaram concreta uma possibilidade que antes era apenas teórica: gerar conteúdos pedagógicos personalizados a pedido, em linguagem natural, de forma economicamente acessível e à escala. Kasneci et al.~\cite{kasneci2023chatgpt} identificam, numa análise abrangente das oportunidades e desafios dos LLM na educação, que entre as potencialidades mais relevantes estão precisamente a geração de exercícios adaptados ao nível do aprendente, a explicação de conceitos de formas diferentes consoante o perfil da pessoa, e o \emph{feedback} imediato e personalizado. Os mesmos autores sublinham, porém, que a utilização acrítica destes modelos levanta desafios sérios: a possibilidade de gerar conteúdos incorretos ou imprecisos (\emph{hallucinations}), a necessidade de supervisão editorial, e o risco de substituição do pensamento crítico do aprendente por uma dependência excessiva nas respostas da máquina.
+
+Para mitigar o risco de qualidade, o \emph{Play4Change} adopta uma abordagem de geração ancorada em contexto, inspirada no padrão \emph{Retrieval-Augmented Generation} (RAG)~\cite{lewis2020rag}: em vez de pedir ao modelo que gere conteúdo livremente a partir de um pedido vago, o sistema constrói um \emph{prompt} estruturado que inclui o perfil de dificuldade do utilizador, o tópico pedagógico em causa, exemplos de exercícios anteriores considerados bem-sucedidos e um esquema JSON que o modelo deve respeitar na resposta. Adicionalmente, a resposta do modelo é validada contra esse esquema e, em caso de falha de formato, o pedido é reenviado com uma indicação explícita dos erros encontrados. Esta combinação de contexto estruturado, exemplos de referência e validação pós-geração procura tornar a saída do LLM suficientemente fiável para ser apresentada ao utilizador sem revisão humana prévia --- reconhecendo, ao mesmo tempo, que esta garantia é parcial e que a supervisão editorial dos conteúdos gerados continua a ser um passo importante para uma versão madura da plataforma.
+
+\section{Educação cívica e competências para a transição sustentável}
+\label{sec:educacao-civica}
+
+A educação cívica --- entendida como o processo pelo qual os cidadãos desenvolvem o conhecimento, as competências e a disposição para participar ativamente na vida pública e nas decisões coletivas --- é reconhecida como um dos pilares das democracias participativas. No contexto específico da transição para cidades mais sustentáveis, esta dimensão adquire particular relevância: as políticas urbanas têm maior probabilidade de produzir resultados quando os cidadãos compreendem o que está em causa, sentem que têm um papel a desempenhar e são efetivamente envolvidos nos processos de decisão~\citep{ureka2026alliance}.
+
+O quadro de referência \emph{DigComp 2.2}~\cite{vuorikari2022digcomp} fornece uma estrutura útil para operacionalizar estas competências no mundo digital. Das cinco áreas que o quadro organiza --- literacia informacional, comunicação e colaboração, criação de conteúdos digitais, segurança e resolução de problemas ---, as duas primeiras têm uma ligação direta à cidadania ativa: saber avaliar criticamente a informação que se encontra \emph{online}, distinguir fontes fiáveis de desinformação, e saber comunicar e colaborar de forma construtiva em meios digitais são, simultaneamente, competências digitais e competências cívicas. Não existe, portanto, uma separação clara entre ``literacia digital'' e ``literacia cívica'' --- a segunda pressupõe, em boa medida, a primeira.
+
+O desafio central que o \emph{Play4Change} enfrenta é o da \textbf{acessibilidade da aprendizagem informal}: como chegar a cidadãos que não estão em contextos de aprendizagem formal --- que não são estudantes, que não frequentam formações profissionais --- e que talvez nunca tenham formulado o desejo explícito de ``melhorar as suas competências cívicas digitais''? A resposta que este projeto propõe assenta em três princípios. Primeiro, a \textbf{informalidade}: o formato de jogo, com sessões curtas e sem pressão avaliativa, baixa a barreira de entrada. Segundo, a \textbf{acessibilidade imediata}: uma aplicação móvel que não requer inscrição em instituições, sem custos de acesso, disponível em qualquer hora e lugar. Terceiro, a \textbf{relevância percebida}: os conteúdos são enquadrados em situações concretas da vida nas cidades --- temas que a pessoa reconhece como pertinentes ao seu quotidiano, e não como matéria académica abstrata. É esta combinação que distingue a proposta do \emph{Play4Change} de abordagens de educação cívica mais tradicionais.
+
+\section{Trabalho relacionado: o que já existe e o que se pode aprender com isso}
+\label{sec:trabalho-relacionado}
+
+Antes de desenhar a solução, foi feita uma análise informal de um conjunto de plataformas de educação digital amplamente conhecidas e utilizadas --- \emph{Kahoot!}, \emph{Duolingo}, \emph{Coursera}, \emph{Khan Academy} e \emph{edX}. O objetivo desta análise não foi produzir um estudo comparativo exaustivo, mas sim perceber, de forma prática, em que é que cada uma destas plataformas se destaca --- e, em particular, o que cada uma faz bem em relação aos três pilares definidos para o \emph{Play4Change}: reconhecimento, envolvimento e personalização. A análise é qualitativa e baseia-se na experiência direta de utilização das plataformas e na documentação pública disponível. A partir daqui, procurou-se ``herdar'' as ideias mais relevantes de cada uma e adaptá-las, ainda que de forma parcial --- lembrando sempre que o \emph{Play4Change}, nesta fase, é apenas um protótipo funcional e não uma plataforma completa.
+
+A Tabela~\ref{tab:comparacao-plataformas} resume esta análise, posicionando cada plataforma relativamente aos três pilares.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{2.4cm} p{3.6cm} p{3.6cm} p{3.6cm}}
+		\toprule
+		\textbf{Plataforma} & \textbf{Reconhecimento} & \textbf{Envolvimento} & \textbf{Personalização} \\
+		\midrule
+		Kahoot! &
+			Pontuações e pódios em tempo real que celebram o desempenho individual e do grupo &
+			Formato de jogo/quiz competitivo, muito eficaz a tornar o momento de avaliação divertido &
+			Pouco adaptativo: os mesmos quizzes são apresentados a todos os participantes \\
+		\addlinespace
+		Duolingo &
+			Sistema de níveis, ligas e distintivos que assinalam claramente cada progresso &
+			Sequências diárias (\emph{streaks}), lembretes e notificações que incentivam o regresso todos os dias &
+			Ajusta a dificuldade dos exercícios de acordo com os erros e acertos do utilizador \\
+		\addlinespace
+		Coursera &
+			Certificados formais e emblemas associados à conclusão de cursos e módulos &
+			Estrutura por prazos e módulos que organiza o estudo, mas com pouca componente lúdica &
+			Percursos de aprendizagem recomendados com base nos interesses e no histórico do utilizador \\
+		\addlinespace
+		Khan Academy &
+			Pontos de energia, distintivos e mapas de progresso que tornam visível o que já foi dominado &
+			Painel de progresso e missões que ajudam o utilizador a saber sempre ``o que vem a seguir'' &
+			Aprendizagem por mestria (\emph{mastery learning})~\cite{bloom1968learning}: só se avança quando se domina o tema anterior \\
+		\addlinespace
+		edX &
+			Certificados verificados e indicadores de conclusão por módulo &
+			Fóruns de discussão e prazos que criam uma sensação de comunidade e de ritmo &
+			Conteúdos relativamente uniformes, com pouca adaptação automática ao desempenho individual \\
+		\bottomrule
+	\end{tabular}
+	\caption[Comparação informal de plataformas de educação digital segundo os três pilares do Play4Change]{Comparação informal de cinco plataformas de educação digital amplamente conhecidas, segundo os três pilares definidos para o \emph{Play4Change}: reconhecimento, envolvimento e personalização.}
+	\label{tab:comparacao-plataformas}
+\end{table}
+
+Antes de analisar os resultados, merecem nota dois aspetos transversais. O primeiro é a \textbf{dimensão temática}: todas as plataformas analisadas são agnósticas quanto ao tema --- o \emph{Duolingo} ensina línguas, o \emph{Kahoot!} pode ser usado para qualquer quiz, e o \emph{Coursera} e o \emph{edX} cobrem toda a espécie de cursos académicos. Nenhuma delas foi concebida especificamente para a educação cívica relacionada com a sustentabilidade urbana, o que significa que mesmo as melhores práticas identificadas neste levantamento teriam de ser recontextualizadas. O segundo aspeto é a \textbf{origem da experiência}: a maioria destas plataformas foi concebida para contextos web, com aplicações móveis como extensão. O \emph{Play4Change} foi desenhado desde o início como uma aplicação móvel nativa --- partindo do princípio de que o telemóvel é o ponto de acesso privilegiado da maioria dos cidadãos à internet, em particular nos grupos etários e socioeconómicos que importa não excluir.
+
+Desta análise resultou uma perceção relativamente clara: nenhuma destas plataformas é simultaneamente forte nos três pilares. O \emph{Duolingo} destaca-se no envolvimento e no reconhecimento, mas o seu modelo de personalização é relativamente simples; a \emph{Khan Academy} é uma referência em personalização através da aprendizagem por mestria, mas o seu reconhecimento e envolvimento são mais discretos; o \emph{Kahoot!} é extremamente envolvente no momento da utilização, mas pouco adaptado a cada pessoa; e o \emph{Coursera} e o \emph{edX} valorizam sobretudo o reconhecimento formal (certificados), com menos ênfase no envolvimento contínuo do dia a dia. A Figura~\ref{fig:plataformas-pilares} traduz esta perceção num gráfico de três eixos --- um para cada pilar (reconhecimento, envolvimento e personalização) --- em que o ``volume'' ocupado por cada plataforma mostra, de forma imediata, em quantos e em quais pilares ela é forte; a área tracejada representa a meta a que o \emph{Play4Change} aspira: ser razoavelmente forte nos três ao mesmo tempo, e não apenas num deles.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[scale=1, every node/.style={font=\small}]
+		\def\R{3.5}
+		% Background grid: concentric triangles marking the levels baixo / médio / alto
+		\foreach \lvl in {1,2,3} {
+			\draw[gray!30, thin] (90:{\lvl*\R/3}) -- (210:{\lvl*\R/3}) -- (330:{\lvl*\R/3}) -- cycle;
+		}
+		\node[gray!55, font=\tiny] at (90:{1*\R/3}) [above left=-1pt] {baixo};
+		\node[gray!55, font=\tiny] at (90:{2*\R/3}) [above left=-1pt] {médio};
+		\node[gray!55, font=\tiny] at (90:{3*\R/3}) [above left=-1pt] {alto};
+
+		% The three axes -- one per pillar
+		\draw[gray!55, -{Latex[length=2mm]}] (0,0) -- (90:{1.22*\R}) node[above, font=\bfseries\small]{Reconhecimento};
+		\draw[gray!55, -{Latex[length=2mm]}] (0,0) -- (210:{1.22*\R}) node[below left, font=\bfseries\small, align=center]{Envolvimento};
+		\draw[gray!55, -{Latex[length=2mm]}] (0,0) -- (330:{1.22*\R}) node[below right, font=\bfseries\small, align=center]{Personalização};
+
+		% Each polygon's vertices follow the order (Reconhecimento, Envolvimento, Personalização),
+		% with levels 1=baixo, 2=médio, 3=alto, drawn from the comparison in Table~\ref{tab:comparacao-plataformas}
+		\draw[red!70!black, thick]        (90:{2*\R/3}) -- (210:{3*\R/3}) -- (330:{1*\R/3}) -- cycle; % Kahoot!
+		\draw[teal!70!black, thick]       (90:{3*\R/3}) -- (210:{3*\R/3}) -- (330:{2*\R/3}) -- cycle; % Duolingo
+		\draw[blue!60!black, thick]       (90:{2*\R/3}) -- (210:{1*\R/3}) -- (330:{2*\R/3}) -- cycle; % Coursera
+		\draw[orange!80!black, thick]     (90:{2*\R/3}) -- (210:{2*\R/3}) -- (330:{3*\R/3}) -- cycle; % Khan Academy
+		\draw[violet!70!black, thick]     (90:{2*\R/3}) -- (210:{1*\R/3}) -- (330:{1*\R/3}) -- cycle; % edX
+		% Play4Change: the aspiration of being strong in all three pillars at once
+		\draw[black, thick, dashed]       (90:\R) -- (210:\R) -- (330:\R) -- cycle;
+	\end{tikzpicture}
+
+	\vspace{0.25cm}
+	{\small
+	\begin{tabular}{@{}l l@{\hspace{6mm}} l l@{}}
+		\textcolor{red!70!black}{\rule{0.4cm}{0.12cm}} & Kahoot! &
+		\textcolor{teal!70!black}{\rule{0.4cm}{0.12cm}} & Duolingo \\[3pt]
+		\textcolor{blue!60!black}{\rule{0.4cm}{0.12cm}} & Coursera &
+		\textcolor{orange!80!black}{\rule{0.4cm}{0.12cm}} & Khan Academy \\[3pt]
+		\textcolor{violet!70!black}{\rule{0.4cm}{0.12cm}} & edX &
+		{\footnotesize(a tracejado)} & Play4Change --- meta a alcançar \\
+	\end{tabular}}
+	\caption[Plataformas analisadas posicionadas nos três eixos do Play4Change]{Cada plataforma representada num gráfico de três eixos --- reconhecimento, envolvimento e personalização --- de acordo com o nível (baixo, médio ou alto) atribuído na Tabela~\ref{tab:comparacao-plataformas}. A área a tracejado assinala a meta do \emph{Play4Change}: alcançar um nível elevado nos três pilares em simultâneo, em vez de se destacar apenas num deles.}
+	\label{fig:plataformas-pilares}
+\end{figure}
+
+\section{Síntese e posicionamento do projeto}
+\label{sec:sintese-enquadramento}
+
+A análise apresentada permite tirar uma conclusão simples, mas importante para todo o desenho do \emph{Play4Change}: cada uma das plataformas estudadas resolve bem uma parte do problema --- seja tornar o momento de aprendizagem divertido, seja reconhecer o progresso de forma visível, seja adaptar os conteúdos a quem aprende --- mas raramente as três coisas ao mesmo tempo, e raramente com um foco em temas de cidadania e sustentabilidade.
+
+Esta síntese informou diretamente as decisões de design do \emph{Play4Change}. Do conjunto de plataformas analisadas, \textbf{adotaram-se}: as sequências diárias (\emph{streaks}) e os distintivos de progresso do \emph{Duolingo}; a progressão por mestria da \emph{Khan Academy}~\cite{bloom1968learning}; e o formato de \emph{quiz} interativo e imediato do \emph{Kahoot!}. \textbf{Não se adotaram}, pelo menos nesta fase, os certificados formais do \emph{Coursera} e do \emph{edX} --- que implicariam um nível de acreditação externo fora do âmbito de um protótipo --- nem as tabelas de classificação altamente competitivas que algumas destas plataformas utilizam, por se entender que podem ter efeitos desmotivadores em utilizadores menos experientes, contrariando os princípios da Teoria da Autodeterminação~\cite{deci1985intrinsic}.
+
+A diferença mais fundamental entre o \emph{Play4Change} e todas as plataformas analisadas reside na combinação de \textbf{tema} (educação cívica para a transição sustentável) e de \textbf{personalização gerativa} (uso de um LLM para gerar conteúdos adaptativos em tempo real, com base no perfil de dificuldade de cada utilizador, e não apenas para selecionar conteúdos de um repositório fixo). Esta combinação, tanto quanto foi possível apurar neste levantamento, não está presente em nenhuma das plataformas existentes --- o que justifica a proposta, mas também coloca desafios concretos: o custo da inferência de IA a escala, a garantia de qualidade dos conteúdos gerados e a necessidade de validação pedagógica são dimensões que este protótipo apenas começa a explorar, e que uma versão madura da plataforma terá necessariamente de endereçar com maior rigor.
+
+É exatamente nesse espaço que o \emph{Play4Change} se posiciona: não como um substituto de nenhuma das plataformas analisadas, mas como uma proposta que tenta reunir, num único produto aplicado à educação cívica, aquilo que cada uma faz de melhor --- apoiando-se na inteligência artificial para que esta combinação se ajuste a cada pessoa em particular. O resultado, nesta fase, é um protótipo funcional: uma primeira demonstração de que a ideia é viável e tem valor, não ainda uma plataforma completa e madura.

@@ -1,0 +1,1216 @@
+%
+% desenvolvimento.tex
+% Capítulo 3 — Desenvolvimento
+%
+\chapter{Desenvolvimento}
+\label{cha:desenvolvimento}
+
+Este capítulo descreve como o \emph{Play4Change} foi concebido e implementado, desde as decisões de arquitectura até aos mecanismos mais específicos que concretizam cada um dos três pilares. A ênfase recai sobre o pilar da \textbf{personalização} --- em particular, sobre a forma como a inteligência artificial detecta dificuldades em tempo real, gera percursos adaptativos e, em caso de persistência do erro, oferece ao utilizador a possibilidade de dialogar directamente com o modelo para esclarecer dúvidas.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Visão geral da arquitectura do sistema}
+\label{sec:arquitectura}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O \emph{Play4Change} é um sistema distribuído composto por vários processos e serviços que colaboram entre si. Todo o ambiente de produção é declarado num único ficheiro \texttt{docker-compose.yml}, o que permite lançar a plataforma completa --- incluindo a base de dados, a cache, o armazenamento de objectos e a pilha de observabilidade --- com um único comando. A Figura~\ref{fig:arquitectura-sistema} apresenta o diagrama de componentes do sistema.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		clibox/.style={draw, rounded corners=4pt, fill=blue!8, align=center,
+		               font=\scriptsize, minimum width=2.7cm, minimum height=1.0cm, thick},
+		proxybox/.style={draw, rounded corners=4pt, fill=yellow!10, align=center,
+		                 font=\scriptsize, minimum width=2.4cm, minimum height=1.0cm, thick},
+		srvbox/.style={draw, rounded corners=4pt, fill=orange!10, align=center,
+		               font=\scriptsize\bfseries, minimum width=3.2cm, minimum height=3.6cm, thick},
+		dbbox/.style={draw, rounded corners=4pt, fill=gray!10, align=center,
+		              font=\scriptsize, minimum width=2.4cm, minimum height=0.82cm},
+		extbox/.style={draw, rounded corners=4pt, fill=green!8, align=center,
+		               font=\scriptsize, minimum width=2.4cm, minimum height=0.82cm, dashed},
+		obsbox/.style={draw, rounded corners=4pt, fill=purple!7, align=center,
+		               font=\scriptsize, minimum width=2.4cm, minimum height=0.82cm},
+		arr/.style={-{Latex[length=1.8mm]}, thick},
+		biarr/.style={{Latex[length=1.8mm]}-{Latex[length=1.8mm]}, thick},
+		lbl/.style={font=\tiny, midway}
+	]
+		% ── CLIENTES ─────────────────────────────────────────────────
+		\node[clibox] (mob) at (-7.5, 1.4)
+			{\textbf{App M\'ovel}\\{\tiny Android + iOS}\\{\tiny KMP + Ktor}};
+		\node[clibox] (web) at (-7.5, -0.5)
+			{\textbf{Browser}\\{\tiny Admin SPA}\\{\tiny React + TypeScript}};
+
+		% ── NGINX ────────────────────────────────────────────────────
+		\node[proxybox] (nginx) at (-4.2, 0.5)
+			{\textbf{Nginx}\\{\tiny Reverse Proxy}\\{\tiny Serve SPA}\\{\tiny TLS headers}};
+
+		% ── SERVIDOR ─────────────────────────────────────────────────
+		% Outer box
+		\draw[orange!40, fill=orange!4, rounded corners=6pt, thick]
+			(-1.8,-2.3) rectangle (1.8,3.1);
+		\node[font=\footnotesize\bfseries, orange!70] at (0, 2.85)
+			{Servidor Spring Boot};
+		% Internal components
+		\node[dbbox, fill=orange!12] (sec)  at (0, 2.3)  {JWT Auth\\Rate Limit};
+		\node[dbbox, fill=orange!12] (svc)  at (0, 1.35) {Use Cases\\(Servi\c{c}os)};
+		\node[dbbox, fill=orange!12] (dom)  at (0, 0.5)  {Dom\'inio};
+		\node[dbbox, fill=orange!12] (sch)  at (0,-0.45) {Schedulers\\(3 jobs)};
+		\node[dbbox, fill=orange!12] (ai)   at (0,-1.35) {AI Agent\\LangChain4j};
+		\node[dbbox, fill=orange!12] (obs2) at (0,-2.05) {Actuator\\Prometheus};
+
+		% ── SERVIÇOS DE DADOS ─────────────────────────────────────────
+		\node[dbbox] (pg)    at (4.8,  2.3)  {\textbf{PostgreSQL 16}\\{\tiny + pgvector 1024d}};
+		\node[dbbox] (redis) at (4.8,  1.15) {\textbf{Redis 7}\\{\tiny cache $\cdot$ rate limit}};
+		\node[dbbox] (minio) at (4.8,  0.1)  {\textbf{MinIO}\\{\tiny S3 $\cdot$ fotos/PDFs}};
+		\node[dbbox] (flyway)at (4.8, -0.95) {\textbf{Flyway}\\{\tiny migra\c{c}\~oes DB}};
+
+		% ── EXTERNOS ──────────────────────────────────────────────────
+		\node[extbox] (mistral) at (4.8, -2.0) {\textbf{Mistral AI}\\{\tiny API externa}};
+		\node[extbox] (resend)  at (4.8, -3.0) {\textbf{Resend}\\{\tiny e-mail magic link}};
+
+		% ── OBSERVABILIDADE ───────────────────────────────────────────
+		\node[obsbox] (prom) at (-4.2, -2.3) {\textbf{Prometheus}\\{\tiny scrape :9090}};
+		\node[obsbox] (graf) at (-4.2, -3.3) {\textbf{Grafana}\\{\tiny dashboards}};
+
+		% ── SETAS ─────────────────────────────────────────────────────
+		% clientes → nginx
+		\draw[biarr] (mob.east)  -- node[lbl,above]{\tiny HTTPS} (nginx.west |- mob.east);
+		\draw[biarr] (web.east)  -- node[lbl,below]{\tiny HTTPS} (nginx.west |- web.east);
+		% nginx → server
+		\draw[biarr] (nginx.east) -- node[lbl,above]{\tiny HTTP :8080} (-1.8, 0.5);
+		% server → data
+		\draw[biarr] (1.8, 2.3)  -- (pg.west);
+		\draw[biarr] (1.8, 1.15) -- (redis.west);
+		\draw[biarr] (1.8, 0.1)  -- (minio.west);
+		\draw[arr]   (1.8,-0.95) -- (flyway.west);
+		% server → external
+		\draw[arr] (1.8,-1.35) -- ++(1.0,0) |- (mistral.west);
+		\draw[arr] (1.8, 0.5)  -- ++(1.0,0) |- (resend.west);
+		% observability
+		\draw[arr] (obs2.west) -- (-1.8,-2.05) -- (-4.2,-2.05) -- (prom.north);
+		\draw[arr] (prom.south) -- (graf.north);
+
+		% ── BACKGROUND GROUP: data layer ─────────────────────────────
+		\begin{scope}[on background layer]
+			\node[draw=gray!25, fill=gray!3, rounded corners=6pt,
+			      fit=(pg)(redis)(minio)(flyway), inner sep=5pt,
+			      label={[gray!50, font=\tiny]above:Dados}] {};
+			\node[draw=green!30, fill=green!3, rounded corners=6pt,
+			      fit=(mistral)(resend), inner sep=5pt,
+			      label={[gray!50, font=\tiny]below:Servi\c{c}os externos}] {};
+			\node[draw=purple!25, fill=purple!3, rounded corners=6pt,
+			      fit=(prom)(graf), inner sep=5pt,
+			      label={[gray!50, font=\tiny]below:Observabilidade}] {};
+		\end{scope}
+	\end{tikzpicture}
+	\caption[Diagrama de componentes do sistema Play4Change]{Diagrama de componentes do \emph{Play4Change}: os clientes m\'ovel e web comunicam com o servidor atrav\'es do Nginx; o servidor apoia-se em PostgreSQL+pgvector, Redis e MinIO, integra com Mistral AI e Resend (e-mail), e expõe m\'etricas ao Prometheus/Grafana.}
+	\label{fig:arquitectura-sistema}
+\end{figure}
+
+\subsection*{Clientes}
+
+A interface principal do aprendente é a \textbf{aplicação móvel}, desenvolvida em \emph{Kotlin Multiplatform} com \emph{Compose Multiplatform}: o mesmo código de interface corre em Android e iOS, com apenas adaptadores de plataforma distintos (motor HTTP OkHttp/Darwin, armazenamento de \emph{tokens} em DataStore no Android e no \emph{Keychain} no iOS). A navegação entre ecrãs segue o padrão \emph{Decompose} (componentes independentes do ciclo de vida), e a injecção de dependências usa \emph{Koin}. A aplicação tem dez ecrãs funcionais: Splash, Login, Home, Explorar tópicos, Tarefa diária, Percurso adaptativo (\emph{Struggle}), Explicação/chat, Revisão por pares, Perfil e Sobre.
+
+O \textbf{painel de administração} é uma SPA React+TypeScript, servida como ficheiros estáticos pelo Nginx. Permite criar tópicos (por URL ou PDF), gerir pré-requisitos, ver o grafo de aprendizagem, moderar relatórios de tarefas e consultar estatísticas de distintivos.
+
+\subsection*{Nginx e encaminhamento}
+
+O Nginx actua como \emph{reverse proxy} e servidor de conteúdo estático. Todos os pedidos chegam à porta~80; os que têm o prefixo \texttt{/play4change-server/} são reencaminhados para o servidor Spring Boot (porta 8080), enquanto os restantes servem a SPA com \emph{fallback} para \texttt{index.html}. O \emph{endpoint} \texttt{/actuator/health} é exposto publicamente para os \emph{health checks} do Docker, mas todos os outros \emph{endpoints} de gestão (incluindo \texttt{/actuator/prometheus}) ficam acessíveis apenas internamente na porta 9090, fora do alcance público. O Nginx acrescenta ainda os cabeçalhos de segurança obrigatórios (HSTS, CSP, \texttt{X-Frame-Options: DENY}, \texttt{X-Content-Type-Options}).
+
+\subsection*{Servidor Spring Boot}
+
+O servidor é o núcleo da plataforma. Internamente, organiza-se segundo a \emph{Hexagonal Architecture} (\emph{Ports \& Adapters}) \citep{cockburn2005hexagonal}: a lógica de negócio (serviços e domínio) não depende directamente de nenhuma tecnologia concreta --- cada integração é encapsulada num \emph{adapter} que implementa uma interface genérica (\emph{port}). A Figura~\ref{fig:arquitectura-interna} detalha esta organização interna.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		layerA/.style={draw, rounded corners=4pt, fill=blue!8, align=center,
+		               font=\scriptsize, minimum width=12cm, minimum height=0.8cm, thick},
+		layerB/.style={draw, rounded corners=4pt, fill=orange!8, align=center,
+		               font=\scriptsize, minimum width=12cm, minimum height=0.8cm, thick},
+		layerC/.style={draw, rounded corners=4pt, fill=green!8, align=center,
+		               font=\scriptsize, minimum width=12cm, minimum height=0.8cm, thick},
+		layerD/.style={draw, rounded corners=4pt, fill=gray!10, align=center,
+		               font=\scriptsize, minimum width=12cm, minimum height=0.8cm, thick},
+		arr/.style={-{Latex[length=2mm]}, thick, gray!60}
+	]
+		\node[layerD] (infra) at (0, 0)
+			{{\bfseries Infraestrutura}
+			 \quad JPA/pgvector $\cdot$ RedisCacheAdapter $\cdot$ MinioFileStorageAdapter $\cdot$
+			 LangChain4jTaskGenerationAdapter $\cdot$ ResendEmailAdapter $\cdot$ Schedulers};
+		\node[layerB] (app) at (0, 1.1)
+			{{\bfseries Aplica\c{c}\~ao (Use Cases)}
+			 \quad EnrollmentService $\cdot$ TaskService $\cdot$ HandleStruggleService $\cdot$
+			 ExplanationService $\cdot$ BadgeIssuanceService $\cdot$ TopicManagementService};
+		\node[layerC] (dom) at (0, 2.2)
+			{{\bfseries Dom\'inio}
+			 \quad Topic $\cdot$ Enrollment $\cdot$ TaskAssignment $\cdot$ StruggleSession $\cdot$
+			 ExplanationSession $\cdot$ Badge $\cdot$ PeerReview};
+		\node[layerA] (web) at (0, 3.3)
+			{{\bfseries Web (Controllers)}
+			 \quad TaskController $\cdot$ EnrollmentController $\cdot$ StruggleController $\cdot$
+			 ExplanationController $\cdot$ AdminTopicController $\cdot$ AuthController};
+		% Dependency arrows (downward only)
+		\draw[arr] (web.south) -- (app.north);
+		\draw[arr] (app.south) -- (dom.north);
+		\draw[arr] (infra.north) -- (dom.south);
+		% Labels
+		\node[font=\tiny, gray!60] at (6.4, 0.55) {implementa ports};
+		\node[font=\tiny, gray!60] at (6.4, 1.65) {dep.\ injectadas};
+		\node[font=\tiny, gray!60] at (6.4, 2.75) {chama use cases};
+	\end{tikzpicture}
+	\caption[Arquitectura interna do servidor (Ports \& Adapters)]{Organiza\c{c}\~ao interna do servidor em quatro camadas: os \emph{controllers} recebem pedidos HTTP e chamam os casos de uso; os casos de uso operam sobre o dom\'inio; a infraestrutura implementa as interfaces (\emph{ports}) definidas pelos casos de uso. As depend\^encias apontam sempre para dentro (dom\'inio).}
+	\label{fig:arquitectura-interna}
+\end{figure}
+
+O servidor inclui ainda mecanismos transversais relevantes: autenticação \emph{stateless} por JWT (tokens de acesso com 15 minutos de validade e \emph{refresh} com 7 dias), com acesso via \emph{Magic Link} por e-mail (sem palavra-passe); limitação de taxa nos \emph{endpoints} de autenticação (Redis-backed); um \emph{circuit breaker} Resilience4j nas chamadas à API da Mistral (janela de 10 pedidos, 50\% de falhas abre o circuito por 30 segundos, com \emph{retry} exponencial até 3 tentativas); e três \emph{schedulers} que correm periodicamente: expiração automática de tópicos vencidos, \emph{watchdog} que detecta gerações de conteúdo presas em estado \texttt{GENERATING} há mais de 15 minutos, e expiração de revisões por pares não concluídas.
+
+\subsection*{Serviços de dados e externos}
+
+A \textbf{base de dados} é PostgreSQL~16 com a extensão \texttt{pgvector}, que acrescenta suporte nativo a vectores de alta dimensão e índices de similaridade coseno (IVFFlat)~\cite{johnson2019faiss}. As migrações de esquema são geridas pelo Flyway, o que garante que a estrutura da base de dados evolui de forma controlada e reprodutível. O \textbf{Redis~7} serve dois propósitos: cache de sessões e de resultados de geração de IA, e \emph{backend} para o contador de taxa de pedidos de autenticação. O \textbf{MinIO} é um servidor de armazenamento de objectos compatível com a API S3, usado para guardar as fotografias submetidas nas tarefas de acção cívica e os PDFs carregados pelos administradores. Para a geração de conteúdo, o servidor comunica com a \textbf{API Mistral} através do módulo \texttt{ai-agent} (um módulo Gradle independente que encapsula o LangChain4j), o que permite substituir o fornecedor de IA sem tocar no servidor. O serviço \textbf{Resend} envia os e-mails de \emph{Magic Link} para autenticação.
+
+\subsection*{Observabilidade e CI/CD}
+
+O servidor expõe métricas no formato Prometheus através do \emph{endpoint} \texttt{/actuator/prometheus} (porta 9090, interna). O Prometheus faz \emph{scrape} a cada 5 segundos, e o Grafana apresenta os dados em \emph{dashboards} pré-configurados que incluem histogramas de latência da geração de IA (percentis P50/P95/P99), contadores de percursos adaptativos e saúde geral da aplicação. O ciclo de integração contínua corre no GitHub Actions: em cada \emph{push} para a \emph{branch} principal, executam-se análise de segredos expostos (Gitleaks), compilação e testes (JDK~21), análise estática com Detekt e geração do APK Android. Uma \emph{pipeline} separada, agendada para todas as segundas-feiras, executa uma análise OWASP de dependências.
+
+A Tabela~\ref{tab:stack} apresenta o \emph{stack} tecnológico completo do protótipo.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{3.2cm} p{4.0cm} p{5.5cm}}
+		\toprule
+		\textbf{Componente} & \textbf{Tecnologia} & \textbf{Função} \\
+		\midrule
+		Backend & Kotlin + Spring Boot 3 & Servidor REST; lógica de domínio e aplicação \\
+		ORM / Persistência & Spring Data JPA + Hibernate & Mapeamento entidade--tabela \\
+		Base de dados & PostgreSQL 16 + pgvector & Dados relacionais + índice vectorial (1024 dim.) \\
+		Cache & Redis & Cache de sessões e de resultados de geração \\
+		Armazenamento & MinIO (S3-compatible) & Fotografias, PDFs e conteúdo multimédia \\
+		IA --- LLM & Mistral AI (\texttt{mistral-small-latest}) & Geração de tarefas, subtarefas e explicações \\
+		IA --- Embeddings & LangChain4j Embedding Model & Vectorização de contextos para deduplicação \\
+		Aplicação móvel & Kotlin Multiplatform (Android + iOS) & Interface do aprendente \\
+		Painel de administração & React + TypeScript (SPA) & Gestão de tópicos, tarefas e utilizadores \\
+		CI/CD & GitHub Actions & Builds, testes e deploy automáticos \\
+		Observabilidade & Micrometer + Prometheus & Métricas de geração de IA e percursos adaptativos \\
+		Autenticação & JWT + \emph{Magic Link} (e-mail) & Acesso sem palavra-passe \\
+		Migrações DB & Flyway & Controlo de versões do esquema relacional \\
+		\bottomrule
+	\end{tabular}
+	\caption[\emph{Stack} tecnológico do Play4Change]{\emph{Stack} tecnológico completo do protótipo \emph{Play4Change}.}
+	\label{tab:stack}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Pipeline de processamento de pedidos}
+\label{sec:pipeline-pedidos}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Qualquer pedido ao servidor atravessa um conjunto ordenado e bem definido de camadas antes de produzir uma resposta. Existem dois tipos de fluxo: o \textbf{fluxo síncrono}, que cobre a generalidade dos pedidos REST~\cite{fielding2000rest} com resposta imediata, e o \textbf{fluxo assíncrono}, empregue na geração de conteúdo com IA, em que a resposta chega progressivamente através de uma ligação de \emph{Server-Sent Events} (SSE)~\cite{w3c-sse} enquanto o processamento ocorre em paralelo numa \emph{thread} separada.
+
+\subsection*{Fluxo síncrono}
+
+A Figura~\ref{fig:pipeline-sync} ilustra o percurso de um pedido autenticado típico --- por exemplo, a submissão de uma resposta a uma tarefa diária --- desde a chegada ao Nginx até à persistência na base de dados. Antes de o \emph{payload} chegar ao código de negócio, atravessa cinco mecanismos transversais que garantem segurança, rastreabilidade e respeito pelos limites de carga. Toda a cadeia de filtros é declarada em \texttt{SecurityConfig.kt} e salta os filtros de autenticação para as rotas explicitamente públicas (\texttt{/auth/**}, \texttt{/actuator/health}, \texttt{/api/stats/public}).
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		pbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize,
+		             minimum width=9.5cm, minimum height=0.72cm, thick},
+		parr/.style={-{Latex[length=2mm]}, thick},
+		retarr/.style={-{Latex[length=2mm]}, thick, dashed, gray!55}
+	]
+		\node[pbox, fill=yellow!15] (p1) at (0, 9.6)
+			{\textbf{Nginx :80}\enspace proxy\_pass \texttt{/play4change-server/} $\to$ :8080 $|$ HSTS $\cdot$ CSP $\cdot$ X-Frame-Options};
+		\node[pbox, fill=red!8]     (p2) at (0, 8.5)
+			{\textbf{RateLimitFilter}\enspace Bucket4j token-bucket por IP $|$ \texttt{/auth/**}: 5--20\,req/10\,min $|$ HTTP 429 + Retry-After};
+		\node[pbox, fill=orange!10] (p3) at (0, 7.4)
+			{\textbf{RequestIdFilter}\enspace UUID \texttt{X-Request-Id} $|$ injec\c{c}\~ao no MDC para correla\c{c}\~ao de logs por pedido};
+		\node[pbox, fill=red!8]     (p4) at (0, 6.3)
+			{\textbf{JwtAuthFilter}\enspace extrai Bearer $|$ valida assinatura + expira\c{c}\~ao $|$ seta SecurityContext};
+		\node[pbox, fill=red!8]     (p5) at (0, 5.2)
+			{\textbf{Spring Security (autoriza\c{c}\~ao)}\enspace p\'ublico: \texttt{/auth/**} $|$ restrito: \texttt{/admin/**} ROLE\_ADMIN $|$ 401/403};
+		\node[pbox, fill=blue!8]    (p6) at (0, 4.1)
+			{\textbf{@RestController + @Valid}\enspace valida\c{c}\~ao de entrada $|$ mapeamento DTO $|$ GlobalExceptionHandler};
+		\node[pbox, fill=orange!9]  (p7) at (0, 3.0)
+			{\textbf{Application Service}\enspace orquestra use case $|$ chama ports $|$ submete gera\c{c}\~ao @Async};
+		\node[pbox, fill=green!8]   (p8) at (0, 1.9)
+			{\textbf{Dom\'inio}\enspace regras de neg\'ocio $|$ DAG prereqs $|$ DayIndex $|$ penaliza\c{c}\~ao temporal};
+		\node[pbox, fill=gray!10]   (p9) at (0, 0.8)
+			{\textbf{Adapters de infraestrutura}\enspace JPA/pgvector $|$ RedisCacheAdapter $|$ MinIO $|$ LangChain4j $|$ Resend};
+
+		% Setas de descida
+		\foreach \a/\b in {p1/p2, p2/p3, p3/p4, p4/p5, p5/p6, p6/p7, p7/p8, p8/p9} {
+			\draw[parr] (\a.south) -- (\b.north);
+		}
+
+		% Seta de resposta (lado direito)
+		\draw[retarr] (5.1, 0.44) -- (5.1, 9.96)
+			node[above, font=\tiny, gray!65] {resposta JSON};
+
+		% Barras de camada (lado esquerdo)
+		\draw[red!30, line width=3pt]   (-4.95, 4.84) -- (-4.95, 8.86);
+		\node[font=\tiny, red!55, rotate=90, align=center] at (-5.3, 6.85)
+			{Spring Security Filter Chain};
+		\draw[blue!25, line width=2pt]  (-4.95, 2.64) -- (-4.95, 4.46);
+		\node[font=\tiny, blue!50, rotate=90] at (-5.3, 3.55) {MVC + App};
+		\draw[green!30, line width=2pt] (-4.95, 1.54) -- (-4.95, 2.26);
+		\node[font=\tiny, green!55, rotate=90] at (-5.3, 1.9) {Dom.};
+		\draw[gray!35, line width=2pt]  (-4.95, 0.44) -- (-4.95, 1.16);
+		\node[font=\tiny, gray!55, rotate=90] at (-5.3, 0.8) {Infra};
+	\end{tikzpicture}
+	\caption[Pipeline síncrono de processamento de pedidos]{Percurso de um pedido autenticado pelas nove camadas do sistema \emph{Play4Change}: as quatro internas à cadeia de filtros Spring Security (vermelho) asseguram segurança e rastreabilidade antes de o pedido chegar aos \emph{controllers}; a resposta JSON percorre o caminho inverso.}
+	\label{fig:pipeline-sync}
+\end{figure}
+
+Dois aspectos merecem destaque. O \texttt{RateLimitFilter}, com precedência máxima (\texttt{HIGHEST\_PRECEDENCE}), é o primeiro a executar em todos os pedidos e usa o algoritmo \emph{token bucket} da biblioteca Bucket4j: cada IP tem um balde por \emph{endpoint}, recarregado de 10 em 10 minutos. O \texttt{RequestIdFilter}, por seu turno, gera um UUID de 8 caracteres por pedido e injeta-o no MDC (\emph{Mapped Diagnostic Context}) do Slf4j, de modo que todas as linhas de log produzidas durante esse pedido --- mesmo em \emph{threads} distintas --- ficam automaticamente anotadas com o mesmo identificador, facilitando o diagnóstico em produção. A Tabela~\ref{tab:filtros} resume a cadeia completa.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{c l l l}
+		\toprule
+		\textbf{\#} & \textbf{Filtro / Componente} & \textbf{Função} & \textbf{Rejeição} \\
+		\midrule
+		1 & \texttt{RateLimitFilter} & Token bucket Bucket4j por IP e \emph{endpoint} & 429 + \texttt{Retry-After} \\
+		2 & \texttt{RequestIdFilter} & UUID \texttt{X-Request-Id} $\to$ MDC Slf4j & --- \\
+		3 & \texttt{CorsFilter} & Valida\c{c}\~ao de \texttt{Origin} (Spring Security) & 403 Forbidden \\
+		4 & \texttt{JwtAuthFilter} & Extrai e valida Bearer JWT; seta SecurityContext & 401 Unauthorized \\
+		5 & Autoriza\c{c}\~ao Spring Security & Verifica roles; \texttt{/admin/**} exige ROLE\_ADMIN & 403 Forbidden \\
+		\bottomrule
+	\end{tabular}
+	\caption[Cadeia de filtros Spring Security do servidor Play4Change]{Cadeia de filtros Spring Security aplicada a cada pedido HTTP, por ordem de execu\c{c}\~ao.}
+	\label{tab:filtros}
+\end{table}
+
+\subsection*{Fluxo assíncrono de geração de conteúdo}
+
+A criação de um tópico desencadeia um fluxo de duas fases. Na primeira, o pedido HTTP é resolvido de forma imediata: o servidor persiste o tópico com estado \texttt{PENDING} e devolve \texttt{202 Accepted}, devolvendo o controlo ao cliente enquanto submete a tarefa de geração a uma \emph{thread pool} de tamanho fixo (\texttt{pool-size~=~3}). Na segunda fase --- que corre em paralelo --- o módulo \texttt{ai-agent} extrai o conteúdo-fonte (URL ou ficheiro via MinIO), constrói o \emph{prompt} e invoca a API Mistral via LangChain4j, protegida pelo \emph{circuit breaker} Resilience4j~\cite{fowler-circuit-breaker}. O progresso é comunicado ao cliente através de eventos SSE publicados pelo \texttt{SseTopicEventPublisher}, conforme ilustra a Figura~\ref{fig:pipeline-async}.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.72cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		ssearr/.style={-{Latex[length=1.8mm]}, thick, dashed, blue!55},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny, minimum width=2.0cm}
+	]
+		% Actores
+		\node[actbox, fill=blue!8]        (ac1) at (0,   5.8) {Admin};
+		\node[actbox, fill=orange!8]      (ac2) at (3.5, 5.8) {Spring\\Server};
+		\node[actbox, fill=green!8]       (ac3) at (7.0, 5.8) {ai-agent\\Module};
+		\node[actbox, fill=red!5, dashed] (ac4) at (10.5, 5.8) {Mistral AI\\{\tiny externo}};
+
+		% Linhas de vida
+		\draw[lifeline] (0,   5.44) -- (0,   -1.0);
+		\draw[lifeline] (3.5, 5.44) -- (3.5, -1.0);
+		\draw[lifeline] (7.0, 5.44) -- (7.0, -1.0);
+		\draw[lifeline] (10.5, 5.44) -- (10.5, -1.0);
+
+		% (1) POST /topics
+		\draw[msgarr] (0, 5.1) -- (3.5, 5.1)
+			node[above, font=\tiny, midway] {(1) POST /topics};
+
+		% Nota: persist PENDING
+		\node[notebox, fill=orange!6] at (4.9, 4.6) {persist Topic\\(PENDING)};
+		\draw[gray!30, thin] (3.5, 4.6) -- (4.3, 4.6);
+
+		% (2) 202 Accepted
+		\draw[retarr] (0, 4.15) -- (3.5, 4.15)
+			node[above, font=\tiny, midway] {(2) 202 Accepted};
+
+		% (3) SSE subscribe
+		\draw[msgarr] (0, 3.6) -- (3.5, 3.6)
+			node[above, font=\tiny, midway] {(3) GET /topics/\{id\}/events (SSE)};
+
+		% (4) @Async submit
+		\draw[msgarr] (3.5, 3.05) -- (7.0, 3.05)
+			node[above, font=\tiny, midway] {(4) @Async (pool-size 3)};
+
+		% (5) LangChain4j prompt
+		\draw[msgarr] (7.0, 2.5) -- (10.5, 2.5)
+			node[above, font=\tiny, midway] {(5) LangChain4j prompt};
+
+		% Resilience4j note
+		\node[notebox, fill=red!5, draw=red!30] at (8.75, 1.98)
+			{Resilience4j CB\\50\% fail $|$ retry $\times$3};
+
+		% (6) JSON tasks
+		\draw[retarr] (7.0, 1.6) -- (10.5, 1.6)
+			node[below, font=\tiny, midway] {(6) JSON tasks};
+
+		% (7) SSE events
+		\draw[ssearr] (3.5, 0.95) -- (0, 0.95)
+			node[above, font=\tiny, midway, blue!65] {(7) SSE events};
+
+		% Detalhe dos eventos SSE
+		\node[draw=blue!20, fill=blue!3, rounded corners=2pt, font=\tiny, align=left,
+		      text width=2.8cm] at (1.75, 0.25)
+			{\texttt{phase-change: GENERATING}\\
+			 \texttt{generation-progress: \{k/N\}}\\
+			 \texttt{complete: \{totalMs\}}};
+
+		% Watchdog
+		\node[notebox, fill=yellow!10, draw=yellow!40] at (3.5, -0.55)
+			{Watchdog (120\,s)\\STUCK $>$ 15\,min $\to$ FAILED};
+		\draw[gray!35, thin, -{Latex[length=1.5mm]}] (3.5, -0.19) -- (3.5, 0.65);
+	\end{tikzpicture}
+	\caption[Pipeline assíncrono de geração de conteúdo com SSE]{Diagrama de sequ\^encia simplificado da gera\c{c}\~ao ass\'incrona: o servidor devolve \texttt{202 Accepted} imediatamente; a gera\c{c}\~ao ocorre numa \emph{thread} separada e comunica o progresso via SSE. O \emph{watchdog} marca como \texttt{FAILED} qualquer tópico preso em \texttt{GENERATING} há mais de 15 minutos.}
+	\label{fig:pipeline-async}
+\end{figure}
+
+Para cada tópico, um \texttt{SseEmitter} com \emph{timeout} de 10 minutos é registado em memória num \texttt{ConcurrentHashMap}; é removido automaticamente após \texttt{complete}, \texttt{failed}, \emph{timeout} ou desconexão do cliente, garantindo que emissores obsoletos não acumulam em memória. A Tabela~\ref{tab:sse-events} descreve os quatro tipos de evento SSE; a Tabela~\ref{tab:resilience} resume os parâmetros de resiliência e os limites operacionais relevantes.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{l l p{6.5cm}}
+		\toprule
+		\textbf{Evento SSE} & \textbf{Dados (JSON)} & \textbf{Descrição} \\
+		\midrule
+		\texttt{phase-change}        & \texttt{\{phase, durationMs\}}    & Transi\c{c}\~ao de fase: \texttt{PENDING} $\to$ \texttt{EXTRACTING} $\to$ \texttt{GENERATING} $\to$ \texttt{COMPLETED} \\
+		\texttt{generation-progress} & \texttt{\{completed, total\}}     & Progresso tarefa-a-tarefa; permite barra de progresso no cliente \\
+		\texttt{complete}            & \texttt{\{totalDurationMs\}}      & Gera\c{c}\~ao conclu\'ida; o \texttt{SseEmitter} é fechado \\
+		\texttt{failed}              & \texttt{\{reason\}}               & Erro ou \emph{circuit breaker} aberto; o \texttt{SseEmitter} é fechado \\
+		\bottomrule
+	\end{tabular}
+	\caption[Eventos SSE da geração de conteúdo]{Eventos SSE publicados pelo \texttt{SseTopicEventPublisher} durante o ciclo de vida da gera\c{c}\~ao de um t\'opico.}
+	\label{tab:sse-events}
+\end{table}
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{l r p{7.0cm}}
+		\toprule
+		\textbf{Par\^ametro} & \textbf{Valor} & \textbf{Descrição} \\
+		\midrule
+		Rate limit \texttt{/auth/magic-link} & 5 / 10\,min  & Token bucket Bucket4j por IP \\
+		Rate limit \texttt{/auth/refresh}    & 20 / 10\,min & Token bucket Bucket4j por IP \\
+		CB \emph{sliding window}             & 10 chamadas  & Janela de avalia\c{c}\~ao do \emph{circuit breaker} \\
+		CB failure rate threshold            & 50\%         & Taxa de falhas que abre o circuito \\
+		CB wait duration (OPEN)              & 30\,s        & Tempo em estado OPEN antes de HALF-OPEN \\
+		Retry max attempts                   & 3            & Tentativas com \emph{backoff} exponencial \\
+		Async pool size                      & 3            & \emph{Threads} dedicadas à gera\c{c}\~ao IA \\
+		SSE emitter timeout                  & 10\,min      & \emph{Timeout} do \texttt{SseEmitter} por t\'opico \\
+		Watchdog rate                        & 120\,s       & Intervalo do \texttt{StuckGenerationWatchdogJob} \\
+		Stuck threshold                      & 15\,min      & Tempo em \texttt{GENERATING} antes de transitar para \texttt{FAILED} \\
+		\bottomrule
+	\end{tabular}
+	\caption[Parâmetros de resiliência e limites operacionais do sistema]{Par\^ametros de resili\^encia e limites operacionais do \emph{Play4Change}, extra\'idos de \texttt{application.yml}.}
+	\label{tab:resilience}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Autenticação sem \emph{password} e gestão de sessão}
+\label{sec:autenticacao}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O \emph{Play4Change} adopta um modelo de autenticação \emph{passwordless} assente em \emph{Magic Links} — ligações de uso único enviadas por e-mail — eliminando a necessidade de o utilizador memorizar ou gerir palavras-passe~\cite{nist-sp800-63b}. Após verificação, o servidor emite um par de tokens JWT que governa todas as interacções subsequentes com a API.
+
+\subsection{O fluxo \emph{Magic Link}}
+\label{ssec:magiclink}
+
+O protocolo divide-se em duas fases sincronizadas por um segredo de curta duração. Na fase de pedido, o servidor gera 32~bytes de entropia criptográfica via \texttt{SecureRandom} e persiste apenas o \emph{hash} SHA-256~\cite{fips180-4} na base de dados, com validade de 15~minutos; o \emph{token} bruto viaja exclusivamente no link enviado pelo serviço externo Resend. Na fase de verificação, o servidor calcula o \emph{hash} do \emph{token} recebido e executa um \texttt{UPDATE} atómico que marca o registo como \texttt{used} apenas se existir, estiver por utilizar e não tiver expirado --- eliminando a janela de corrida \emph{TOCTOU} que uma sequência separada de leitura e escrita permitiria. Se o endereço de e-mail não tiver conta associada, o utilizador é criado \emph{on-the-fly} nessa transacção.
+
+O endpoint \texttt{GET /auth/verify} não consome o \emph{token}: limita-se a devolver uma redirecção \texttt{302} para o esquema de URL profundo \texttt{play4change://auth/verify?token=\ldots}, que o sistema operativo redirige para a aplicação móvel. O consumo efectivo ocorre quando a \emph{app} envia \texttt{POST /auth/magic-link/verify}, recebendo em troca o par de tokens. A Figura~\ref{fig:seq-magiclink} detalha a interacção completa.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.72cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny, minimum width=2.0cm}
+	]
+		% Actores
+		\node[actbox, fill=blue!8]   (ac1) at (0,   7.2) {Utilizador\\(Mobile)};
+		\node[actbox, fill=orange!8] (ac2) at (4.0, 7.2) {Spring Server};
+		\node[actbox, fill=teal!8]   (ac3) at (8.5, 7.2) {Resend API\\{\tiny externo}};
+
+		% Linhas de vida
+		\draw[lifeline] (0,   6.84) -- (0,   -0.5);
+		\draw[lifeline] (4.0, 6.84) -- (4.0, -0.5);
+		\draw[lifeline] (8.5, 6.84) -- (8.5, -0.5);
+
+		% (1) POST /auth/magic-link
+		\draw[msgarr] (0, 6.5) -- (4.0, 6.5)
+			node[above, font=\tiny, midway] {(1) POST /auth/magic-link \{email\}};
+
+		% Nota: generateToken + sha256 + DB
+		\node[notebox, fill=orange!6, text width=2.8cm] at (5.7, 6.0)
+			{generateToken() 32\,bytes\\sha256(token) $\to$ DB\\expires: 15\,min};
+		\draw[gray!30, thin] (4.0, 6.0) -- (4.7, 6.0);
+
+		% (2) Server → Resend
+		\draw[msgarr] (4.0, 5.5) -- (8.5, 5.5)
+			node[above, font=\tiny, midway] {(2) sendMagicLink(email, rawToken)};
+
+		% (3) Resend envia email
+		\node[notebox, fill=teal!5, text width=2.6cm] at (8.5, 4.95)
+			{Email: \texttt{GET /auth/verify}\\
+			 \texttt{?token=<rawToken>}};
+
+		% (3) 202 Accepted
+		\draw[retarr] (0, 4.5) -- (4.0, 4.5)
+			node[above, font=\tiny, midway] {(3) 202 Accepted};
+
+		% --- utilizador abre email ---
+		\draw[gray!20, densely dotted] (-0.8, 4.15) -- (9.3, 4.15)
+			node[right, font=\tiny, gray!50] {utilizador abre email};
+
+		% (4) GET /auth/verify?token=...
+		\draw[msgarr] (0, 3.75) -- (4.0, 3.75)
+			node[above, font=\tiny, midway] {(4) GET /auth/verify?token=...};
+
+		% (5) 302 deep link
+		\draw[retarr] (0, 3.3) -- (4.0, 3.3)
+			node[below, font=\tiny, midway] {(5) 302 $\to$ \texttt{play4change://auth/verify?token=...}};
+
+		% --- deep link abre app ---
+		\draw[gray!20, densely dotted] (-0.8, 2.9) -- (9.3, 2.9)
+			node[right, font=\tiny, gray!50] {deep link abre a app};
+
+		% (6) POST /auth/magic-link/verify
+		\draw[msgarr] (0, 2.55) -- (4.0, 2.55)
+			node[above, font=\tiny, midway] {(6) POST /auth/magic-link/verify \{token\}};
+
+		% Nota: claimToken atómico
+		\node[notebox, fill=orange!6, text width=3.0cm] at (5.75, 2.05)
+			{claimToken(sha256(token))\\atómico (TOCTOU-safe)\\upsert User};
+		\draw[gray!30, thin] (4.0, 2.05) -- (4.7, 2.05);
+
+		% (7) TokenPair
+		\draw[retarr] (0, 1.55) -- (4.0, 1.55)
+			node[below, font=\tiny, midway] {(7) TokenPair \{accessToken, refreshToken, expiresIn\}};
+
+		% Anotação tokens
+		\node[draw=blue!20, fill=blue!3, rounded corners=2pt, font=\tiny, align=left,
+		      text width=3.6cm] at (2.0, 0.65)
+			{Access token: JWT HMAC-SHA256, 15\,min\\
+			 Refresh token: 32\,bytes, hash SHA-256 em DB, 7\,dias};
+
+	\end{tikzpicture}
+	\caption[Fluxo de autenticação \emph{Magic Link}]{Diagrama de sequência da autenticação \emph{passwordless}. O servidor armazena exclusivamente o \emph{hash} SHA-256 do \emph{token}; o valor bruto viaja apenas no e-mail. A verificação \texttt{claimToken()} é um \texttt{UPDATE} atómico que previne ataques de corrida. O passo~(5) redirige o cliente para um \emph{deep link} que abre a aplicação móvel, onde o \emph{token} é consumido (passo~6) em troca do par JWT.}
+	\label{fig:seq-magiclink}
+\end{figure}
+
+\subsection{Estrutura e ciclo de vida do token JWT}
+\label{ssec:jwt-estrutura}
+
+O \emph{access token} é um JWT~\cite{rfc7519} assinado com HMAC-SHA256~\cite{rfc7518}, usando a chave configurada em \texttt{jwt.secret}. O \emph{payload} contém cinco campos: o identificador do utilizador (\texttt{sub}), o endereço de e-mail, o papel (\texttt{role}: \texttt{USER} ou \texttt{ADMIN}), a data de emissão (\texttt{iat}) e a data de expiração (\texttt{exp}). A validade de 15~minutos obriga a uma rotação frequente, limitando a janela de exposição em caso de interceção. O \texttt{JwtAuthFilter} analisa e valida o \emph{token} em cada pedido, rejeitando com \texttt{401} qualquer assinatura inválida ou \emph{token} expirado. A Figura~\ref{fig:jwt-anatomy} ilustra a estrutura interna.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		part/.style={draw, minimum width=2.4cm, minimum height=1.0cm, align=center,
+		             font=\small\bfseries, rounded corners=3pt, thick},
+		cbox/.style={draw, rounded corners=2pt, align=left, font=\ttfamily\tiny,
+		             text width=8.2cm, inner sep=5pt},
+		sarrow/.style={-{Latex[length=2mm]}, gray!55, thin}
+	]
+		% Header
+		\node[part, fill=blue!14] (h) at (0, 5.2) {Header};
+		\node[cbox, fill=blue!4] (hc) at (6.2, 5.2)
+			{\{ "alg": "HS256", "typ": "JWT" \}};
+		\draw[sarrow] (h.east) -- (hc.west);
+
+		\node[font=\Large\bfseries, gray!50] at (3.1, 4.55) {.};
+
+		% Payload
+		\node[part, fill=green!14] (p) at (0, 3.4) {Payload\\{\tiny(Claims)}};
+		\node[cbox, fill=green!4, minimum height=2.0cm] (pc) at (6.2, 3.4)
+			{\{ "sub": "<userId>",\\
+			   ~~~"email": "<email>",\\
+			   ~~~"role": "USER" | "ADMIN",\\
+			   ~~~"iat": <unix\_timestamp>,\\
+			   ~~~"exp": <iat + 900> \}};
+		\draw[sarrow] (p.east) -- (pc.west);
+
+		\node[font=\Large\bfseries, gray!50] at (3.1, 2.05) {.};
+
+		% Signature
+		\node[part, fill=red!12] (s) at (0, 1.3) {Signature};
+		\node[cbox, fill=red!4] (sc) at (6.2, 1.3)
+			{HMAC-SHA256(\\
+			 ~~~base64url(Header) + "." + base64url(Payload),\\
+			 ~~~secret-key )};
+		\draw[sarrow] (s.east) -- (sc.west);
+
+		% Rodapé
+		\node[draw=gray!30, fill=gray!5, rounded corners=2pt, font=\tiny, align=center,
+		      text width=11.5cm] at (5.0, 0.1)
+			{Verificação em cada pedido pelo \texttt{JwtAuthFilter}: parse $\to$ \texttt{verifyWith(signingKey)} $\to$ verificar expiração $\to$ popular \texttt{SecurityContext}
+			 \quad$|$\quad TTL \textit{access}: \texttt{15\,min} $\;|\;$ TTL \textit{refresh}: \texttt{7\,dias}};
+
+	\end{tikzpicture}
+	\caption[Estrutura interna do JWT emitido pelo \emph{Play4Change}]{Estrutura do JWT emitido pelo servidor. O cabeçalho declara o algoritmo HS256; o \emph{payload} transporta os \emph{claims} de identidade e autorização; a assinatura HMAC-SHA256 garante integridade e autenticidade. O \textit{payload} não é cifrado --- apenas assinado --- pelo que não deve conter dados sensíveis adicionais.}
+	\label{fig:jwt-anatomy}
+\end{figure}
+
+\subsection{Rotação de tokens e detecção de roubo}
+\label{ssec:token-rotation}
+
+O \emph{refresh token} não é um JWT: é uma sequência de 32~bytes gerada com \texttt{SecureRandom}, armazenada na base de dados apenas como \emph{hash} SHA-256. Cada utilização desencadeia rotação automática --- o \emph{token} anterior é marcado \texttt{used} e um novo \emph{token} é emitido, mantendo o mesmo \texttt{familyId}. O mecanismo de detecção de roubo é o seguinte: se um \emph{token} com \texttt{used = true} for apresentado, significa que o \emph{token} legítimo já foi utilizado por alguém, indiciando furto; em resposta, o servidor revoga imediatamente \emph{todos} os \emph{tokens} da família (\texttt{revokeAllByFamilyId}), forçando o utilizador a autenticar-se de novo. Este comportamento --- conhecido como \emph{refresh token rotation} com detecção de reutilização --- é a abordagem recomendada pela especificação OAuth 2.0 Security Best Current Practice~\cite{oauth-bcp}. A Figura~\ref{fig:seq-token-rotation} ilustra os dois cenários.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.5cm, minimum height=0.72cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny, minimum width=2.2cm}
+	]
+		% Actores
+		\node[actbox, fill=blue!8]   (ac1) at (0,   7.5) {Cliente\\(Mobile)};
+		\node[actbox, fill=orange!8] (ac2) at (5.5, 7.5) {Spring Server\\(TokenService)};
+
+		% Linhas de vida
+		\draw[lifeline] (0,   7.14) -- (0,   -1.3);
+		\draw[lifeline] (5.5, 7.14) -- (5.5, -1.3);
+
+		% ─── Percurso normal ─────────────────────────────────────────────
+		\node[draw=green!40, fill=green!4, rounded corners=2pt, font=\tiny\bfseries,
+		      align=center] at (2.75, 7.0) {Percurso normal (AT expirou)};
+
+		% (1) POST /auth/refresh {RT1}
+		\draw[msgarr] (0, 6.6) -- (5.5, 6.6)
+			node[above, font=\tiny, midway] {(1) POST /auth/refresh \{RT$_1$\}};
+
+		\node[notebox, fill=orange!6, text width=3.2cm] at (7.5, 6.1)
+			{sha256(RT$_1$) $\to$ lookup DB\\verifica \texttt{used=false} + TTL\\marca RT$_1$ \texttt{used=true}};
+		\draw[gray!30, thin] (5.5, 6.1) -- (6.2, 6.1);
+
+		% (2) novo par {AT2, RT2}
+		\draw[retarr] (0, 5.6) -- (5.5, 5.6)
+			node[above, font=\tiny, midway] {(2) TokenPair \{AT$_2$, RT$_2$\}\quad (mesmo \texttt{familyId})};
+
+		% (3) pedidos com AT2
+		\draw[msgarr, gray!50] (0, 5.0) -- (5.5, 5.0)
+			node[above, font=\tiny, midway, gray!70] {(3) pedidos autenticados com AT$_2$ (15\,min)};
+		\draw[retarr, gray!50] (0, 4.65) -- (5.5, 4.65)
+			node[below, font=\tiny, midway, gray!70] {200 OK};
+
+		\draw[gray!30, densely dashed, thick] (-0.7, 4.3) -- (8.0, 4.3);
+		\node[font=\tiny, gray!50] at (1.0, 4.12) {AT$_2$ expira};
+
+		% (4)(5) nova rotação normal
+		\draw[msgarr] (0, 3.78) -- (5.5, 3.78)
+			node[above, font=\tiny, midway] {(4) POST /auth/refresh \{RT$_2$\}\quad (rotação normal)};
+		\draw[retarr] (0, 3.35) -- (5.5, 3.35)
+			node[below, font=\tiny, midway] {(5) TokenPair \{AT$_3$, RT$_3$\}};
+
+		% ─── Cenário de roubo ─────────────────────────────────────────────
+		\draw[gray!40, thick] (-0.7, 2.9) -- (8.0, 2.9);
+		\node[draw=red!40, fill=red!4, rounded corners=2pt, font=\tiny\bfseries,
+		      align=center] at (2.75, 2.65) {Cenário de roubo: RT$_1$ reutilizado (\texttt{used=true})};
+
+		% (6) atacante usa RT1
+		\draw[msgarr, red!60] (0, 2.3) -- (5.5, 2.3)
+			node[above, font=\tiny, midway, red!70] {(6) POST /auth/refresh \{RT$_1$\}\quad (token já usado)};
+
+		\node[notebox, fill=red!8, draw=red!35, text width=3.2cm] at (7.5, 1.8)
+			{\textbf{ALERTA:} \texttt{used=true}\\revokeAllByFamilyId()\\RT$_1$, RT$_2$, RT$_3$ revogados};
+		\draw[red!30, thin] (5.5, 1.8) -- (6.2, 1.8);
+
+		% (7) 401
+		\draw[retarr, red!60] (0, 1.3) -- (5.5, 1.3)
+			node[above, font=\tiny, midway, red!70] {(7) 401 — todas as sessões revogadas};
+
+		% Nota logout
+		\node[draw=gray!30, fill=gray!5, rounded corners=2pt, font=\tiny, align=center,
+		      text width=7.8cm] at (3.65, 0.4)
+			{\texttt{POST /auth/logout \{refreshToken\}}: revoga todo o \texttt{familyId} activo};
+
+	\end{tikzpicture}
+	\caption[Rotação de \emph{refresh tokens} e detecção de roubo]{Rotação de \emph{refresh tokens} e mecanismo de detecção de roubo. Em cada utilização o \emph{token} anterior é revogado e um novo é emitido com o mesmo \texttt{familyId}. A reutilização de um \emph{token} já marcado como \texttt{used} desencadeia a revogação imediata de toda a família de sessões, forçando nova autenticação.}
+	\label{fig:seq-token-rotation}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Modelo de dados principal}
+\label{sec:modelo-dados}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O esquema relacional organiza-se em torno de seis agregados principais que correspondem directamente aos conceitos do domínio. Cada entidade usa um identificador \texttt{UUID} como chave primária, em vez de um inteiro sequencial. Esta escolha tem implicações concretas: os \texttt{UUID}s tornam impossível a enumeração sequencial de recursos (um utilizador não consegue deduzir o identificador do recurso do vizinho a partir do seu próprio), o que reduz uma classe de vulnerabilidades de controlo de acesso sem requerer \emph{obfuscation} adicional; além disso, permitem que identificadores sejam atribuídos pelo cliente antes da persistência, simplificando a criação de entidades com dependências entre si numa única transação.
+
+A decisão de usar o PostgreSQL como base de dados única para dados relacionais \emph{e} para vectores de \emph{embedding} (via a extensão \texttt{pgvector}) é igualmente deliberada: mantém as garantias ACID nas operações que envolvem simultaneamente metadados e vectores (por exemplo, a persistência de uma nova \texttt{TaskTemplate} com o seu \emph{embedding} correspondente), evita a necessidade de sincronização entre um RDBMS e uma base de dados vectorial separada, e simplifica operações de manutenção como \emph{backups} e migrações. O custo desta escolha é a menor escalabilidade do índice \texttt{IVFFlat} em relação a soluções especializadas~\cite{johnson2019faiss} --- aceite nesta fase, dado o volume de dados de um protótipo.
+
+A Tabela~\ref{tab:entidades} descreve as entidades mais relevantes para compreender o fluxo de aprendizagem.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{3.5cm} p{9.5cm}}
+		\toprule
+		\textbf{Entidade} & \textbf{Responsabilidade no domínio} \\
+		\midrule
+		\texttt{Topic} & Unidade temática criada pelo administrador (URL ou PDF como fonte de conteúdo); define nível de audiência, língua e número de tarefas \\
+		\texttt{TaskTemplate} & Pergunta gerada pela IA associada a um tópico; contém título, opções, resposta correcta (índice), pontos e \emph{embedding} vectorial \\
+		\texttt{Enrollment} & Inscrição de um utilizador num tópico; acumula pontos, sequência (\emph{streak}) e estado (\texttt{ACTIVE / COMPLETED}) \\
+		\texttt{TaskAssignment} & Atribuição diária de uma tarefa ao utilizador; regista resposta, resultado e número de tentativas erradas \\
+		\texttt{StruggleSession} & Sessão adaptativa criada após uma resposta errada; contém o padrão de erro classificado e as subtarefas geradas \\
+		\texttt{ExplanationSession} & Sessão de explicação criada quando o utilizador esgota o percurso adaptativo; contém a explicação em prosa e o histórico do diálogo \\
+		\texttt{Badge} (via \texttt{MicroCompetence}) & Distintivo emitido quando o utilizador conclui um tópico com taxa de acerto mínima \\
+		\bottomrule
+	\end{tabular}
+	\caption[Entidades principais do modelo de dados]{Principais entidades do modelo de dados e respectiva responsabilidade no domínio do \emph{Play4Change}.}
+	\label{tab:entidades}
+\end{table}
+
+As relações entre estas entidades seguem um modelo de progressão clara: um \texttt{Topic} agrega múltiplos \texttt{TaskTemplate}s (gerados pelo LLM durante a indexação); quando um utilizador se inscreve num tópico, é criado um \texttt{Enrollment}; cada dia, uma \texttt{TaskAssignment} concretiza a atribuição de um \texttt{TaskTemplate} específico àquele utilizador; uma resposta errada cria uma \texttt{StruggleSession} com as suas subtarefas adaptativas; e, se o percurso adaptativo se esgotar sem resolução, é criada uma \texttt{ExplanationSession}. Esta cadeia de agregados representa fielmente o fluxo pedagógico e garante que o estado de cada utilizador é reconstituível a qualquer momento a partir do historial persistido. As migrações de esquema são geridas pelo Flyway: cada alteração ao esquema é descrita num ficheiro SQL versionado, o que permite que qualquer membro da equipa reproduza o estado exacto da base de dados a partir do zero, e que a evolução do esquema seja auditável no repositório de código.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Pipeline de geração de conteúdo}
+\label{sec:pipeline-geracao}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O conteúdo de cada tópico --- as perguntas de escolha múltipla que os utilizadores respondem dia a dia --- não é escrito manualmente. O administrador fornece uma fonte (URL de uma página ou um ficheiro PDF), e o sistema extrai o texto, envia-o ao modelo de linguagem~\cite{jiang2023mistral} via LangChain4j~\cite{langchain4j} e recebe um conjunto de tarefas no formato JSON, que é validado e persistido. A Figura~\ref{fig:pipeline-geracao} ilustra este processo.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		node distance=0.55cm and 1.0cm,
+		box/.style={draw, rounded corners, align=center, font=\small, fill=white, minimum width=2.3cm, minimum height=0.9cm},
+		decision/.style={draw, diamond, aspect=2, align=center, font=\footnotesize, fill=yellow!10, minimum width=2.0cm},
+		seta/.style={-{Latex[length=2mm]}, thick}
+	]
+		\node[box, fill=blue!10] (admin) {Admin cria\\tópico};
+		\node[box, right=of admin] (extract) {Extracção\\de texto};
+		\node[box, right=of extract] (prompt) {Construção\\do prompt};
+		\node[box, right=of prompt] (llm) {Mistral AI\\gera JSON};
+		\node[decision, below=0.8cm of llm] (valid) {JSON\\válido?};
+		\node[box, left=of valid, fill=orange!10] (retry) {Retry com\\schema hint};
+		\node[box, below=0.8cm of valid] (dedup) {Deduplicação\\pgvector};
+		\node[decision, below=0.8cm of dedup] (dup) {Duplicado?};
+		\node[box, right=of dup, fill=gray!10] (skip) {Descarta\\tarefa};
+		\node[box, below=0.8cm of dup, fill=green!10] (store) {Persiste em\\task\_templates};
+
+		\draw[seta] (admin) -- (extract);
+		\draw[seta] (extract) -- (prompt);
+		\draw[seta] (prompt) -- (llm);
+		\draw[seta] (llm) -- (valid);
+		\draw[seta] (valid) -- node[right, font=\scriptsize]{Sim} (dedup);
+		\draw[seta] (valid) -- node[above, font=\scriptsize]{Não} (retry);
+		\draw[seta, dashed] (retry) -- ++(0,1.4) -| (llm);
+		\draw[seta] (dedup) -- (dup);
+		\draw[seta] (dup) -- node[above, font=\scriptsize]{Sim} (skip);
+		\draw[seta] (dup) -- node[right, font=\scriptsize]{Não} (store);
+	\end{tikzpicture}
+	\caption[Pipeline de geração de conteúdo com IA]{Pipeline de geração automática de tarefas: o texto é extraído da fonte, enviado ao LLM, e o JSON resultante é validado e deduplicado antes de ser persistido.}
+	\label{fig:pipeline-geracao}
+\end{figure}
+
+O prompt enviado ao LLM segue uma estrutura rígida que especifica o domínio temático, o nível de audiência (\texttt{BEGINNER}, \texttt{INTERMEDIATE} ou \texttt{ADVANCED}), a língua de geração e um conjunto de restrições formais (formato JSON com quatro opções por tarefa, resposta correcta no índice~0, estimativa de 5 a 15 minutos de envolvimento). Caso a resposta do modelo não respeite o esquema esperado, o sistema faz uma segunda tentativa com um lembrete de esquema (\emph{schema reminder}), evitando que uma falha isolada de formato invalide toda a geração. A utilização de modelos de linguagem de grande escala para geração automática de conteúdo educativo tem sido identificada como uma oportunidade promissora, conquanto sujeita a desafios de qualidade e supervisão que justificam mecanismos de validação como o aqui descrito~\cite{kasneci2023chatgpt}.
+
+\subsection*{Deduplicação vectorial}
+
+Para garantir que as tarefas de um mesmo módulo não se repetem semanticamente --- mesmo entre execuções de geração distintas ---, o sistema calcula o \emph{embedding} de cada nova tarefa (vector de 1024 dimensões) e compara-o com os \emph{embeddings} já guardados, utilizando a extensão \texttt{pgvector} do PostgreSQL com um índice \texttt{IVFFlat} para pesquisa aproximada eficiente por vizinhança coseno~\cite{johnson2019faiss}.
+
+Seja $\mathbf{a} \in \mathbb{R}^{1024}$ o \emph{embedding} da nova tarefa e $\mathbf{b} \in \mathbb{R}^{1024}$ o \emph{embedding} de uma tarefa existente. A similaridade coseno entre ambas é:
+
+\begin{equation}
+	\text{sim}(\mathbf{a},\mathbf{b})
+	= \frac{\mathbf{a} \cdot \mathbf{b}}{\|\mathbf{a}\|\,\|\mathbf{b}\|}
+	= \frac{\displaystyle\sum_{i=1}^{1024} a_i b_i}
+	       {\sqrt{\displaystyle\sum_{i=1}^{1024} a_i^2}\;\sqrt{\displaystyle\sum_{i=1}^{1024} b_i^2}}
+	\label{eq:cosine}
+\end{equation}
+
+Se $\text{sim}(\mathbf{a},\mathbf{b}) > \theta_f = 0.90$, a tarefa é considerada duplicado e descartada. Este limiar foi configurado de forma conservadora para tolerar paráfrases e variações de formulação sem bloquear tarefas genuinamente distintas.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{O percurso básico do aprendente}
+\label{sec:percurso-aprendente}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Depois de se inscrever num tópico, o utilizador recebe uma tarefa por dia. A tarefa é uma pergunta de escolha múltipla com quatro opções, gerada pela IA a partir do conteúdo do tópico. As opções são apresentadas numa ordem embaralhada de forma determinística --- o embaralhamento depende de uma semente derivada de \texttt{userId + templateId + enrollmentId}, através do algoritmo de Fisher-Yates, garantindo que dois utilizadores distintos vejam as mesmas opções em ordens diferentes (o que dificulta a partilha de respostas), mas que o mesmo utilizador veja sempre a mesma ordem (o que mantém a experiência consistente em caso de recarga).
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		node distance=0.5cm and 1.2cm,
+		box/.style={draw, rounded corners, align=center, font=\small, fill=white, minimum width=2.6cm, minimum height=0.85cm},
+		decision/.style={draw, diamond, aspect=2.2, align=center, font=\footnotesize, fill=yellow!10},
+		term/.style={draw, rounded corners=6pt, align=center, font=\small, minimum width=2.2cm, minimum height=0.85cm},
+		seta/.style={-{Latex[length=2mm]}, thick}
+	]
+		\node[term, fill=gray!15] (start) {Inscrição};
+		\node[box, below=of start] (task) {Tarefa diária\\desbloqueada};
+		\node[decision, below=0.7cm of task] (answer) {Resposta\\correcta?};
+		\node[box, right=3.2cm of answer, fill=red!8] (struggle) {Acionar\\percurso\\adaptativo};
+		\node[box, below=0.7cm of answer, fill=green!8] (points) {Atribuir pontos\\+ streak};
+		\node[decision, below=0.7cm of points] (done) {Tópico\\concluído?};
+		\node[box, right=3.2cm of done, fill=blue!8] (badge) {Emitir\\distintivo};
+		\node[box, below=0.7cm of done] (next) {Próxima\\tarefa};
+
+		\draw[seta] (start) -- (task);
+		\draw[seta] (task) -- (answer);
+		\draw[seta] (answer) -- node[right, font=\scriptsize]{Sim} (points);
+		\draw[seta] (answer) -- node[above, font=\scriptsize]{Não} (struggle);
+		\draw[seta] (points) -- (done);
+		\draw[seta] (done) -- node[above, font=\scriptsize]{Sim} (badge);
+		\draw[seta] (done) -- node[right, font=\scriptsize]{Não} (next);
+		\draw[seta] (next.west) -- ++(-1.1,0) |- (task.west);
+		\draw[seta, dashed] (struggle.south) -- ++(0,-0.5) -| (task.east);
+	\end{tikzpicture}
+	\caption[Fluxo principal do percurso do aprendente]{Fluxo principal do aprendente no \emph{Play4Change}: cada resposta correcta acumula pontos e avança o percurso; uma resposta errada desencadeia o percurso adaptativo (detalhado na Secção~\ref{sec:personalizacao}).}
+	\label{fig:fluxo-aprendente}
+\end{figure}
+
+\subsection*{Pontuação e penalização por atraso}
+
+Cada tarefa tem um valor em pontos $P$ definido durante a geração. A tarefa tem prazo até à meia-noite do dia de atribuição (no fuso horário do utilizador). Caso a resposta seja correcta mas fora do prazo, aplica-se uma penalização escalonada em função das horas de atraso $\Delta h$:
+
+\begin{equation}
+	P_{\text{atribuído}} =
+	\begin{cases}
+		P                                                              & \text{se correcto e dentro do prazo} \\[4pt]
+		\left\lfloor 0.75\,P \right\rfloor                             & \text{se } 0 < \Delta h \le 24 \\[4pt]
+		\left\lfloor 0.50\,P \right\rfloor                             & \text{se } 24 < \Delta h \le 72 \\[4pt]
+		\max\!\left(1,\,\left\lfloor 0.25\,P \right\rfloor\right)     & \text{se } \Delta h > 72 \\[4pt]
+		0                                                              & \text{se incorrecto}
+	\end{cases}
+	\label{eq:points}
+\end{equation}
+
+Esta fórmula penaliza o atraso de forma progressiva mas nunca anula completamente os pontos por uma resposta tardia correcta, garantindo que o utilizador tem sempre motivação para responder, mesmo que fora do prazo ideal.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Personalização adaptativa}
+\label{sec:personalizacao}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O pilar da personalização é o coração técnico do \emph{Play4Change} e o que mais o distingue das plataformas analisadas no Capítulo~\ref{cha:enquadramento}. O princípio é simples mas exige um encadeamento cuidadoso de várias peças: quando um utilizador erra uma tarefa, o sistema não se limita a dizer ``errado'' e avançar --- em vez disso, \emph{detecta} o tipo de erro, \emph{gera} um mini-percurso de recuperação personalizado, e \emph{acompanha} o utilizador até que supere a dificuldade ou, em último caso, lhe oferece uma explicação em linguagem natural e a possibilidade de dialogar com o modelo para esclarecer dúvidas. Este ciclo de detecção--remediação--resolução é conceptualmente análogo ao que VanLehn denomina \emph{step-level adaptivity} em sistemas de tutoria inteligente~\cite{vanlehn2011relative}.
+
+Esta abordagem está alinhada com o modelo de \emph{mastery learning} formalizado por Bloom \citep{bloom1968learning}, segundo o qual todos os aprendentes são capazes de atingir um nível de domínio adequado desde que lhes seja dado tempo e suporte diferenciados --- em vez de todos avançarem no currículo ao mesmo ritmo independentemente da compreensão individual.
+
+\subsection{Classificação do padrão de erro}
+\label{ssec:classificacao-erro}
+
+Imediatamente após uma resposta errada, o sistema classifica o padrão de erro através de uma função determinística (\texttt{ErrorPatternClassifier}) que examina dois factores: o momento da submissão relativamente ao prazo, e a posição da opção escolhida relativamente à posição da resposta correcta na lista exibida. A Tabela~\ref{tab:error-patterns} descreve os padrões de erro e a lógica de classificação.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{3.2cm} p{5.0cm} p{5.0cm}}
+		\toprule
+		\textbf{Padrão de erro} & \textbf{Condição de detecção} & \textbf{Estratégia de remediação} \\
+		\midrule
+		\texttt{TIME\_PRESSURE} & Submissão após o prazo definido (\texttt{dueAt}) & Subtarefas cadenciadas; foco na leitura cuidada \\
+		\texttt{READING\_ERROR} & Opção escolhida é adjacente à correcta na lista exibida ($|\text{escolhida} - \text{correcta}| = 1$) & Instruções mais explícitas; reformulação da pergunta \\
+		\texttt{WRONG\_CONCEPT} & Caso por defeito (erro conceptual) & Re-explicar o conceito de base; \emph{scaffolding} do simples para o complexo \\
+		\texttt{PARTIAL\_UNDERSTANDING} & Reservado para extensão futura & Foco no procedimento; exercícios passo-a-passo \\
+		\bottomrule
+	\end{tabular}
+	\caption[Padrões de erro e estratégias de remediação adaptativa]{Padrões de erro classificados pelo \texttt{ErrorPatternClassifier} e respectiva estratégia de remediação aplicada na geração do percurso adaptativo.}
+	\label{tab:error-patterns}
+\end{table}
+
+\subsection{Geração do percurso adaptativo e reutilização vectorial}
+\label{ssec:geracao-adaptativa}
+
+Após a classificação do erro, o serviço \texttt{HandleStruggleService} é invocado de forma assíncrona (num executor dedicado, com \emph{timeout} de 60 segundos), para não bloquear o utilizador enquanto o LLM gera as subtarefas. O processo começa por vectorizar o contexto da dificuldade (domínio, objectivo do módulo, tipo de erro) e pesquisar na base de dados vectorial se existe um percurso adaptativo já gerado para uma situação semanticamente semelhante --- uma abordagem inspirada no paradigma de \emph{Retrieval-Augmented Generation} (RAG)~\cite{lewis2020rag}, em que a recuperação de conhecimento prévio enriquece e orienta a geração pelo LLM.
+
+Seja $\mathbf{s} \in \mathbb{R}^{1024}$ o \emph{embedding} do novo contexto de dificuldade e $\mathbf{b}_j$ o \emph{embedding} do evento $j$ já armazenado. A estratégia de reutilização é determinada por:
+
+\begin{equation}
+	\text{strategy}(\mathbf{s}) =
+	\begin{cases}
+		\textsc{Full-Reuse}        & \text{se } \max_j\,\text{sim}(\mathbf{s},\mathbf{b}_j) > \theta_f = 0.90 \\[4pt]
+		\textsc{Partial-Reuse}     & \text{se } \theta_p < \max_j\,\text{sim}(\mathbf{s},\mathbf{b}_j) \le \theta_f,\; \theta_p = 0.65 \\[4pt]
+		\textsc{Fresh-Generation}  & \text{caso contrário}
+	\end{cases}
+	\label{eq:reuse-strategy}
+\end{equation}
+
+A Tabela~\ref{tab:dedup-thresholds} resume as três estratégias e o comportamento de cada uma.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{3.2cm} p{2.5cm} p{7.0cm}}
+		\toprule
+		\textbf{Estratégia} & \textbf{Limiar} & \textbf{Comportamento} \\
+		\midrule
+		\textsc{Full-Reuse} & $> 0.90$ & As subtarefas do percurso semelhante são reutilizadas directamente; sem chamada ao LLM \\
+		\textsc{Partial-Reuse} & $0.65 - 0.90$ & As subtarefas base são usadas, mas o prompt inclui o contexto específico do novo erro para adaptação pelo LLM \\
+		\textsc{Fresh-Generation} & $< 0.65$ & Prompt completo enviado ao LLM; tipicamente gera 3 subtarefas calibradas para o padrão de erro detectado \\
+		\bottomrule
+	\end{tabular}
+	\caption[Estratégias de reutilização de percursos adaptativos]{Estratégias de reutilização de percursos adaptativos com base na similaridade coseno entre o contexto de dificuldade actual e os eventos já armazenados na base de dados vectorial.}
+	\label{tab:dedup-thresholds}
+\end{table}
+
+Um mecanismo de exclusão garante que, em sessões de seguimento (o utilizador falha também no percurso adaptativo), os \emph{branch IDs} já vistos são excluídos da pesquisa vectorial, evitando que o utilizador enfrente exactamente as mesmas subtarefas em que acabou de falhar.
+
+\subsection{Sequência de interacção: da resposta errada ao percurso adaptativo}
+\label{ssec:seq-struggle}
+
+A Figura~\ref{fig:seq-struggle} detalha a interacção passo-a-passo entre o cliente e o servidor no momento em que uma resposta errada desencadeia o percurso adaptativo. O padrão é deliberadamente assíncrono: o servidor devolve uma resposta imediata ao passo~(2), logo após a classificação local do erro, e a geração das subtarefas decorre em paralelo numa \emph{thread pool} dedicada. O cliente recebe o identificador de sessão nessa resposta e pode consultar o estado independentemente da conclusão da geração, sem bloquear a interface.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.72cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		dasharr/.style={-{Latex[length=1.8mm]}, thick, dashed, gray!60},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny, minimum width=2.1cm}
+	]
+		% Actores
+		\node[actbox, fill=blue!8]        (ac1) at (0,   5.8) {Aprendente};
+		\node[actbox, fill=orange!8]      (ac2) at (3.5, 5.8) {Spring\\Server};
+		\node[actbox, fill=green!8]       (ac3) at (7.0, 5.8) {@Async\\Executor};
+		\node[actbox, fill=red!5, dashed] (ac4) at (10.5, 5.8) {Mistral AI\\{\tiny externo}};
+
+		% Linhas de vida
+		\draw[lifeline] (0,   5.44) -- (0,   -0.3);
+		\draw[lifeline] (3.5, 5.44) -- (3.5, -0.3);
+		\draw[lifeline] (7.0, 5.44) -- (7.0, -0.3);
+		\draw[lifeline] (10.5,5.44) -- (10.5,-0.3);
+
+		% (1) POST /tasks/{id}/submit
+		\draw[msgarr] (0, 5.1) -- (3.5, 5.1)
+			node[above, font=\tiny, midway] {(1) POST /tasks/\{id\}/submit};
+
+		% Nota: ErrorPatternClassifier
+		\node[notebox, fill=orange!6] at (5.15, 4.62)
+			{\texttt{ErrorPatternClassifier}\\classify() $\to$ \textit{errorPattern}};
+		\draw[gray!30, thin] (3.5, 4.62) -- (4.2, 4.62);
+
+		% (2) SubmitResult (imediato)
+		\draw[retarr] (0, 4.15) -- (3.5, 4.15)
+			node[above, font=\tiny, midway] {(2) SubmitResult\{struggleTriggered:true\}};
+
+		% (3) @Async dispatch
+		\draw[dasharr] (3.5, 3.65) -- (7.0, 3.65)
+			node[above, font=\tiny, midway] {(3) @Async triggerAsync()};
+
+		% Nota: buildStruggleContext + pgvector
+		\node[notebox, fill=green!6] at (8.45, 3.15)
+			{buildStruggleContext()\\pgvector cosine search};
+		\draw[gray!30, thin] (7.0, 3.15) -- (7.6, 3.15);
+
+		% (4) LangChain4j prompt
+		\draw[msgarr] (7.0, 2.6) -- (10.5, 2.6)
+			node[above, font=\tiny, midway] {(4) LangChain4j prompt};
+
+		% Resilience4j note
+		\node[notebox, fill=red!5, draw=red!30] at (8.75, 2.1)
+			{Resilience4j CB\\retry $\times$3, exp.\ backoff};
+
+		% (5) JSON 3 subtarefas adaptativas
+		\draw[retarr] (7.0, 1.65) -- (10.5, 1.65)
+			node[below, font=\tiny, midway] {(5) JSON \{3 subtarefas\}};
+
+		% Nota: gravar StruggleSession
+		\node[notebox, fill=green!8] at (8.45, 1.12)
+			{StruggleSession(OPEN)\\+ 3 AdaptiveTasks};
+		\draw[gray!30, thin] (7.0, 1.12) -- (7.6, 1.12);
+
+		% (6) GET struggle session
+		\draw[msgarr] (0, 0.55) -- (3.5, 0.55)
+			node[above, font=\tiny, midway] {(6) GET /struggle/sessions/\{id\}};
+
+		% (7) StruggleSession response
+		\draw[retarr] (0, 0.1) -- (3.5, 0.1)
+			node[below, font=\tiny, midway] {(7) StruggleSession\{status:OPEN, tasks[3]\}};
+
+	\end{tikzpicture}
+	\caption[Sequência: resposta errada ao percurso adaptativo]{Diagrama de sequência da geração do percurso adaptativo. O servidor classifica o padrão de erro de forma síncrona e local (passo~2) e devolve de imediato o identificador de sessão ao cliente; a geração das subtarefas pelo LLM decorre em paralelo (@Async, passos 3--5), protegida pelo \emph{circuit breaker} Resilience4j. O cliente consulta o estado da sessão (passos 6--7) assim que navega para o ecrã adaptativo.}
+	\label{fig:seq-struggle}
+\end{figure}
+
+\subsection{A máquina de estados da personalização}
+\label{ssec:maquina-estados}
+
+A Figura~\ref{fig:maquina-estados} apresenta a máquina de estados completa que governa o percurso adaptativo, desde a resposta errada inicial até à resolução final.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		node distance=0.55cm and 1.4cm,
+		estado/.style={draw, rounded corners, align=center, font=\small, minimum width=2.9cm, minimum height=0.9cm},
+		decision/.style={draw, diamond, aspect=2.5, align=center, font=\footnotesize, fill=yellow!10, minimum width=2.2cm},
+		seta/.style={-{Latex[length=2mm]}, thick}
+	]
+		% Main vertical flow (left column)
+		\node[estado, fill=red!10] (wrong) {Resposta errada\\na tarefa principal};
+		\node[estado, fill=orange!10, below=of wrong] (classify) {Classificar padrão\\de erro (síncrono)};
+		\node[estado, fill=blue!10, below=of classify] (genbranch) {Gerar percurso\\adaptativo (IA, assínc.)};
+		\node[estado, fill=gray!10, below=of genbranch] (adaptive) {Utilizador responde\\às subtarefas};
+		\node[decision, below=0.7cm of adaptive] (passed) {Todas as\\subtarefas\\correctas?};
+
+		% Left branch: pass
+		\node[estado, left=2.6cm of passed, fill=green!10] (reset) {Reset da tarefa\\principal para\\PENDING};
+		\node[estado, below=0.8cm of reset] (retry) {Utilizador\\retenta a tarefa\\principal};
+
+		% Right branch: fail
+		\node[decision, right=2.8cm of passed] (depth) {Profun-\\didade\\máxima?};
+		\node[estado, above=0.8cm of depth, fill=orange!8] (followup) {Gerar novo\\percurso\\(depth+1)};
+		\node[estado, below=0.8cm of depth, fill=purple!10] (explanation) {Criar sessão\\de explicação\\(IA, assínc.)};
+		\node[estado, below=0.8cm of explanation, fill=violet!10] (chat) {Diálogo livre\\com o LLM\\(chat aberto)};
+		\node[estado, below=0.8cm of chat, fill=green!10] (resolved) {Sessão resolvida\\→ tarefa reset};
+
+		% Arrows
+		\draw[seta] (wrong) -- (classify);
+		\draw[seta] (classify) -- (genbranch);
+		\draw[seta] (genbranch) -- node[right, font=\scriptsize]{status OPEN} (adaptive);
+		\draw[seta] (adaptive) -- (passed);
+		\draw[seta] (passed) -- node[above, font=\scriptsize]{Sim} (reset);
+		\draw[seta] (reset) -- (retry);
+		\draw[seta, dashed] (retry.east) -- ++(0.5,0) |- (wrong.east);
+		\draw[seta] (passed) -- node[above, font=\scriptsize]{Não} (depth);
+		\draw[seta] (depth) -- node[right, font=\scriptsize]{Não} (followup);
+		\draw[seta] (depth) -- node[right, font=\scriptsize]{Sim} (explanation);
+		\draw[seta, dashed] (followup.west) -- ++(-0.5,0) |- (adaptive.east);
+		\draw[seta] (explanation) -- (chat);
+		\draw[seta] (chat) -- (resolved);
+	\end{tikzpicture}
+	\caption[Máquina de estados do percurso adaptativo]{Máquina de estados completa do percurso adaptativo do \emph{Play4Change}: uma resposta errada desencadeia a geração de subtarefas; se o utilizador voltar a falhar e atingir a profundidade máxima (\texttt{MAX\_STRUGGLE\_DEPTH = 1}), o sistema escalona para uma sessão de explicação em prosa e um canal de diálogo com o LLM.}
+	\label{fig:maquina-estados}
+\end{figure}
+
+O parâmetro de profundidade máxima (\texttt{MAX\_STRUGGLE\_DEPTH = 1}) é uma decisão consciente do protótipo: em vez de gerar cadeias de recuperação indefinidamente longas, o sistema escalona rapidamente para o modo de explicação quando uma segunda tentativa adaptativa também falha. Esta opção reflecte a ideia de que, a partir de certo ponto, o que o utilizador precisa não é de mais perguntas, mas de uma explicação clara e da possibilidade de fazer as suas próprias perguntas --- em linha com os princípios do \emph{mastery learning} de Bloom \citep{bloom1968learning} e com a abordagem de tutores inteligentes baseados em diálogo (\emph{Intelligent Tutoring Systems}) \citep{vanlehn2011relative}.
+
+\subsection{Modo de explicação e diálogo com a IA}
+\label{ssec:explicacao}
+
+Quando o utilizador esgota o percurso adaptativo, o sistema cria uma \texttt{ExplanationSession} com status \texttt{GENERATING} e devolve imediatamente o seu identificador ao cliente móvel, que navega para o ecrã de explicação sem esperar pela resposta do LLM. Em paralelo, um \emph{thread} assíncrono constrói um prompt que inclui:
+
+\begin{itemize}
+	\item o enunciado da tarefa original e o objectivo do módulo;
+	\item o histórico completo das sessões de dificuldade (padrão de erro, títulos das subtarefas tentadas em cada sessão);
+	\item o nível de audiência e a língua do utilizador.
+\end{itemize}
+
+O LLM recebe este contexto e produz uma explicação em prosa corrida (3 a 5 parágrafos), sem JSON, sem listas, focada em clarificar o conceito a partir do que correu mal. A Listagem~\ref{lst:explanation-prompt} mostra o \emph{system prompt} desta fase.
+
+\begin{lstlisting}[
+	language=,
+	caption={[System prompt do modo de explicação]System prompt enviado ao LLM para geração da explicação holística após esgotamento do percurso adaptativo (fonte: \texttt{ExplanationPrompt.kt}).},
+	label=lst:explanation-prompt,
+	basicstyle=\ttfamily\footnotesize,
+	frame=single,
+	breaklines=true
+]
+You are a patient and empathetic learning coach helping a student
+who has struggled repeatedly with the same concept.
+
+YOUR GOAL:
+- Synthesise what went wrong across all their attempts
+- Explain the underlying concept clearly and simply
+- Use concrete examples relevant to the subject domain
+- Be encouraging - frame struggles as a normal part of learning
+- Keep the explanation concise: 3-5 paragraphs maximum
+- Write in plain prose - no JSON, no bullet lists, no headers
+- Match the learner's language exactly
+\end{lstlisting}
+
+Após receber a explicação, o utilizador pode colocar perguntas livremente. Cada mensagem é enviada ao LLM juntamente com o histórico completo da conversa e o contexto da dificuldade original, e o modelo responde em modo de coach conversacional (2 a 4 frases, foco na pergunta concreta). Quando o utilizador declara que compreendeu e encerra a sessão, a tarefa principal é reposta em estado \texttt{PENDING} para uma nova tentativa.
+
+A Figura~\ref{fig:explicacao-escalada} resume esta escalada progressiva do percurso para o modo de explicação.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		node distance=0.85cm,
+		box/.style={draw, rounded corners, align=center, font=\small, minimum width=3.6cm, minimum height=1.0cm},
+		seta/.style={-{Latex[length=2.5mm]}, thick},
+		lbl/.style={font=\scriptsize, gray!70}
+	]
+		\node[box, fill=red!8] (t0) {Tarefa principal\\(resposta errada)};
+		\node[box, fill=orange!8, below=of t0] (d1) {Percurso adaptativo\\profundidade~1};
+		\node[box, fill=orange!14, below=of d1] (d2) {Percurso adaptativo\\profundidade~2};
+		\node[box, fill=purple!10, below=of d2] (exp) {Explicação holística\\gerada pelo LLM};
+		\node[box, fill=violet!10, below=of exp] (chat) {Chat aberto com\\o LLM (dúvidas)};
+		\node[box, fill=green!10, below=of chat] (reset) {Tarefa resetada\\→ nova tentativa};
+
+		\draw[seta] (t0) -- node[right, lbl]{errou} (d1);
+		\draw[seta] (d1) -- node[right, lbl]{voltou a falhar} (d2);
+		\draw[seta] (d2) -- node[right, lbl]{depth máx.\ atingida} (exp);
+		\draw[seta] (exp) -- node[right, lbl]{explicação pronta} (chat);
+		\draw[seta] (chat) -- node[right, lbl]{utilizador resolve} (reset);
+
+		% Dashed bypass: with MAX=1 there is no depth-2 path; indicated as shortcut
+		\draw[seta, dashed, gray] (d1.east) -- ++(1.3,0) |- node[right, lbl, pos=0.25]{\texttt{MAX=1}:\,salta directo} (exp.east);
+	\end{tikzpicture}
+	\caption[Escalada progressiva para o modo de explicação]{Escalada progressiva do percurso adaptativo para o modo de explicação: com \texttt{MAX\_STRUGGLE\_DEPTH = 1}, após uma única falha no percurso adaptativo, o sistema escalona directamente para a sessão de explicação e o diálogo com o LLM.}
+	\label{fig:explicacao-escalada}
+\end{figure}
+
+\subsection{Sequência do ciclo de explicação}
+\label{ssec:seq-explanation}
+
+Quando o aprendente esgota a profundidade máxima de sessões adaptativas (\texttt{MAX\_STRUGGLE\_DEPTH = 1}), o sistema escalona para o modo de explicação holística. A Figura~\ref{fig:seq-explanation} ilustra o ciclo completo: a criação da \texttt{ExplanationSession} é síncrona — o servidor persiste o registo com estado \texttt{GENERATING} e devolve o identificador imediatamente ao cliente (passo~2), permitindo que o ecrã de explicação seja navegado sem esperar pela IA. A geração do texto ocorre de forma assíncrona (passos 3--6), com um mecanismo de \emph{fallback} que repõe a tarefa original em \texttt{PENDING} em caso de falha, preservando o progresso do utilizador. Uma vez no estado \texttt{ACTIVE}, o cliente pode iniciar $N$ rondas de diálogo, cada uma enviando o histórico completo da conversa ao LLM (passo~8), antes de encerrar a sessão com \texttt{resolve} (passo~9).
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.72cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		dasharr/.style={-{Latex[length=1.8mm]}, thick, dashed, gray!60},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny, minimum width=2.1cm}
+	]
+		% Actores
+		\node[actbox, fill=blue!8]        (ac1) at (0,   6.4) {Aprendente};
+		\node[actbox, fill=orange!8]      (ac2) at (3.5, 6.4) {Spring\\Server};
+		\node[actbox, fill=purple!8]      (ac3) at (7.0, 6.4) {@Async\\ExplanationSvc};
+		\node[actbox, fill=red!5, dashed] (ac4) at (10.5, 6.4) {Mistral AI\\{\tiny externo}};
+
+		% Linhas de vida
+		\draw[lifeline] (0,   6.04) -- (0,   -1.1);
+		\draw[lifeline] (3.5, 6.04) -- (3.5, -1.1);
+		\draw[lifeline] (7.0, 6.04) -- (7.0, -1.1);
+		\draw[lifeline] (10.5,6.04) -- (10.5,-1.1);
+
+		% (1) POST adaptive submit (falha, depth >= MAX)
+		\draw[msgarr] (0, 5.7) -- (3.5, 5.7)
+			node[above, font=\tiny, midway] {(1) POST /struggle/\{id\}/tasks/\{tid\}/submit};
+
+		% Nota: depth >= MAX → createSession sync
+		\node[notebox, fill=orange!6] at (5.1, 5.18)
+			{depth $\ge$ \texttt{MAX=1}\\createSession() sync};
+		\draw[gray!30, thin] (3.5, 5.18) -- (4.2, 5.18);
+
+		% (2) AdaptiveSubmitResult{explanationSessionId} (imediato)
+		\draw[retarr] (0, 4.72) -- (3.5, 4.72)
+			node[above, font=\tiny, midway] {(2) AdaptiveResult\{explanationSessionId\}};
+
+		% (3) @Async triggerAsync
+		\draw[dasharr] (3.5, 4.22) -- (7.0, 4.22)
+			node[above, font=\tiny, midway] {(3) @Async triggerAsync(sessionId)};
+
+		% (4) GET explanation (cliente navega imediatamente)
+		\draw[msgarr] (0, 3.72) -- (3.5, 3.72)
+			node[above, font=\tiny, midway] {(4) GET /explanation/\{sessionId\}};
+		\draw[retarr] (0, 3.28) -- (3.5, 3.28)
+			node[below, font=\tiny, midway] {ExplanationSession\{status:GENERATING\}};
+
+		% Nota: buildExplanationContext
+		\node[notebox, fill=purple!6] at (8.45, 2.85)
+			{buildExplanationContext()\\(inclui StruggleHistory)};
+		\draw[gray!30, thin] (7.0, 2.85) -- (7.6, 2.85);
+
+		% (5) LangChain4j prompt
+		\draw[msgarr] (7.0, 2.38) -- (10.5, 2.38)
+			node[above, font=\tiny, midway] {(5) LangChain4j prompt};
+
+		% Resilience4j note
+		\node[notebox, fill=red!5, draw=red!30] at (8.75, 1.9)
+			{Resilience4j CB\\fallback $\to$ reset PENDING};
+
+		% (6) texto de explicação
+		\draw[retarr] (7.0, 1.5) -- (10.5, 1.5)
+			node[below, font=\tiny, midway] {(6) texto de explica\c{c}\~ao};
+
+		% Nota: ACTIVE
+		\node[notebox, fill=purple!8] at (8.45, 1.05)
+			{ExplanationSession\\$\to$ status: ACTIVE};
+		\draw[gray!30, thin] (7.0, 1.05) -- (7.6, 1.05);
+
+		% (7) GET explanation (agora ACTIVE)
+		\draw[msgarr] (0, 0.6) -- (3.5, 0.6)
+			node[above, font=\tiny, midway] {(7) GET /explanation/\{id\} (poll)};
+		\draw[retarr] (0, 0.17) -- (3.5, 0.17)
+			node[below, font=\tiny, midway] {ExplanationSession\{ACTIVE, explanation\}};
+
+		% Loop: N rondas de chat
+		\draw[gray!45, thin] (-0.5, -0.08) rectangle (3.2, -0.82);
+		\node[font=\tiny, gray!65] at (1.35, -0.45)
+			{(8) POST /messages + resposta AI $\;\times N$};
+
+		% (9) POST resolve
+		\draw[msgarr] (0, -0.98) -- (3.5, -0.98)
+			node[above, font=\tiny, midway] {(9) POST /explanation/\{id\}/resolve};
+		\node[notebox, fill=green!6] at (5.1, -0.98)
+			{assignment $\to$ PENDING};
+		\draw[gray!30, thin] (3.5, -0.98) -- (4.2, -0.98);
+
+	\end{tikzpicture}
+	\caption[Sequência do ciclo de explicação holística]{Diagrama de sequência da sessão de explicação. A criação da sessão é síncrona (passo~2), permitindo navegação imediata no cliente; a geração do texto holístico é assíncrona (@Async, passos 3--6), com \emph{fallback} automático em caso de falha. Após transição para \texttt{ACTIVE}, decorre um número $N$ de rondas de diálogo com o LLM (passo~8); a resolução (passo~9) repõe a tarefa original em \texttt{PENDING} para nova tentativa autónoma.}
+	\label{fig:seq-explanation}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Reconhecimento: o sistema de distintivos}
+\label{sec:badges}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O pilar do \textbf{reconhecimento} é implementado através de um sistema de distintivos (\emph{badges}) associados a microcompetências. Cada tópico tem exactamente uma microcompetência correspondente, criada durante a fase de indexação do conteúdo. Ao concluir o tópico, o serviço \texttt{BadgeIssuanceService} verifica se o utilizador cumpre os critérios de emissão.
+
+A condição de emissão é formal: sendo $n$ o número total de tarefas do tópico, $s$ o número de tarefas submetidas e $c$ o número de respostas correctas, um distintivo é emitido se e só se:
+
+\begin{equation}
+	s \geq n \quad \text{e} \quad \frac{c}{n} \geq \alpha,\quad \text{com } \alpha = 0.60
+	\label{eq:badge}
+\end{equation}
+
+O limiar $\alpha = 0.60$ foi calibrado para ser exigente o suficiente para conferir significado ao distintivo, mas permissivo o suficiente para não frustrar utilizadores que fizeram a maior parte do percurso correctamente --- aproximando-se da lógica de \emph{mastery learning}~\cite{bloom1968learning}, em que a progressão exige domínio comprovado, mas não perfeição absoluta. Um distintivo nunca é emitido duas vezes para o mesmo par (utilizador, microcompetência), garantindo a unicidade e a integridade do reconhecimento.
+
+Do ponto de vista pedagógico, os distintivos servem uma função de \textbf{sinalização de competência}: ao contrário de pontos que se acumulam de forma contínua, um distintivo marca um limiar --- um momento em que a pessoa pode dizer com fundamento ``sei fazer isto''. Esta distinção é importante: a literatura sobre gamificação em educação sugere que os distintivos têm maior impacto motivacional quando assinalam competências genuínas e reconhecíveis, em vez de meras presenças ou tentativas~\cite{ott2019gamification}. No \emph{Play4Change}, a microcompetência associada a cada tópico é descrita em linguagem natural (por exemplo, ``Compreendo o impacto do transporte individual nas emissões urbanas de CO\textsubscript{2}''), o que procura tornar o distintivo inteligível para além do contexto da própria aplicação --- uma aspiração, ainda por cumprir neste protótipo, de aproximar os distintivos da lógica de \emph{open badges} e de reconhecimento de aprendizagem informal.
+
+A emissão de distintivos está deliberadamente separada da progressão entre tópicos: um utilizador que não cumpra o limiar $\alpha$ pode mesmo assim desbloquear o tópico seguinte (se os pré-requisitos estiverem cumpridos), mas não receberá o distintivo. Esta separação é intencional: evita que a ausência de um distintivo bloqueie o utilizador no seu percurso, ao mesmo tempo que mantém o distintivo como uma conquista genuína e não automática.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Envolvimento: mecanismos de retenção}
+\label{sec:envolvimento}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O terceiro pilar --- o \textbf{envolvimento} --- é sustentado por três mecanismos complementares, todos concebidos para transformar a aprendizagem de uma actividade esporádica num hábito sustentado.
+
+O primeiro é o \emph{streak}: um contador de dias consecutivos de actividade que é incrementado a cada resposta correcta ou a cada percurso adaptativo resolvido com sucesso. O \emph{streak} não é penalizado por uma resposta errada, apenas pelo abandono total num dia --- o que incentiva a tentativa mesmo quando o utilizador não tem a certeza da resposta. Do ponto de vista psicológico, o \emph{streak} actua como um compromisso visível (\emph{commitment device}): ao tornar o historial de actividade algo que o utilizador não quer interromper, cria uma pressão positiva ao regresso diário que vai além do interesse pelo conteúdo em si. Esta lógica é utilizada com sucesso documentado em plataformas como o Duolingo, onde os \emph{streaks} são um dos mecanismos de retenção mais eficazes~\citep{ott2019gamification}. Uma nota de design importante: o \emph{streak} conta dias de \emph{qualquer} actividade, incluindo a resolução de percursos adaptativos e sessões de explicação --- o que evita que o utilizador sinta que ``perdeu'' o dia apenas por ter errado.
+
+O segundo é a \textbf{progressão por pré-requisitos}: os tópicos podem ser organizados num grafo dirigido acíclico (DAG), em que um tópico só fica desbloqueado depois de o utilizador concluir os tópicos dos quais depende. A detecção de ciclos usa uma pesquisa em largura (\emph{BFS}) na camada de serviço, garantindo que o administrador não pode, inadvertidamente, criar dependências circulares. Esta lógica permite construir percursos de aprendizagem progressivos --- por exemplo: ``Introdução às Cidades Sustentáveis'' → ``Eficiência Energética'' → ``Mobilidade Urbana Limpa'' --- que reflectem quer a estrutura lógica do conhecimento (alguns temas pressupõem outros), quer a progressão pedagógica que a U!REKA considera adequada para os seus públicos-alvo. Para o utilizador, a interface mostra o grafo de percurso completo (\emph{endpoint} \texttt{/enrollments/\{id\}/roadmap}), tornando visível o que já foi conquistado e o que está disponível a seguir --- o que serve simultaneamente como motivação (\emph{progress visibility}) e orientação (\emph{next step clarity}).
+
+O terceiro mecanismo é o \textbf{desbloqueio diário por índice}: as tarefas de cada tópico são atribuídas ao utilizador uma por dia, com desbloqueio à meia-noite no fuso horário do utilizador. Este ritmo cadenciado cumpre dois propósitos: reduz a sobrecarga cognitiva (o utilizador não tem de escolher o que fazer --- a aplicação apresenta exatamente uma tarefa por dia) e cria uma razão concreta para voltar todos os dias. A cadência diária é deliberadamente baixa em termos de tempo de investimento por sessão --- o que procura tornar o hábito fácil de iniciar e fácil de manter, mesmo para utilizadores com disponibilidade limitada.
+
+A Tabela~\ref{tab:api-endpoints} apresenta os principais \emph{endpoints} REST que expõem estas funcionalidades ao cliente móvel e ao painel de administração.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{1.1cm} p{5.8cm} p{1.2cm} p{4.5cm}}
+		\toprule
+		\textbf{Método} & \textbf{Caminho} & \textbf{Auth} & \textbf{Função} \\
+		\midrule
+		\texttt{POST} & \texttt{/enrollments} & USER & Inscrever utilizador num tópico \\
+		\texttt{GET}  & \texttt{/topics/\{id\}/task} & USER & Obter tarefa do dia \\
+		\texttt{POST} & \texttt{/assignments/\{id\}/submit} & USER & Submeter resposta \\
+		\texttt{GET}  & \texttt{/enrollments/\{id\}/roadmap} & USER & Obter mapa visual do percurso \\
+		\texttt{GET}  & \texttt{/struggle/\{enrollmentId\}} & USER & Obter sessão adaptativa activa \\
+		\texttt{POST} & \texttt{/struggle/\{sId\}/tasks/\{tId\}/submit} & USER & Submeter subtarefa adaptativa \\
+		\texttt{GET}  & \texttt{/explanations/\{sessionId\}} & USER & Obter sessão de explicação \\
+		\texttt{POST} & \texttt{/explanations/\{sessionId\}/messages} & USER & Enviar mensagem ao LLM \\
+		\texttt{GET}  & \texttt{/badges} & USER & Listar distintivos conquistados \\
+		\texttt{POST} & \texttt{/admin/topics} & ADMIN & Criar tópico (URL ou PDF) \\
+		\texttt{POST} & \texttt{/admin/topics/\{id\}/prerequisites} & ADMIN & Definir pré-requisitos do tópico \\
+		\texttt{GET}  & \texttt{/admin/learning-graph} & ADMIN & Obter DAG completo de tópicos \\
+		\bottomrule
+	\end{tabular}
+	\caption[Principais \emph{endpoints} REST do Play4Change]{Principais \emph{endpoints} REST do \emph{Play4Change}, organizados por papel de autenticação.}
+	\label{tab:api-endpoints}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Síntese do desenvolvimento}
+\label{sec:sintese-desenvolvimento}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O desenvolvimento do \emph{Play4Change} produziu um protótipo funcional com três camadas bem definidas --- servidor Spring Boot, aplicação Kotlin Multiplatform e painel React --- articuladas por uma API REST de acordo com os princípios da arquitectura hexagonal~\cite{cockburn2005hexagonal}. A Tabela~\ref{tab:stack} resume o \emph{stack} completo; vale a pena sublinhar que quase todas as componentes têm alternativas substituíveis sem alterar o núcleo de domínio --- a escolha do Mistral como fornecedor de LLM, por exemplo, está encapsulada no módulo \texttt{ai-agent} e pode ser trocada por outro modelo sem tocar nos serviços de aplicação.
+
+O mecanismo mais complexo e distintivo é o percurso adaptativo: a combinação de classificação determinística de erros (Secção~\ref{sec:personalizacao-adaptativa}), geração assíncrona de subtarefas pelo LLM com entrega progressiva via SSE~\cite{w3c-sse}, deduplicação vectorial por similaridade coseno~\cite{johnson2019faiss,lewis2020rag}, e escalada para explicação em prosa com diálogo livre representa uma concretização técnica directa do pilar da personalização --- e a contribuição mais original deste protótipo relativamente às plataformas existentes analisadas no Capítulo~\ref{cha:enquadramento}.
+
+Importa sublinhar com clareza o que este protótipo \emph{é} e o que \emph{não é}. As funcionalidades foram implementadas e testadas de ponta a ponta num ambiente de desenvolvimento controlado; o fluxo completo --- criação de tópico, geração de conteúdo, percurso adaptativo, emissão de distintivo --- funciona. No entanto, há dimensões que uma versão de produção exigiria aprofundar: a calibração fina dos limiares de deduplicação e de profundidade adaptativa com dados reais de utilização; a cobertura de testes de integração e de testes de carga; a gestão robusta de falhas de rede no cliente móvel; e, sobretudo, a validação pedagógica dos conteúdos gerados pelo LLM por especialistas em educação --- um passo que este protótipo não inclui e que é indispensável antes de qualquer utilização com utilizadores reais em larga escala. Estes aspectos são discutidos nas limitações do Capítulo~\ref{cha:conclusao}.
