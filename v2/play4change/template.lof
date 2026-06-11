@@ -1,0 +1,40 @@
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Mapa de posicionamento das plataformas (Gamificação vs.\ Foco em Competências)}}{7}{figure.caption.9}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Diagrama de casos de uso do Play4Change}}{10}{figure.caption.10}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Arquitetura do Play4Change (C4~--- Nível Contentor)}}{12}{figure.caption.13}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Fluxo de autenticação: magic link}}{14}{figure.caption.14}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Diagrama entidade-associação do Play4Change}}{16}{figure.caption.15}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Estrutura DAG de progressão entre tópicos (exemplo~--- domínio Sustentabilidade)}}{17}{figure.caption.16}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Diagrama de sequência: deteção de dificuldades e ativação do ramo adaptativo}}{18}{figure.caption.17}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Propagação de \texttt {Either<DomainError,~T>} através das camadas da aplicação}}{20}{figure.caption.18}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Fluxo unidirecional de dados no padrão MVI com Decompose}}{21}{figure.caption.20}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Estrutura modular do servidor e dependências entre módulos Gradle}}{23}{figure.caption.21}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Pipeline de geração de conteúdo e reutilização do agente de IA}}{24}{figure.caption.23}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Diagrama de implantação do Play4Change (Docker Compose sobre VPS)}}{26}{figure.caption.25}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Arquitectura de três camadas do \textit {Play4Change}}}{28}{figure.caption.26}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Protocolo de autenticação \textit {magic link}: quatro passos}}{29}{figure.caption.27}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Mecanismos de armazenamento seguro de \textit {tokens} por plataforma}}{30}{figure.caption.28}%
+\contentsline {figure}{\numberline {5.4}{\ignorespaces As catorze camadas do \textit {pipeline} de pedido-resposta do servidor Spring Boot}}{31}{figure.caption.29}%
+\contentsline {figure}{\numberline {5.5}{\ignorespaces Os três pilares pedagógicos e os subsistemas de engenharia correspondentes}}{32}{figure.caption.30}%
+\contentsline {figure}{\numberline {5.6}{\ignorespaces Fases do \textit {pipeline} de geração assíncrona de tópicos}}{34}{figure.caption.31}%
+\contentsline {figure}{\numberline {5.7}{\ignorespaces Projeção 2D do espaço de \textit {embeddings}: textos similares formam clusters}}{36}{figure.caption.32}%
+\contentsline {figure}{\numberline {5.8}{\ignorespaces Funcionamento do índice IVFFlat: apenas o cluster mais próximo é inspeccionado}}{37}{figure.caption.33}%
+\contentsline {figure}{\numberline {5.9}{\ignorespaces Decisão de reutilização com base na similaridade do cosseno}}{38}{figure.caption.34}%
+\contentsline {figure}{\numberline {5.10}{\ignorespaces O volante de inércia: cada dificuldade enriquece a biblioteca de reutilização}}{39}{figure.caption.35}%
+\contentsline {figure}{\numberline {5.11}{\ignorespaces Sequência de ecrãs e pedidos HTTP durante uma sessão de remediação}}{40}{figure.caption.37}%
+\contentsline {figure}{\numberline {5.12}{\ignorespaces Estrutura KMP: \texttt {commonMain} partilhado e conjuntos de fontes por plataforma}}{41}{figure.caption.38}%
+\contentsline {figure}{\numberline {5.13}{\ignorespaces Fluxo de dados MVI: \textit {Events} → \textit {State} → \textit {Effects}}}{41}{figure.caption.39}%
+\contentsline {figure}{\numberline {5.14}{\ignorespaces Pilha de observabilidade: Micrometer → Prometheus → Grafana}}{42}{figure.caption.40}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

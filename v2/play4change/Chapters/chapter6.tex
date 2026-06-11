@@ -1,0 +1,67 @@
+%
+%  chapter6.tex — Conclusões e Trabalho Futuro
+%
+\chapter{Conclusões e Trabalho Futuro}
+\label{cha:conclusoes}
+
+\section{Síntese}
+\label{sec:sintese}
+
+O presente trabalho propôs e desenvolveu o \textit{Play4Change}, uma plataforma de aprendizagem adaptativa e gamificada orientada para cidadãos, no contexto da missão U!REKA de transição para cidades inteligentes e sustentáveis. A plataforma responde a uma lacuna identificada no panorama das soluções de \textit{e-learning} existentes: a ausência de uma plataforma que reúna simultaneamente gamificação efetiva, adaptação por inteligência artificial, reconhecimento formal de microcompetências e orientação para o domínio da sustentabilidade urbana.
+
+A arquitetura desenvolvida integra quatro componentes principais — cliente móvel, portal de administração web, servidor \textit{stateless} e agente de IA --- que trabalham de forma coordenada para proporcionar uma experiência de aprendizagem personalizada, motivante e pedagogicamente fundamentada. A implementação assenta numa separação estrita de camadas segundo os princípios de \textit{Domain-Driven Design} e arquitectura hexagonal, garantindo que a lógica de negócio permanece independente dos detalhes de infraestrutura. O agente de IA constitui o elemento diferenciador da plataforma, sendo responsável pela geração automática de conteúdo, pela deteção de dificuldades em tempo real e pela proposta de percursos alternativos personalizados.
+
+O mecanismo de reutilização de percursos adaptativos representa uma contribuição inovadora, ao transformar as dificuldades individuais dos aprendentes em conhecimento coletivo reutilizável, melhorando progressivamente a eficácia do sistema à medida que a base de utilizadores cresce.
+
+\section{Contribuições}
+\label{sec:contribuicoes_conclusao}
+
+As contribuições principais deste trabalho são:
+
+\begin{enumerate}
+  \item \textbf{Plataforma Play4Change}: uma solução completa de aprendizagem adaptativa e gamificada, alinhada com os ODS~4, 11 e~13 e com a missão U!REKA;
+  \item \textbf{Arquitetura de geração adaptativa de conteúdo}: integração de LLM (Mistral via LangChain4j) com armazenamento vetorial (pgvector) para geração e recuperação semântica de conteúdo pedagógico;
+  \item \textbf{Mecanismo de reutilização de percursos adaptativos}: abordagem inovadora que capitaliza padrões de dificuldade coletivos para beneficiar aprendentes futuros;
+  \item \textbf{Modelo de microcompetências gamificado}: estruturação do percurso formativo em unidades atómicas verificáveis, reconhecidas por \textit{badges}, aplicadas ao domínio das cidades inteligentes;
+  \item \textbf{Auditoria de segurança e observabilidade}: identificação e correção de vulnerabilidades de segurança com base no referencial OWASP Top~10, e definição de sete métricas de domínio personalizadas com \textit{dashboards} provisionados como código, garantindo rastreabilidade e reprodutibilidade da monitorização.
+\end{enumerate}
+
+\section{Limitações}
+\label{sec:limitacoes}
+
+O presente trabalho concentrou-se em estabelecer as bases funcionais dos três pilares da plataforma --- \textbf{Envolvimento} (desafios gamificados diários), \textbf{Personalização} (adaptação por IA e reutilização de percursos) e \textbf{Reconhecimento} (modelo de microcompetências certificado por \textit{badges}) --- num protótipo coerente e tecnicamente fundamentado. Existe, contudo, um caminho considerável a percorrer antes de a plataforma atingir a sua expressão plena.
+
+A avaliação com utilizadores foi conduzida com uma amostra limitada, o que condiciona a generalização dos resultados de usabilidade e de eficácia adaptativa. A biblioteca de percursos adaptativos requer uma massa crítica de utilizadores para manifestar plenamente o seu potencial de reutilização --- esta é, por natureza, uma característica que melhora progressivamente com a escala.
+Estas limitações não comprometem a validade da abordagem; constituem, antes, o ponto de partida natural para as direções de trabalho futuro descritas na secção seguinte.
+
+\section{Trabalho Futuro}
+\label{sec:trabalho_futuro}
+
+O trabalho futuro orienta-se pela evolução de cada um dos três pilares rumo à sua expressão plena, transformando o protótipo atual numa plataforma de aprendizagem cívica madura e de impacto alargado.
+
+\subsection*{Envolvimento}
+
+\begin{itemize}
+  \item \textbf{Ranking global e componente social}: introdução de um \textit{leaderboard} global e por grupos, desafios entre utilizadores e partilha de conquistas, reforçando a motivação extrínseca e o sentido de comunidade;
+  \item \textbf{Mecânicas de gamificação avançadas}: sistemas de níveis e pontos de experiência (XP), recuperação de \textit{streak}, e eventos temáticos sazonais associados a efemérides cívicas relevantes;
+  \item \textbf{Notificações e retenção}: notificações diárias personalizadas com base no histórico de participação, para reduzir o abandono e consolidar o hábito de aprendizagem.
+\end{itemize}
+
+\subsection*{Personalização}
+
+\begin{itemize}
+  \item \textbf{Persistência de \textit{embeddings} adaptativos}: garantir que os \textit{embeddings} dos ramos adaptativos gerados são sempre persistidos, alimentando continuamente a biblioteca de percursos reutilizáveis;
+  \item \textbf{Predição proativa de dificuldade}: antecipar dificuldades antes da ocorrência de falhas, com base em padrões de comportamento precoces, em vez de reagir apenas após erros acumulados;
+  \item \textbf{Avaliação longitudinal em escala}: conduzir uma avaliação com uma amostra representativa de cidadãos para aferir a eficácia pedagógica do mecanismo adaptativo a longo prazo.
+\end{itemize}
+
+\subsection*{Reconhecimento}
+
+\begin{itemize}
+  \item \textbf{Integração com Open Badges e normas europeias}: assegurar a interoperabilidade dos \textit{badges} com o padrão Open Badges e com a abordagem europeia a microcompetências da Comissão Europeia~\cite{eur2022micro}, tornando as credenciais portáteis e reconhecíveis por entidades externas;
+  \item \textbf{Reconhecimento institucional e laboral}: estabelecer parcerias com instituições de ensino e empregadores para a validação formal das microcompetências adquiridas na plataforma;
+  \item \textbf{Carteira digital de competências}: integrar as credenciais numa carteira digital (e.g., Europass Digital Credentials), permitindo ao cidadão agregar e apresentar o seu percurso formativo de forma padronizada e verificável.
+\end{itemize}
+
+
+Em síntese, o \textit{Play4Change} demonstra que é possível conceber uma plataforma de aprendizagem que coloca o cidadão no centro, que aprende com ele e que, ao fazê-lo, contribui para a construção de cidades mais inteligentes, mais sustentáveis e mais humanas --- em linha com a visão que inspira tanto a missão U!REKA como os Objetivos de Desenvolvimento Sustentável das Nações Unidas.

@@ -1,0 +1,396 @@
+%
+%  chapter3.tex — Solução Proposta
+%
+\chapter{Solução Proposta}
+\label{cha:solucao}
+
+Face à lacuna identificada no Capítulo~\ref{cha:enquadramento} --- nenhuma plataforma existente combina \textit{engagement}, personalização adaptativa e reconhecimento formal de competências no contexto da literacia cívica urbana --- este capítulo apresenta a solução proposta. O objetivo é concretizar dois dos três objetivos definidos no Capítulo~\ref{cha:introducao}: OE1, através da especificação dos requisitos funcionais e não funcionais que guiam o \textit{design} da plataforma; e OE2, através da descrição arquitetural de uma solução que integra os três pilares do \textit{Play4Change}: \textbf{Engagement} (desafios gamificados diários), \textbf{Personalização} (adaptação de percursos por IA com reutilização vetorial) e \textbf{Reconhecimento} (microcompetências certificadas por \textit{badges}).
+
+\section{Requisitos do Sistema}
+\label{sec:requisitos}
+
+Esta secção apresenta os requisitos funcionais e não funcionais que guiaram o design e a implementação do \textit{Play4Change}.
+
+\subsection{Atores e Casos de Uso}
+\label{ssec:casos_uso}
+
+O sistema contempla dois atores principais:
+
+\begin{description}
+  \item[Cidadão] Utilizador final da aplicação móvel. Autentica-se na plataforma, subscreve tópicos, realiza tarefas de aprendizagem diárias e recebe \textit{badges} ao completar tópicos.
+  \item[Administrador] Gestor da plataforma com acesso ao portal web de administração. Cria e gere tópicos formativos, revê o conteúdo gerado, e monitoriza métricas de utilização.
+\end{description}
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/casos_uso.pdf quando disponível
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    actor/.style={draw, fill=blue!15, rounded corners=3pt,
+                  minimum width=2.2cm, minimum height=0.65cm,
+                  align=center, font=\small\bfseries},
+    uc/.style={draw, ellipse, fill=white, minimum width=3.6cm,
+               minimum height=0.65cm, align=center, font=\small}
+  ]
+  % System boundary
+  \draw[dashed, rounded corners=8pt, fill=gray!5]
+       (1.5,-5.8) rectangle (12.5, 1.2);
+  \node[gray, font=\footnotesize\itshape] at (7.0, 0.95)
+       {Sistema Play4Change};
+  % Actors — Cidadão left, Administrador right
+  \node[actor] (cid) at (0.0,  -3.0) {Cidadão};
+  \node[actor] (adm) at (14.0, -3.0) {Administrador};
+  % Shared use case — centred at top
+  \node[uc] (u1) at (7.0,  0.4) {Autenticar-se};
+  % Citizen use cases — left column
+  \node[uc] (u2) at (4.0, -1.2) {Realizar tarefa diária};
+  \node[uc] (u3) at (4.0, -2.4) {Subscrever tópico};
+  \node[uc] (u4) at (4.0, -3.6) {Receber badge};
+  \node[uc] (u5) at (4.0, -5.0) {Receber ramo adaptativo};
+  % Admin use cases — right column
+  \node[uc] (u6) at (10.0, -1.8) {Gerir tópicos};
+  \node[uc] (u8) at (10.0, -3.1) {Monitorizar métricas};
+  \node[uc] (u9) at (10.0, -4.4) {Rever conteúdo IA};
+  % Lines — no crossings
+  \draw (cid) -- (u1);
+  \foreach \t in {u2,u3,u4,u5} \draw (cid) -- (\t);
+  \draw (adm) -- (u1);
+  \foreach \t in {u6,u8,u9} \draw (adm) -- (\t);
+  \end{tikzpicture}
+  \caption{Diagrama de casos de uso do Play4Change}
+  \label{fig:casos_uso}
+\end{figure}
+
+\clearpage
+\subsection{Requisitos Funcionais}
+\label{ssec:req_funcionais}
+
+A Tabela~\ref{tab:req_funcionais} apresenta os principais requisitos funcionais do sistema.
+
+\begin{table}[ht]
+  \caption{Requisitos funcionais do Play4Change}
+  \label{tab:req_funcionais}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{cp{7cm}lc}
+    \toprule
+    \textbf{ID} & \textbf{Descrição} & \textbf{Ator} & \textbf{Prior.} \\
+    \midrule
+    RF01 & Autenticação por \textit{magic link} & Cidadão & Alta \\
+    RF02 & Apresentação diária de tarefas de aprendizagem personalizadas & Cidadão & Alta \\
+    RF03 & Atribuição de \textit{badges} ao completar um tópico & Cidadão & Alta \\
+    RF04 & Deteção automática de dificuldades de aprendizagem & Sistema & Alta \\
+    RF05 & Proposta de ramo adaptativo quando dificuldades são detetadas & Cidadão & Alta \\
+    RF06 & Geração automática de conteúdo formativo por IA & Sistema & Alta \\
+    RF07 & Criação e gestão de tópicos formativos pelo administrador & Administrador & Alta \\
+    RF08 & Monitorização de métricas de utilização e desempenho & Administrador & Média \\
+    RF09 & Reutilização de percursos adaptativos entre cidadãos com perfis semelhantes & Sistema & Média \\
+    RF10 & Revisão e aprovação de conteúdo formativo gerado por IA & Administrador & Alta \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Requisitos Não Funcionais}
+\label{ssec:req_nao_funcionais}
+
+A Tabela~\ref{tab:req_nao_funcionais} apresenta os requisitos não funcionais que condicionaram as opções arquiteturais do sistema.
+
+\begin{table}[ht]
+  \caption{Requisitos não funcionais do Play4Change}
+  \label{tab:req_nao_funcionais}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{clp{7.5cm}}
+    \toprule
+    \textbf{ID} & \textbf{Categoria} & \textbf{Descrição} \\
+    \midrule
+    RNF01 & Escalabilidade   & Servidor \textit{stateless} com suporte a escalabilidade horizontal \\
+    RNF02 & Segurança        & Fluxos de autenticação conformes com recomendações OWASP \\
+    RNF03 & Portabilidade    & Cliente móvel compatível com Android e iOS \\
+    RNF04 & Observabilidade  & Métricas de domínio expostas via Prometheus e Grafana \\
+    RNF05 & Resiliência      & Agente de IA protegido por \textit{circuit breaker} e política de \textit{retry} com \textit{backoff} exponencial \\
+    RNF06 & Proteção         & \textit{Rate limiting} por IP e \textit{endpoint} via Bucket4j (autenticação limitada a 5–20 pedidos por 10 minutos; HTTP~429 com \textit{Retry-After}) \\
+    RNF07 & Seg.\ Transporte & Cabeçalhos HTTP de segurança (HSTS, CSP, X-Frame-Options) configurados no \textit{reverse proxy} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Visão Geral}
+\label{sec:visao_geral}
+
+O \textit{Play4Change} é uma plataforma de aprendizagem adaptativa e gamificada composta por quatro componentes principais: (i)~um cliente móvel destinado aos cidadãos; (ii)~um cliente web com \textit{landing page} e portal de administração; (iii)~um servidor \textit{stateless} que coordena toda a lógica de negócio; e (iv)~um agente de inteligência artificial responsável pela geração e adaptação de conteúdo pedagógico.
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/arquitetura_geral.pdf quando disponível
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    cint/.style={draw, rounded corners=4pt, fill=blue!12,
+                 minimum width=3.2cm, minimum height=1.2cm,
+                 align=center, text width=3.0cm},
+    csrv/.style={cint, fill=blue!22},
+    cdb/.style={cint, fill=orange!18},
+    cext/.style={cint, dashed, fill=green!12}
+  ]
+  % Row 1: Clients
+  \node[cint] (mob) at (0,    0) {\textbf{App Móvel}\\\scriptsize KMP / Compose\\\scriptsize Android + iOS};
+  \node[cint] (web) at (4.5,  0) {\textbf{Portal Web}\\\scriptsize Admin + Landing};
+  % Row 2: Server + AI
+  \node[csrv] (srv) at (2.2, -3.2) {\textbf{Servidor REST}\\\scriptsize Spring Boot · Kotlin\\\scriptsize Stateless};
+  \node[cint] (ai)  at (7.5, -3.2) {\textbf{Agente de IA}\\\scriptsize LangChain4j\\\scriptsize + Mistral};
+  % Row 3: Storage
+  \node[cdb]  (pg)  at (0,   -6.4) {\textbf{PostgreSQL}\\\scriptsize + pgvector\\\scriptsize Dados + Vetores};
+  \node[cdb]  (mio) at (4.5, -6.4) {\textbf{MinIO}\\\scriptsize S3-compatible\\\scriptsize Ficheiros};
+  % Row 4: External
+  \node[cext] (mis) at (-1.5,-9.8) {\textbf{Mistral API}\\\scriptsize LLM};
+  \node[cext] (res) at (3.5, -9.8) {\textbf{Resend}\\\scriptsize Magic Link};
+  % Arrows
+  \draw[->] (mob.south) -- (srv.north west);
+  \draw[->] (web.south) -- (srv.north east);
+  \draw[<->] (srv.east) -- (ai.west)
+    node[midway,above,font=\tiny] {geração / análise};
+  \draw[<->] (srv.south west) -- (pg.north);
+  \draw[<->] (srv.south east) -- (mio.north);
+  \draw[<->] (ai.south) to[out=270,in=30] (pg.north east);
+  \draw[->,dashed] (srv.south) to[out=270,in=90] (res.north);
+  \draw[->,dashed] (ai.south) to[out=270,in=90] (mis.north east);
+  \end{tikzpicture}}
+  \caption{Arquitetura do Play4Change (C4~--- Nível Contentor)}
+  \label{fig:arquitetura_geral}
+\end{figure}
+
+A separação de responsabilidades entre os componentes foi um princípio arquitetural central no design do sistema. O servidor é \textit{stateless}, o que permite escalabilidade horizontal e simplifica a gestão de sessões. O agente de IA funciona de forma assíncrona, não bloqueando o fluxo principal de interação do utilizador.
+
+Do ponto de vista dos três pilares da plataforma, os componentes distribuem-se do seguinte modo: o \textbf{Engagement} é concretizado pelo cliente móvel, através dos desafios diários, \textit{streaks} e visualização de progresso; a \textbf{Personalização} é assegurada pelo agente de IA em conjunto com o armazenamento vetorial em \textit{pgvector}, que gera e reutiliza percursos adaptativos; e o \textbf{Reconhecimento} materializa-se no modelo de microcompetências e \textit{badges}, transversal ao servidor e ao cliente móvel.
+
+\section{Cliente Móvel}
+\label{sec:cliente_movel}
+
+O cliente móvel é o ponto de entrada principal para os cidadãos. A aplicação apresenta diariamente um conjunto de tarefas de aprendizagem relacionadas com tópicos de cidades inteligentes e sustentabilidade. Cada tarefa contribui para a progressão num tópico, que, quando completado, é reconhecido através da atribuição de um \textit{badge}.
+
+A experiência do utilizador é gamificada: o progresso é visualizado de forma contínua, existem sequências diárias (\textit{streaks}) que incentivam a regularidade, e os \textit{badges} obtidos são visíveis no perfil pessoal do cidadão. O design da aplicação segue os princípios de \textit{Mobile First} e de acessibilidade, garantindo usabilidade a uma audiência diversificada.
+
+Quando o agente de IA deteta dificuldades no desempenho de um cidadão numa determinada tarefa, é proposto automaticamente um percurso alternativo --- denominado \textit{ramo adaptativo} --- que aborda o mesmo tópico de forma diferente, com maior suporte ou granularidade.
+
+\section{Cliente Web}
+\label{sec:cliente_web}
+
+O cliente web serve dois propósitos distintos: uma \textit{landing page} pública, que comunica a proposta de valor da plataforma e facilita o acesso de novos utilizadores; e um portal de administração, de acesso restrito a gestores autorizados.
+
+No portal de administração, os administradores podem:
+\begin{itemize}
+  \item Criar e gerir tópicos de aprendizagem, definindo os objetivos pedagógicos associados;
+  \item Monitorizar métricas de utilização e desempenho agregado dos cidadãos;
+  \item Aprovar ou rever conteúdo gerado pelo agente de IA.
+\end{itemize}
+
+\section{Servidor}
+\label{sec:servidor}
+
+O servidor constitui o núcleo da plataforma, implementando a lógica de negócio, a gestão de utilizadores, a persistência de dados e a orquestração entre os restantes componentes. Foi concebido como um serviço \textit{stateless}, em conformidade com os princípios da arquitetura REST~\cite{fielding2000rest}, o que confere ao sistema flexibilidade para escalar horizontalmente em função da procura.
+
+A autenticação é suportada por \textit{magic link} (com \textit{hashing} SHA-256 e envio por email através da API Resend). Esta abordagem garante um fluxo de acesso seguro e sem necessidade de palavra-passe para os utilizadores da plataforma.
+
+A persistência de dados inclui, para além dos dados estruturados da plataforma, um armazenamento vetorial baseado em \textit{pgvector} (extensão PostgreSQL), utilizado pelo agente de IA para recuperação semântica de conteúdo e deteção de padrões de dificuldade.
+
+O fluxo de autenticação por \textit{magic link} encontra-se ilustrado na Figura~\ref{fig:auth_flow}.
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/auth_flow.pdf quando disponível
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[>=Stealth, font=\scriptsize]
+  \def\xc{0}\def\xa{2.5}\def\xs{5.8}\def\xe{9.2}
+  % Headers
+  \foreach \x/\n in {
+    \xc/Cidadão, \xa/App, \xs/Servidor,
+    \xe/{Resend API}}
+    \node[font=\scriptsize\bfseries, align=center] at (\x, 0.6) {\n};
+  % Lifelines
+  \foreach \x in {\xc,\xa,\xs,\xe}
+    \draw[gray!40] (\x,0.0) -- (\x,-5.0);
+  % --- Magic Link ---
+  \draw[->] (\xc,-1.1) -- (\xa,-1.1) node[midway,above,font=\tiny] {pedir magic link};
+  \draw[->] (\xa,-1.7) -- (\xs,-1.7) node[midway,above,font=\tiny] {POST /auth/magic-link};
+  \draw[->] (\xs,-2.3) -- (\xe,-2.3) node[midway,above,font=\tiny] {enviar email (token SHA-256)};
+  \draw[->] (\xc,-3.0) -- (\xa,-3.0) node[midway,above,font=\tiny] {clica link};
+  \draw[->] (\xa,-3.6) -- (\xs,-3.6) node[midway,above,font=\tiny] {GET /auth/verify?token=\ldots};
+  \draw[->,dashed] (\xs,-4.2) -- (\xa,-4.2) node[midway,above,font=\tiny] {JWT};
+  \end{tikzpicture}}
+  \caption{Fluxo de autenticação: magic link}
+  \label{fig:auth_flow}
+\end{figure}
+
+\section{Agente de Inteligência Artificial}
+\label{sec:agente_ia}
+
+O agente de inteligência artificial é o componente diferenciador do \textit{Play4Change}. As suas responsabilidades abrangem três domínios funcionais:
+
+\subsection{Geração de Conteúdo}
+\label{ssec:geracao_conteudo}
+
+O agente é responsável pela geração automática de tarefas de aprendizagem, questões e explicações associadas a cada tópico. Utiliza um LLM (\textit{Large Language Model}) através da \textit{framework} LangChain4j com o modelo Mistral, o que permite produzir conteúdo pedagógico diversificado e contextualizado sem intervenção manual dos administradores para cada unidade de conteúdo. Para garantir a disponibilidade do serviço em caso de falha do LLM externo, a geração é protegida por um \textit{circuit breaker} com política de \textit{retry} e \textit{backoff} exponencial (RNF05).
+
+\subsection{Deteção de Dificuldades e Adaptação}
+\label{ssec:detecao_dificuldades}
+
+O sistema monitoriza continuamente o desempenho dos cidadãos durante a realização das tarefas. Quando são identificados padrões indicadores de dificuldade --- tais como respostas incorretas repetidas, tempo de resposta elevado ou abandono da tarefa --- o agente propõe um \textit{ramo adaptativo}: uma sequência alternativa de conteúdo que aborda o mesmo tópico com uma abordagem diferente, mais acessível ou mais detalhada.
+
+Esta deteção é realizada com base em \textit{embeddings} semânticos armazenados em \textit{pgvector}, que permitem identificar semelhanças entre o perfil de dificuldade atual e casos anteriores já resolvidos.
+
+\subsection{Reutilização de Percursos Adaptativos}
+\label{ssec:reutilizacao}
+
+Um elemento inovador da arquitetura reside na reutilização de percursos adaptativos. Quando um cidadão supera uma dificuldade através de um \textit{ramo adaptativo}, esse percurso é armazenado na biblioteca de conteúdo adaptativo. Perante um novo cidadão com um perfil de dificuldade semelhante, o sistema recupera e reutiliza o percurso já validado, em vez de gerar conteúdo novo de raiz. Este mecanismo reduz a latência na resposta adaptativa e melhora progressivamente a eficácia do sistema com o crescimento da base de utilizadores.
+
+\section{Modelo de Dados}
+\label{sec:modelo_dados}
+
+O modelo de dados do \textit{Play4Change} assenta numa base de dados relacional PostgreSQL, estendida com a extensão \textit{pgvector} para suporte a pesquisa semântica vetorial. As entidades principais são:
+
+\begin{description}
+  \item[\texttt{User}] Representa um utilizador da plataforma (cidadão ou administrador), com identificador, email, papel (\textit{role}) e fornecedor de autenticação.
+  \item[\texttt{Topic}] Tópico de aprendizagem criado pelo administrador, com título e objetivos pedagógicos.
+  \item[\texttt{Badge}] Recompensa visual atribuída ao completar um tópico, com imagem armazenada no MinIO.
+  \item[\texttt{Task}] Tarefa de aprendizagem (questão, exercício ou explicação), com conteúdo textual e \textit{embedding} semântico armazenado como vetor em \textit{pgvector}.
+  \item[\texttt{UserProgress}] Registo do desempenho de um cidadão numa tarefa (pontuação, número de tentativas, \textit{timestamp}).
+  \item[\texttt{AdaptivePath}] Percurso adaptativo associado a um perfil de dificuldade, com o \textit{embedding} do perfil e a sequência de tarefas alternativas.
+  \item[\texttt{UserBadge}] Associação entre um cidadão e os \textit{badges} obtidos, com data de atribuição.
+\end{description}
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/modelo_dados.pdf quando disponível
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    entity/.style={draw, fill=blue!10, rounded corners=3pt,
+                   minimum width=3.4cm, minimum height=0.75cm,
+                   align=center, font=\small\bfseries},
+    rel/.style={font=\tiny, midway}
+  ]
+  % Entities
+  \node[entity] (user)  at (0,    0)   {User};
+  \node[entity] (ub)    at (5.5,  0)   {UserBadge};
+  \node[entity] (task)  at (0,   -3)   {Task\\\scriptsize \texttt{embedding: vector(N)}};
+  \node[entity] (topic) at (5.5, -3)   {Topic};
+  \node[entity] (badge) at (11,  -3)   {Badge};
+  \node[entity] (prog)  at (0,   -6)   {UserProgress};
+  \node[entity] (ap)    at (5.5, -6)   {AdaptivePath\\\scriptsize \texttt{difficultyProfile: vector(N)}};
+  % Relationships
+  \draw[->] (user.east)  -- (ub.west)      node[rel,above] {1\,:\,N};
+  \draw[->] (ub.east)    to[out=0,in=90]   (badge.north)   node[rel,right] {N\,:\,1};
+  \draw[->] (topic.east) -- (badge.west)   node[rel,above] {1\,:\,1};
+  \draw[->] (task.east)  -- (topic.west)   node[rel,above] {N\,:\,1};
+  \draw[->] (prog.north) -- (user.south)   node[rel,left]  {N\,:\,1};
+  \draw[->] (prog.east)  -- (ap.west)      node[rel,above] {N\,:\,1};
+  \draw[->] (prog.north east) to[out=45,in=240] (task.south east) node[rel,right] {N\,:\,1};
+  \draw[->] (ap.north)   -- (topic.south)  node[rel,right] {N\,:\,1};
+  \end{tikzpicture}}
+  \caption{Diagrama entidade-associação do Play4Change}
+  \label{fig:modelo_dados}
+\end{figure}
+
+\section{Tópicos e Sistema de Badges}
+\label{sec:topicos_badges}
+
+Os tópicos constituem a unidade de progressão no \textit{Play4Change}. Cada tópico é definido por: (i)~um conjunto de objetivos de aprendizagem verificáveis; (ii)~um limiar de desempenho mínimo para a sua conclusão; e (iii)~um \textit{badge} associado, visualmente representativo das competências adquiridas.
+
+Os \textit{badges} são atribuídos ao completar um tópico, funcionando como certificado informal de aquisição das competências associadas. O perfil do cidadão agrega todos os \textit{badges} obtidos, construindo assim um portfólio de competências progressivo.
+
+A progressão entre tópicos segue uma estrutura de grafo dirigido acíclico (\textit{DAG}), onde determinados tópicos constituem pré-requisitos de outros de nível superior. Esta estrutura permite ao sistema recomendar percursos de aprendizagem coerentes e pedagogicamente fundamentados.
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/dag_microcompetencias.pdf quando disponível
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    mc/.style={draw, rounded corners=3pt, fill=blue!12,
+               minimum width=3.6cm, minimum height=0.75cm, align=center},
+    bgo/.style={draw, circle, fill=orange!25, minimum size=0.55cm, font=\tiny}
+  ]
+  % Level 0: Foundations
+  \node[mc] (L1a) at (0,    0) {Literacia Ambiental};
+  \node[mc] (L1b) at (5.8,  0) {Cidades Sustentáveis};
+  % Level 1
+  \node[mc] (L2)  at (2.9, -2.4) {Indicadores Urbanos};
+  % Level 2: Specializations
+  \node[mc] (L3a) at (0,   -4.8) {Mobilidade Verde};
+  \node[mc] (L3b) at (5.8, -4.8) {Eficiência Energética};
+  % Level 3: Expert
+  \node[mc] (L4)  at (2.9, -7.2) {\textbf{Especialista em Sustentabilidade}};
+  % Prerequisite arrows
+  \draw[->] (L1a) -- (L2) node[midway,left,font=\tiny]  {pré-req.};
+  \draw[->] (L1b) -- (L2) node[midway,right,font=\tiny] {pré-req.};
+  \draw[->] (L2)  -- (L3a);
+  \draw[->] (L2)  -- (L3b);
+  \draw[->] (L3a) -- (L4);
+  \draw[->] (L3b) -- (L4);
+  % Badge markers
+  \foreach \x/\y in {1.6/0.55, 7.4/0.55, 4.5/-1.85, 1.6/-4.25, 7.4/-4.25, 4.5/-6.65}
+    \node[bgo] at (\x,\y) {\(\star\)};
+  \end{tikzpicture}
+  \caption{Estrutura DAG de progressão entre tópicos (exemplo~--- domínio Sustentabilidade)}
+  \label{fig:dag_topicos}
+\end{figure}
+
+\section{Fluxo de Adaptação}
+\label{sec:fluxo_adaptacao}
+
+O diagrama de sequência da Figura~\ref{fig:seq_adaptacao} ilustra a interação entre os componentes durante a realização de uma tarefa com deteção de dificuldades e ativação do ramo adaptativo.
+
+\begin{figure}[htbp]
+  \centering
+  % TODO: substituir por img/seq_adaptacao.pdf quando disponível
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[>=Stealth, font=\scriptsize]
+  \def\xc{0}\def\xa{2.8}\def\xs{6.0}\def\xai{9.5}\def\xpg{13.0}\def\xm{16.5}
+  % Headers
+  \foreach \x/\n in {
+    \xc/Cidadão, \xa/{App Móvel}, \xs/Servidor, \xai/{Agente~IA},
+    \xpg/pgvector, \xm/{Mistral~API}}
+    \node[font=\scriptsize\bfseries, align=center] at (\x, 0.6) {\n};
+  % Lifelines
+  \foreach \x in {\xc,\xa,\xs,\xai,\xpg,\xm}
+    \draw[gray!40] (\x,0.0) -- (\x,-11.5);
+  % Messages
+  \draw[->] (\xc,-0.9) -- (\xa,-0.9)
+    node[midway,above,font=\tiny] {submeter resposta};
+  \draw[->] (\xa,-1.6) -- (\xs,-1.6)
+    node[midway,above,font=\tiny] {POST /tasks/\{id\}/answer};
+  \node[draw, fill=gray!10, rounded corners=2pt, font=\tiny]
+    at (\xs+1.8,-2.4) {registar UserProgress};
+  \draw[->] (\xs,-3.1) -- (\xai,-3.1)
+    node[midway,above,font=\tiny] {analisarPerfil(userId)};
+  % Alt block
+  \draw[dashed, rounded corners=3pt, fill=yellow!8]
+    (\xai-0.5,-3.9) rectangle (\xm+0.5,-9.8);
+  \node[font=\tiny\bfseries, gray] at (\xai-0.2,-4.05) {alt};
+  % Branch A: found
+  \node[font=\tiny, gray] at (14.2,-4.5) {[percurso encontrado]};
+  \draw[->] (\xai,-5.0) -- (\xpg,-5.0)
+    node[midway,above,font=\tiny] {pesquisa semântica (kNN)};
+  \draw[->,dashed] (\xpg,-5.7) -- (\xai,-5.7)
+    node[midway,above,font=\tiny] {AdaptivePath};
+  % Branch divider
+  \draw[gray!40, dashed] (\xai-0.5,-6.4) -- (\xm+0.5,-6.4);
+  \node[font=\tiny, gray] at (14.2,-6.7) {[percurso não encontrado]};
+  % Branch B: generate
+  \draw[->] (\xai,-7.1) -- (\xm,-7.1)
+    node[midway,above,font=\tiny] {gerar percurso};
+  \draw[->,dashed] (\xm,-7.8) -- (\xai,-7.8)
+    node[midway,above,font=\tiny] {tarefas geradas};
+  \draw[->] (\xai,-8.5) -- (\xpg,-8.5)
+    node[midway,above,font=\tiny] {armazenar AdaptivePath};
+  % Return
+  \draw[->,dashed] (\xai,-10.1) -- (\xs,-10.1)
+    node[midway,above,font=\tiny] {AdaptivePath};
+  \draw[->,dashed] (\xs,-10.8) -- (\xa,-10.8)
+    node[midway,above,font=\tiny] {ramo adaptativo};
+  \draw[->,dashed] (\xa,-11.4) -- (\xc,-11.4)
+    node[midway,above,font=\tiny] {apresentar percurso};
+  \end{tikzpicture}}
+  \caption{Diagrama de sequência: deteção de dificuldades e ativação do ramo adaptativo}
+  \label{fig:seq_adaptacao}
+\end{figure}

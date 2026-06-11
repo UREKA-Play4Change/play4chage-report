@@ -1,0 +1,367 @@
+%
+%  chapter4.tex — Implementação
+%
+\chapter{Implementação}
+\label{cha:implementacao}
+
+\section{Princípios de Implementação}
+\label{sec:principios_implementacao}
+
+A implementação do \textit{Play4Change} organiza-se em três níveis complementares: o \textbf{nível de cliente} (aplicação móvel e portal web), o \textbf{nível de servidor} (API REST, lógica de domínio e adaptadores de infraestrutura) e o \textbf{nível de dados e IA} (agente de linguagem, armazenamento vetorial, observabilidade e implantação). As secções seguintes descrevem cada um destes níveis em detalhe. Dois princípios transversais condicionam a implementação em todos eles: a separação de camadas por contextos delimitados e o tratamento de erros funcional.
+
+\subsection*{Separação de Camadas e \textit{Domain-Driven Design}}
+
+A lógica de domínio é mantida independente dos detalhes de infraestrutura, seguindo os princípios de \textit{Domain-Driven Design} (DDD)~\cite{evans2003ddd} e arquitetura hexagonal. O domínio --- entidades, repositórios e regras de negócio --- não conhece \textit{frameworks}, bases de dados nem APIs externas; depende apenas de abstrações definidas por si próprio. As camadas de aplicação, infraestrutura e API constroem-se sobre o domínio, nunca o contrário. Esta separação garante que o núcleo de negócio é testável de forma isolada e que a substituição de adaptadores de infraestrutura não afeta a lógica central do sistema. A materialização concreta desta separação em módulos Gradle é apresentada na Secção~\ref{sec:modulos_servidor}.
+
+\subsection*{Tratamento de Erros Funcional com \textit{Arrow Either}}
+
+Em vez de exceções para controlo de fluxo esperado, o servidor adopta o padrão \textit{Either} da biblioteca Arrow com a DSL \textit{Raise}. Cada função de domínio ou caso de uso que pode falhar retorna \texttt{Either<DomainError,~T>}: o ramo \textit{Left} carrega o erro de domínio tipificado; o ramo \textit{Right} carrega o resultado de sucesso. O compilador Kotlin obriga os chamadores a tratar ambos os ramos, tornando os caminhos de falha visíveis no sistema de tipos e eliminando a propagação silenciosa de erros. A Figura~\ref{fig:either_flow} ilustra o fluxo de uma operação típica através das camadas da aplicação.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    layer/.style={draw, rounded corners=4pt, fill=blue!10,
+                  minimum width=3.2cm, minimum height=0.8cm, align=center},
+    ok/.style={layer, fill=green!15},
+    err/.style={layer, fill=red!12}
+  ]
+  % Layers (left to right)
+  \node[layer] (api)  at (0,    0) {:api\\{\scriptsize Controller}};
+  \node[layer] (app)  at (3.8,  0) {:application\\{\scriptsize UseCase}};
+  \node[layer] (dom)  at (7.6,  0) {:domain\\{\scriptsize Service}};
+  % Either result branches
+  \node[ok]  (right) at (3.8, -2.4) {\textit{Right}(resultado)\\{\scriptsize 200 OK}};
+  \node[err] (left)  at (3.8, -4.2) {\textit{Left}(DomainError)\\{\scriptsize 4xx / 5xx}};
+  % Arrows
+  \draw[->] (api.east) -- (app.west) node[midway,above,font=\tiny] {chama};
+  \draw[->] (app.east) -- (dom.west) node[midway,above,font=\tiny] {delega};
+  \draw[->] (dom.south) to[out=270,in=0] (app.south);
+  \node[font=\tiny] at (6.5,-0.9) {\texttt{Either<E,T>}};
+  \draw[->] (app.south) -- (right.north) node[midway,right,font=\tiny] {\textit{fold}};
+  \draw[->] (app.south) -- (left.north);
+  \draw[->] (right.west) to[out=180,in=270] (api.south);
+  \draw[->] (left.west)  to[out=180,in=270] (api.south);
+  \end{tikzpicture}
+  \caption{Propagação de \texttt{Either<DomainError,~T>} através das camadas da aplicação}
+  \label{fig:either_flow}
+\end{figure}
+
+
+\section{Stack Tecnológico}
+\label{sec:stack}
+
+A Tabela~\ref{tab:stack} apresenta o \textit{stack} tecnológico adotado em cada camada da plataforma.
+
+\begin{table}[ht]
+  \caption{Stack tecnológico do Play4Change}
+  \label{tab:stack}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    \textbf{Camada} & \textbf{Tecnologias} \\
+    \midrule
+    Cliente móvel       & Kotlin Multiplatform, Compose Multiplatform, Decompose \\
+    Cliente web         & React \\
+    Servidor            & Kotlin, Spring Boot, REST, PostgreSQL, pgvector \\
+    Agente de IA        & LangChain4j, Mistral (LLM), pgvector (embeddings) \\
+    Autenticação        & Magic Link (SHA-256, Resend API) \\
+    Armazenamento       & PostgreSQL, MinIO (S3-compatible) \\
+    Observabilidade     & Micrometer, Prometheus, Grafana \\
+    CI/CD               & GitHub Actions \\
+    Implantação         & Docker Compose, VPS \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Implementação do Cliente Móvel}
+\label{sec:impl_cliente_movel}
+
+O cliente móvel é desenvolvido em \textit{Kotlin Multiplatform} (KMP), com \textit{Compose Multiplatform} para a camada de interface gráfica, partilhando a lógica de domínio, os modelos de dados e os componentes de estado entre as plataformas Android e iOS.
+
+\subsection*{Estrutura Multiplatforma}
+
+O projeto KMP organiza-se em três módulos principais:
+
+\begin{itemize}
+  \item \textbf{Módulo partilhado} (\texttt{shared}): contém a lógica de domínio, o cliente da API REST, os componentes de estado MVI e os modelos de dados; compilado para todas as plataformas alvo.
+  \item \textbf{Módulo Android} (\texttt{androidApp}): \textit{Activity} principal e configuração do ponto de entrada Android; a interface gráfica é inteiramente declarada em Compose Multiplatform no módulo partilhado.
+  \item \textbf{Módulo iOS} (\texttt{iosApp}): ponto de entrada SwiftUI que integra a interface Compose via \textit{framework} KMP; sem lógica de apresentação própria.
+\end{itemize}
+
+\subsection*{Padrão MVI com Decompose}
+
+O padrão MVI é implementado via \textit{BaseComponent} e \textit{Decompose MutableValue}. Cada ecrã possui um componente que encapsula um estado imutável e processa as intenções do utilizador produzindo um novo estado. O fluxo unidirecional de dados está ilustrado na Figura~\ref{fig:mvi}.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    box/.style={draw, rounded corners=4pt, fill=blue!12,
+                minimum width=3.0cm, minimum height=0.85cm, align=center},
+    uibox/.style={box, fill=gray!15}
+  ]
+  \node[box]   (intent) at (0,   0)    {\textbf{Intent}\\{\scriptsize sealed class}};
+  \node[box]   (comp)   at (4.5, 0)    {\textbf{Component}\\{\scriptsize BaseComponent}};
+  \node[box]   (state)  at (9,   0)    {\textbf{State}\\{\scriptsize MutableValue<S>}};
+  \node[uibox] (ui)     at (4.5,-2.8)  {\textbf{Compose UI}\\{\scriptsize observa State}};
+  % Data flow arrows
+  \draw[->] (intent.east) -- (comp.west)   node[midway,above,font=\tiny] {processa};
+  \draw[->] (comp.east)   -- (state.west)  node[midway,above,font=\tiny] {actualiza};
+  \draw[->] (state.south) to[out=270,in=0]   (ui.east)   node[near end,right,font=\tiny,xshift=2pt] {renderiza};
+  \draw[->] (ui.west)     to[out=180,in=270] (intent.south) node[near end,left,font=\tiny,xshift=-4pt] {emite};
+  \end{tikzpicture}
+  \caption{Fluxo unidirecional de dados no padrão MVI com Decompose}
+  \label{fig:mvi}
+\end{figure}
+
+\subsection*{Ecrãs Implementados}
+
+Os principais ecrãs do cliente móvel incluem:
+
+\begin{itemize}
+  \item \textbf{Tarefa diária}: apresenta a questão ou exercício do dia, regista a resposta e actualiza o progresso e a \textit{streak} do cidadão;
+  \item \textbf{Progresso e streak}: visualiza o histórico de participação, a sequência de dias consecutivos e os tópicos em curso;
+  \item \textbf{Galeria de badges}: mostra os \textit{badges} obtidos e os que estão por desbloquear, com informação sobre os requisitos de cada microcompetência;
+  \item \textbf{Ramo adaptativo}: apresentado quando o agente de IA deteta dificuldades persistentes; propõe ao cidadão um percurso alternativo adaptado ao seu perfil de dificuldade.
+\end{itemize}
+
+\section{Implementação do Cliente Web}
+\label{sec:impl_cliente_web}
+
+O cliente web é implementado em React e serve duas superfícies distintas: uma página de entrada pública, de carácter informativo, e um portal de administração restrito.
+
+\subsection*{Página de Entrada Pública}
+
+A página de entrada pública apresenta a plataforma Play4Change e descreve os seus objetivos pedagógicos alinhados com os ODS da ONU. Esta superfície é inteiramente informativa e não expõe qualquer mecanismo de autenticação aos visitantes. No rodapé da página existe uma secção não destacada que serve de ponto de acesso ao portal de administração, visível apenas a quem conhece a sua existência.
+
+\subsection*{Portal de Administração}
+
+O portal de administração é acessível a partir da secção referida no rodapé e é restrito a utilizadores com papel de administrador. A autenticação é realizada neste ponto de entrada; após validação, o token de sessão é transmitido em cada pedido à API REST via cabeçalho \texttt{Authorization: Bearer}. As principais funcionalidades implementadas são:
+
+\begin{itemize}
+  \item \textbf{Gestão de tópicos}: criação, edição e arquivo de tópicos de aprendizagem, incluindo a definição de objetivos pedagógicos que orientam a geração de conteúdo pelo agente de IA;
+  \item \textbf{Revisão de conteúdo gerado}: interface de moderação para aprovar ou rejeitar tarefas geradas automaticamente pelo modelo Mistral, antes da sua publicação para os cidadãos;
+  \item \textbf{Painel de métricas}: visualização das métricas de domínio exportadas pelo servidor, com distribuição de \textit{badges} e taxa de conclusão.
+\end{itemize}
+
+\section{Estrutura Modular do Servidor}
+\label{sec:modulos_servidor}
+
+O servidor foi organizado segundo os princípios de arquitetura por contextos delimitados (\textit{Bounded Contexts}), em alinhamento com os princípios de \textit{Domain-Driven Design} (DDD)~\cite{evans2003ddd}. Os módulos principais são:
+
+\begin{description}
+  \item[\texttt{:domain}] Entidades de domínio, interfaces de repositório e lógica de negócio central;
+  \item[\texttt{:application}] Casos de uso e serviços de orquestração;
+  \item[\texttt{:infrastructure}] Adaptadores de persistência (PostgreSQL, MinIO), clientes externos e configuração;
+  \item[\texttt{:api}] Controladores REST, DTOs e mapeamentos;
+  \item[\texttt{:ai-agent:langchain}] Módulo Gradle dedicado à integração LangChain4j/Mistral e à lógica de adaptação.
+\end{description}
+
+Esta separação assegura que a lógica de domínio permanece independente dos detalhes de infraestrutura, facilitando a testabilidade e a evolução do sistema. As dependências entre módulos estão ilustradas na Figura~\ref{fig:modulos}.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    mod/.style={draw, rounded corners=4pt, fill=blue!12,
+                minimum width=3.8cm, minimum height=0.8cm,
+                align=center, font=\small\ttfamily},
+    aimod/.style={mod, fill=orange!18}
+  ]
+  % Module nodes
+  \node[mod]   (dom) at (5.0,  0)   {:domain};
+  \node[mod]   (app) at (5.0, -2.2) {:application};
+  \node[mod]   (inf) at (1.5, -4.4) {:infrastructure};
+  \node[mod]   (api) at (5.0, -4.4) {:api};
+  \node[aimod] (ai)  at (8.5, -4.4) {:ai-agent:langchain};
+  % Dependency arrows (arrow = depends on)
+  \draw[->] (app) -- (dom)  node[midway,right,font=\tiny] {depende de};
+  \draw[->] (inf) -- (app);
+  \draw[->] (api) -- (app);
+  \draw[->] (ai)  -- (app);
+  \draw[->] (inf) to[out=90,in=210] (dom);
+  \draw[->] (api) to[out=90,in=330] (dom);
+  \draw[->] (ai)  to[out=90,in=315] (dom);
+  \end{tikzpicture}
+  \caption{Estrutura modular do servidor e dependências entre módulos Gradle}
+  \label{fig:modulos}
+\end{figure}
+
+\section{Desenho da API REST}
+\label{sec:api_rest}
+
+A API REST do servidor está organizada por recurso, seguindo as convenções de nomenclatura e os métodos HTTP da arquitetura REST~\cite{fielding2000rest}. A Tabela~\ref{tab:api_endpoints} apresenta os principais grupos de \textit{endpoints}.
+
+\begin{table}[ht]
+  \caption{Principais grupos de \textit{endpoints} da API REST}
+  \label{tab:api_endpoints}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{lp{2.8cm}p{6.5cm}}
+    \toprule
+    \textbf{Prefixo} & \textbf{Métodos} & \textbf{Função} \\
+    \midrule
+    \texttt{/auth}          & POST             & Autenticação: \textit{magic link} \\
+    \texttt{/users}         & GET, PATCH       & Gestão do perfil do utilizador autenticado \\
+    \texttt{/topics}        & GET, POST, PATCH, DELETE & Gestão de tópicos (requer papel de administrador) \\
+    \texttt{/tasks}         & GET, POST        & Obtenção de tarefas diárias e submissão de respostas \\
+    \texttt{/badges}        & GET              & Consulta de \textit{badges} disponíveis e obtidos \\
+    \texttt{/progress}      & GET              & Histórico de progresso do cidadão \\
+    \texttt{/adaptive}      & GET              & Ramo adaptativo ativo do cidadão \\
+    \texttt{/admin/metrics} & GET              & Métricas de utilização (requer papel de administrador) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A especificação completa da API encontra-se no contrato OpenAPI gerado automaticamente em tempo de execução, disponível em \texttt{/v3/api-docs}.
+
+\section{Agente de IA: Implementação}
+\label{sec:ia_implementacao}
+
+O agente de inteligência artificial é implementado no módulo \texttt{:ai-agent:langchain}, utilizando a \textit{framework} LangChain4j para orquestrar as interações com o modelo de linguagem Mistral. O fluxo de geração de conteúdo segue um \textit{pipeline} estruturado:
+
+\begin{enumerate}
+  \item O administrador define um tópico e os seus objetivos de aprendizagem no portal de administração;
+  \item O agente recebe o pedido de geração e constrói um \textit{prompt} estruturado com os parâmetros do tópico;
+  \item O modelo Mistral gera as tarefas de aprendizagem;
+  \item O conteúdo gerado é validado, persistido e associado ao tópico correspondente;
+  \item Os \textit{embeddings} semânticos do conteúdo são calculados e armazenados em \textit{pgvector} para recuperação futura.
+\end{enumerate}
+
+O mecanismo de deteção de dificuldades monitoriza, em tempo real, métricas de desempenho do cidadão (e.g., taxa de erros, tempo de resposta) e, quando o limiar de dificuldade é excedido, efetua uma pesquisa semântica no repositório \textit{pgvector} para identificar percursos adaptativos previamente bem-sucedidos com perfis de dificuldade semelhantes. O \textit{pipeline} completo de geração de conteúdo encontra-se ilustrado na Figura~\ref{fig:pipeline_ia}.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    pbox/.style={draw, rounded corners=3pt, fill=blue!12,
+                 minimum width=4.0cm, minimum height=0.8cm, align=center},
+    store/.style={pbox, fill=orange!18},
+    ext/.style={pbox, dashed, fill=green!12}
+  ]
+  % Main pipeline (vertical)
+  \node[pbox]  (admin)  at (0, 0)    {Administrador define tópico};
+  \node[pbox]  (prompt) at (0,-1.8)  {Construção do prompt\\(objetivos pedagógicos)};
+  \node[ext]   (llm)    at (0,-3.6)  {Mistral API\\\scriptsize (geração de conteúdo)};
+  \node[pbox]  (valid)  at (0,-5.4)  {Validação do conteúdo gerado};
+  \node[store] (pers)   at (0,-7.2)  {Persistência (PostgreSQL)};
+  \node[store] (emb)    at (0,-9.0)  {Cálculo de embeddings\\\scriptsize (LangChain4j)};
+  \node[store] (pgv)    at (0,-10.8) {Armazenamento em pgvector};
+  % Arrows
+  \foreach \a/\b in {admin/prompt, prompt/llm, llm/valid, valid/pers, pers/emb, emb/pgv}
+    \draw[->] (\a) -- (\b);
+  % Side branch: reuse
+  \node[pbox, fill=gray!15, text width=3.8cm, align=center] (reuse)
+    at (6.5,-10.8) {Reutilização:\\pesquisa por semelhança\\(kNN em perfis de dificuldade)};
+  \draw[<->, dashed] (pgv.east) -- (reuse.west)
+    node[midway,above,font=\tiny] {kNN search};
+  \end{tikzpicture}
+  \caption{Pipeline de geração de conteúdo e reutilização do agente de IA}
+  \label{fig:pipeline_ia}
+\end{figure}
+
+\section{Observabilidade}
+\label{sec:observabilidade}
+
+A plataforma integra um sistema de observabilidade baseado em Micrometer, Prometheus e Grafana. O servidor expõe um \textit{endpoint} Micrometer que o Prometheus recolhe periodicamente; os \textit{dashboards} Grafana consomem as séries temporais resultantes e são provisionados a partir do código-fonte (ficheiros JSON no repositório), garantindo reprodutibilidade e rastreabilidade da configuração de monitorização.
+
+Foram definidas sete métricas de domínio personalizadas, descritas na Tabela~\ref{tab:metricas}, que permitem monitorizar os indicadores chave do comportamento da plataforma: envolvimento dos cidadãos, eficácia adaptativa, desempenho do agente de IA e latência das pesquisas vetoriais.
+
+\begin{table}[ht]
+  \caption{Métricas de domínio personalizadas do Play4Change}
+  \label{tab:metricas}
+  \vskip0.5em
+  \centering
+  \begin{tabular}{p{6.2cm}p{7.0cm}}
+    \toprule
+    \textbf{Métrica} & \textbf{Descrição} \\
+    \midrule
+    \texttt{p4c\_competency\_completion\_rate}       & Rácio de tópicos concluídos face aos iniciados, por coorte de utilizadores \\
+    \texttt{p4c\_adaptive\_path\_activations\_total} & Contagem cumulativa de ativações de ramos adaptativos \\
+    \texttt{p4c\_badge\_issued\_total}               & Distribuição de \textit{badges} atribuídos, com etiqueta de tópico \\
+    \texttt{p4c\_ai\_agent\_latency\_seconds}        & Latência das chamadas ao modelo Mistral (percentis p50 e p99) \\
+    \texttt{p4c\_pgvector\_search\_latency\_seconds} & Latência das pesquisas kNN em pgvector (percentis p50 e p99) \\
+    \texttt{p4c\_task\_error\_rate}                  & Taxa de erro por tópico, utilizada como sinal de dificuldade pelo agente de IA \\
+    \texttt{p4c\_daily\_active\_users\_total}        & Contagem diária de utilizadores ativos, indicador base de envolvimento \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Segurança}
+\label{sec:seguranca}
+
+A segurança da plataforma foi auditada formalmente, tendo como referência as categorias OWASP Top~10~\cite{owasp2021}. Foram identificadas e corrigidas onze vulnerabilidades, agrupadas nas seguintes categorias:
+
+\begin{itemize}
+  \item \textbf{A01 --- Quebra de Controlo de Acesso}: endpoints administrativos sem verificação de papel (\textit{role}) no servidor; corrigidos com filtros de autorização Spring Security que validam o papel de administrador antes de processar o pedido.
+
+  \item \textbf{A02 --- Falhas Criptográficas}: transmissão de tokens de \textit{magic link} sem hashing consistente em alguns contextos internos; corrigido com aplicação uniforme de SHA-256 e comunicação exclusivamente via HTTPS em todos os ambientes.
+
+  \item \textbf{A05 --- Configuração de Segurança Incorreta}: cabeçalhos de segurança HTTP ausentes (e.g., \texttt{Content-Security-Policy}, \texttt{X-Frame-Options}, \texttt{Strict-Transport-Security}); corrigidos na configuração Spring Security e provisionados como código para garantir reprodutibilidade.
+
+  \item \textbf{A07 --- Falhas de Identificação e Autenticação}: validação insuficiente do token no fluxo de autenticação; corrigida com verificação segura do token SHA-256 no servidor antes da emissão do JWT.
+\end{itemize}
+
+\section{Diagrama de Implantação}
+\label{sec:diagrama_implantacao}
+
+A plataforma é implantada através de Docker Compose numa VPS, com os seguintes serviços orquestrados:
+
+\begin{description}
+  \item[\texttt{app}] Servidor Spring Boot (porta 8080); configurado por variáveis de ambiente para base de dados, serviços externos e chaves de autenticação;
+  \item[\texttt{db}] PostgreSQL~16 com extensão \textit{pgvector}, acessível internamente na porta 5432;
+  \item[\texttt{minio}] Armazenamento compatível com S3 (portas 9000/9001), utilizado para ficheiros estáticos e imagens de \textit{badges};
+  \item[\texttt{prometheus}] Recolha de métricas via \textit{endpoint} Micrometer exposto pelo servidor (porta 9090);
+  \item[\texttt{grafana}] Visualização de \textit{dashboards} (porta 3000), provisionados a partir do código-fonte.
+\end{description}
+
+Os serviços externos --- API Mistral e API Resend --- são consumidos pelo servidor via HTTPS, sem exposição na rede interna do Docker Compose.
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    >=Stealth, font=\small,
+    svc/.style={draw, rounded corners=3pt, fill=blue!12,
+                minimum width=3.0cm, minimum height=1.1cm,
+                align=center, text width=2.8cm},
+    ext/.style={svc, fill=green!12, dashed},
+    usr/.style={svc, fill=gray!15}
+  ]
+  % VPS outer box
+  \draw[thick, rounded corners=8pt, fill=white] (-0.8,-8.5) rectangle (14.5,2.0);
+  \node[font=\small\bfseries] at (6.8, 1.7) {VPS};
+  % Docker Compose inner box
+  \draw[dashed, rounded corners=5pt, fill=blue!4] (0,-8.0) rectangle (12.5,1.2);
+  \node[font=\footnotesize\itshape, gray] at (6.25, 0.95)
+    {Rede Docker Compose (interna)};
+  % Services top row
+  \node[svc] (app)  at (2.0, 0.0) {\textbf{app}\\\scriptsize Spring Boot\\:8080};
+  \node[svc] (db)   at (6.2, 0.0) {\textbf{db}\\\scriptsize PostgreSQL 16\\+ pgvector~:5432};
+  \node[svc] (minio)at (10.5,0.0) {\textbf{minio}\\\scriptsize MinIO S3\\:9000/:9001};
+  % Services bottom row
+  \node[svc] (prom) at (4.0,-3.5) {\textbf{prometheus}\\\scriptsize Métricas\\:9090};
+  \node[svc] (grf)  at (8.5,-3.5) {\textbf{grafana}\\\scriptsize Dashboards\\:3000};
+  % Internal connections
+  \draw[<->] (app.east)  -- (db.west);
+  \draw[<->] (app.east)  -- (minio.west);
+  \draw[->]  (app.south) to[bend right=10] (prom.north);
+  \draw[->]  (prom.east) -- (grf.west);
+  % External services (below VPS)
+  \node[ext] (mis) at (3.0, -11.0) {\textbf{Mistral API}\\\scriptsize LLM};
+  \node[ext] (res) at (8.0, -11.0) {\textbf{Resend}\\\scriptsize Email};
+  % App to external (HTTPS)
+  \foreach \e in {mis,res}
+    \draw[->,dashed] (app.south) to[out=270,in=90] (\e.north);
+  \node[font=\tiny,gray] at (6.8,-9.5) {HTTPS};
+  % Users (right side)
+  \node[usr] (cit) at (17.5, 0.5) {\textbf{Cidadão}\\\scriptsize App Android/iOS};
+  \node[usr] (adm) at (17.5,-2.5) {\textbf{Administrador}\\\scriptsize Portal Web};
+  \draw[->] (cit.west) -- (app.east) node[midway,above,font=\tiny] {HTTPS};
+  \draw[->] (adm.west) to[out=180,in=0] (app.east);
+  \end{tikzpicture}}
+  \caption{Diagrama de implantação do Play4Change (Docker Compose sobre VPS)}
+  \label{fig:implantacao}
+\end{figure}

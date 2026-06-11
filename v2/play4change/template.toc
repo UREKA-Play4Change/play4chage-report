@@ -1,0 +1,96 @@
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {portuguese}{}\relax 
+\setcounter {tocdepth}{-1}
+\contentsline {chapter}{Índice}{vii}{chapter*.5}%
+\setcounter {tocdepth}{3}
+\contentsline {chapter}{Lista de Figuras}{xi}{chapter*.6}%
+\contentsline {chapter}{Lista de Tabelas}{xiii}{chapter*.7}%
+\babel@toc {portuguese}{}\relax 
+\contentsline {chapter}{\numberline {1}Introdução}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Contexto e Motivação}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Problema}{1}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Objetivos}{2}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Contribuições}{2}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Estrutura do Documento}{3}{section.1.5}%
+\contentsline {chapter}{\numberline {2}Enquadramento e Estado da Arte}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Cidades Inteligentes e Sustentabilidade}{5}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Aprendizagem Adaptativa}{5}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Gamificação na Educação}{6}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Microcompetências}{6}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Estado da Arte}{6}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Análise Comparativa}{7}{subsection.2.5.1}%
+\contentsline {chapter}{\numberline {3}Solução Proposta}{9}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Requisitos do Sistema}{9}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Atores e Casos de Uso}{9}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Requisitos Funcionais}{11}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}Requisitos Não Funcionais}{11}{subsection.3.1.3}%
+\contentsline {section}{\numberline {3.2}Visão Geral}{12}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Cliente Móvel}{13}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Cliente Web}{13}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Servidor}{13}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Agente de Inteligência Artificial}{14}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Geração de Conteúdo}{14}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Deteção de Dificuldades e Adaptação}{14}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Reutilização de Percursos Adaptativos}{15}{subsection.3.6.3}%
+\contentsline {section}{\numberline {3.7}Modelo de Dados}{15}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Tópicos e Sistema de Badges}{16}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Fluxo de Adaptação}{17}{section.3.9}%
+\contentsline {chapter}{\numberline {4}Implementação}{19}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Princípios de Implementação}{19}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Stack Tecnológico}{20}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Implementação do Cliente Móvel}{20}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Implementação do Cliente Web}{21}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Estrutura Modular do Servidor}{22}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Desenho da API REST}{23}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Agente de IA: Implementação}{23}{section.4.7}%
+\contentsline {section}{\numberline {4.8}Observabilidade}{24}{section.4.8}%
+\contentsline {section}{\numberline {4.9}Segurança}{25}{section.4.9}%
+\contentsline {section}{\numberline {4.10}Diagrama de Implantação}{25}{section.4.10}%
+\contentsline {chapter}{\numberline {5}Aprofundamento Técnico: Por Detrás do Sistema}{27}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Enquadramento e Estrutura do Capítulo}{27}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Arquitectura Geral da Plataforma}{28}{section.5.2}%
+\contentsline {paragraph}{Portal Web de Administração.}{28}{figure.caption.26}%
+\contentsline {paragraph}{Aplicação Móvel.}{28}{figure.caption.26}%
+\contentsline {paragraph}{API REST Spring Boot.}{28}{figure.caption.26}%
+\contentsline {paragraph}{Serviços de suporte.}{28}{figure.caption.26}%
+\contentsline {section}{\numberline {5.3}Fundação Transversal: Autenticação Sem Palavra-Passe}{29}{section.5.3}%
+\contentsline {paragraph}{Passo 1 — Pedido de ligação.}{29}{figure.caption.27}%
+\contentsline {paragraph}{Passo 2 — Clique na ligação.}{30}{figure.caption.27}%
+\contentsline {paragraph}{Passo 3 — Verificação e emissão de \textit {tokens}.}{30}{figure.caption.27}%
+\contentsline {paragraph}{Passo 4 — Pedidos autenticados e renovação silenciosa.}{30}{figure.caption.27}%
+\contentsline {section}{\numberline {5.4}O \textit {Pipeline} de Processamento de Pedidos HTTP}{31}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Os Três Pilares: Mapeamento para Subsistemas de Engenharia}{32}{section.5.5}%
+\contentsline {section}{\numberline {5.6}Pilar I — Envolvimento: Atribuição Diária e Gamificação}{32}{section.5.6}%
+\contentsline {section}{\numberline {5.7}Pilar II — Personalização: Criação de Conteúdo com IA}{33}{section.5.7}%
+\contentsline {paragraph}{INGESTION.}{34}{figure.caption.31}%
+\contentsline {paragraph}{ANALYSIS.}{34}{figure.caption.31}%
+\contentsline {paragraph}{GENERATION.}{34}{figure.caption.31}%
+\contentsline {paragraph}{INDEXING.}{35}{figure.caption.31}%
+\contentsline {paragraph}{ACTIVE.}{35}{figure.caption.31}%
+\contentsline {section}{\numberline {5.8}Pilar II — Personalização: Pesquisa de Similaridade Vectorial}{36}{section.5.8}%
+\contentsline {section}{\numberline {5.9}Pilar II — Personalização: Deteção de Dificuldade e Remediação}{39}{section.5.9}%
+\contentsline {section}{\numberline {5.10}Pilar III — Reconhecimento: Emissão de \textit {Badges}}{40}{section.5.10}%
+\contentsline {section}{\numberline {5.11}Arquitetura do Cliente Móvel: Kotlin Multiplatform}{40}{section.5.11}%
+\contentsline {section}{\numberline {5.12}Observabilidade: Micrometer, Prometheus e Grafana}{41}{section.5.12}%
+\contentsline {section}{\numberline {5.13}Modelo de Segurança}{43}{section.5.13}%
+\contentsline {section}{\numberline {5.14}Superfície Completa da API REST}{43}{section.5.14}%
+\contentsline {paragraph}{Referências arquiteturais.}{43}{table.caption.44}%
+\contentsline {chapter}{\numberline {6}Avaliação}{45}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Metodologia de Avaliação}{45}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Testes Automatizados}{45}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Avaliação com Utilizadores}{45}{subsection.6.1.2}%
+\contentsline {section}{\numberline {6.2}Resultados}{45}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}Desempenho do Sistema}{45}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}Usabilidade}{46}{subsection.6.2.2}%
+\contentsline {subsection}{\numberline {6.2.3}Eficácia do Mecanismo Adaptativo}{46}{subsection.6.2.3}%
+\contentsline {section}{\numberline {6.3}Discussão}{46}{section.6.3}%
+\contentsline {chapter}{\numberline {7}Conclusões e Trabalho Futuro}{47}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Síntese}{47}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Contribuições}{47}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Limitações}{48}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Trabalho Futuro}{48}{section.7.4}%
+\contentsline {chapter}{Referências}{51}{chapter*.47}%
