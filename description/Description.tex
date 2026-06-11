@@ -1,0 +1,757 @@
+%% ============================================================
+%% Play4Change — Project Dossier
+%% Jury / Examiner Description Document
+%% ============================================================
+\documentclass[12pt,a4paper]{article}
+
+%% ── Encoding & Language ──────────────────────────────────────
+\usepackage{fontspec}
+\usepackage[portuguese,english]{babel}
+
+%% ── Page Layout ──────────────────────────────────────────────
+\usepackage[
+  top=2.5cm, bottom=2.5cm,
+  left=2.8cm, right=2.8cm
+]{geometry}
+
+%% ── Typography ───────────────────────────────────────────────
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{setspace}
+\onehalfspacing
+
+%% ── Graphics & Colour ────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage[dvipsnames,table]{xcolor}
+\definecolor{iselred}{HTML}{C0392B}
+\definecolor{darkgray}{HTML}{2C3E50}
+\definecolor{lightgray}{HTML}{ECF0F1}
+\definecolor{accent}{HTML}{2980B9}
+\definecolor{successgreen}{HTML}{27AE60}
+\definecolor{warningorange}{HTML}{E67E22}
+
+%% ── Tables ───────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{array}
+
+%% ── Code Listings ────────────────────────────────────────────
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{lightgray},
+  frame=single,
+  framerule=0pt,
+  rulecolor=\color{lightgray},
+  breaklines=true,
+  breakatwhitespace=true,
+  postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+  numbers=none,
+  xleftmargin=1em,
+  xrightmargin=1em,
+  aboveskip=0.8em,
+  belowskip=0.8em,
+  keywordstyle=\color{accent}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{successgreen},
+}
+\lstdefinestyle{bash}{
+  language=bash,
+  morekeywords={docker,compose,npm,git,curl,chmod,./},
+}
+\lstdefinestyle{env}{
+  language={},
+  moredelim=[is][\color{iselred}]{<}{>},
+}
+
+%% ── Boxes & Frames ───────────────────────────────────────────
+\usepackage{mdframed}
+\mdfdefinestyle{infobox}{
+  linecolor=accent,
+  backgroundcolor=accent!8,
+  linewidth=2pt,
+  leftmargin=0pt, rightmargin=0pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  innertopmargin=8pt, innerbottommargin=8pt,
+  roundcorner=4pt,
+}
+\mdfdefinestyle{warningbox}{
+  linecolor=warningorange,
+  backgroundcolor=warningorange!10,
+  linewidth=2pt,
+  leftmargin=0pt, rightmargin=0pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  innertopmargin=8pt, innerbottommargin=8pt,
+  roundcorner=4pt,
+}
+\mdfdefinestyle{successbox}{
+  linecolor=successgreen,
+  backgroundcolor=successgreen!8,
+  linewidth=2pt,
+  leftmargin=0pt, rightmargin=0pt,
+  innerleftmargin=10pt, innerrightmargin=10pt,
+  innertopmargin=8pt, innerbottommargin=8pt,
+  roundcorner=4pt,
+}
+
+%% ── Enumeration ──────────────────────────────────────────────
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.5em, topsep=2pt, itemsep=2pt}
+\setlist[enumerate]{leftmargin=1.5em, topsep=2pt, itemsep=2pt}
+
+%% ── Hyperlinks ───────────────────────────────────────────────
+\usepackage[
+  colorlinks=true,
+  linkcolor=darkgray,
+  urlcolor=accent,
+  citecolor=accent,
+  pdftitle={Play4Change — Project Dossier},
+  pdfauthor={Radesh Ilesh Gamanbhai Govind},
+]{hyperref}
+\usepackage{url}
+
+%% ── Section Styling ──────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\section}[block]
+  {\large\bfseries\color{darkgray}}
+  {\thesection.}{0.6em}{}[{\titlerule[0.6pt]}]
+\titleformat{\subsection}[block]
+  {\normalsize\bfseries\color{darkgray}}
+  {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}[runin]
+  {\normalsize\bfseries\color{accent}}
+  {\thesubsubsection.}{0.4em}{}[~~]
+
+%% ── Header / Footer ──────────────────────────────────────────
+\setlength{\headheight}{15pt}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{darkgray}{\textit{Play4Change — Project Dossier}}}
+\fancyhead[R]{\small\textcolor{darkgray}{A51602 · Junho 2026}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+%% ── Misc ─────────────────────────────────────────────────────
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%% ── Custom Commands ──────────────────────────────────────────
+\newcommand{\cmd}[1]{\texttt{\small\color{accent}#1}}
+\newcommand{\file}[1]{\texttt{\small\color{darkgray}#1}}
+\newcommand{\env}[1]{\texttt{\small\color{iselred}#1}}
+\newcommand{\port}[1]{\textbf{\texttt{:#1}}}
+\newcommand{\service}[1]{\textbf{\textsf{#1}}}
+
+%% ============================================================
+\begin{document}
+\pagestyle{empty}
+
+%% ── TITLE PAGE ───────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+
+  %% Logos
+  \begin{minipage}[c]{0.28\textwidth}
+    \centering
+    \includegraphics[height=2.0cm]{logos/isel.png}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[c]{0.30\textwidth}
+    \centering
+    \includegraphics[height=2.0cm]{logos/ipl.png}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[c]{0.28\textwidth}
+    \centering
+    \includegraphics[height=2.0cm]{logos/ureka.png}
+  \end{minipage}
+
+  \vspace{0.8cm}
+  {\color{darkgray}\rule{\textwidth}{0.6pt}}
+  \vspace{0.3cm}
+
+  {\large\bfseries\color{darkgray} Departamento de Engenharia Informática}
+
+  \vspace{2.5cm}
+
+  {\Huge\bfseries\color{iselred} Play4Change}
+
+  \vspace{0.5cm}
+  {\Large\bfseries\color{darkgray} Aplicação de Aprendizagem Adaptativa\\[0.2em] para Educação Cívica}
+
+  \vspace{2.5cm}
+
+  %% Dossier label
+  \begin{mdframed}[style=infobox]
+    \centering
+    \textbf{\color{darkgray} Dossier de Projecto — Documento para o Júri}\\[0.3em]
+    \small Relatório para a Unidade Curricular de Projeto e Seminário\\
+    da Licenciatura em Engenharia Informática e de Computadores
+  \end{mdframed}
+
+  \vspace{2cm}
+
+  %% Author
+  \begin{tabular}{rl}
+    \textbf{Aluno:} & A51602 — Radesh Ilesh Gamanbhai Govind \\
+    \textbf{Email:} & \href{mailto:A51620@alunos.isel.pt}{\texttt{A51620@alunos.isel.pt}} \\[0.6em]
+    \multirow{3}{*}{\textbf{Orientadores:}} & Professor Nuno Datia \\
+                   & Professor António Serrador \\
+                   & Professor Michel Vorenhout \\
+  \end{tabular}
+
+  \vfill
+
+  {\color{darkgray}\rule{\textwidth}{0.6pt}}
+  \vspace{0.3cm}
+  {\large\bfseries 1 — Junho — 2026}
+
+\end{titlepage}
+
+\newpage
+\pagestyle{fancy}
+
+%% ── TABLE OF CONTENTS ────────────────────────────────────────
+\tableofcontents
+\newpage
+
+%% ============================================================
+\section{Descrição do Projecto}
+%% ============================================================
+
+\subsection{Contexto e Motivação}
+
+A transição para cidades inteligentes enfrenta três obstáculos interdependentes: infraestruturas tecnológicas, constrangimentos financeiros e de governança, e --- o foco deste trabalho --- \textbf{o elemento humano}: as competências, a motivação e a participação dos cidadãos. A Aliança Universitária \textbf{U!REKA} tem como missão acelerar precisamente esta transição.
+
+O \textit{Play4Change} propõe uma plataforma de \textbf{aprendizagem adaptativa e gamificada para educação cívica urbana}, desenvolvida no âmbito da missão U!REKA e alinhada com os Objetivos de Desenvolvimento Sustentável das Nações Unidas (ODS~4, 11 e~13). A plataforma assenta em três pilares:
+
+\begin{enumerate}
+  \item \textbf{Engagement --- Desafios diários gamificados}: transformam a aprendizagem cívica num hábito diário motivante, através do qual os cidadãos desenvolvem micro-competências progressivas;
+
+  \item \textbf{Personalização --- Desafios adaptativos por IA}: um agente de inteligência artificial (Mistral AI) adapta os percursos ao perfil e às dificuldades de cada cidadão. Quando gera um percurso alternativo, este é indexado em \textit{pgvector} e reutilizado automaticamente para perfis análogos, reduzindo a dependência de inferência em tempo real;
+
+  \item \textbf{Reconhecimento --- Badges e micro-competências}: cada etapa de progressão é certificada por um \textit{badge}, tornando cada passo no percurso visível e contabilizável.
+\end{enumerate}
+
+\subsection{Arquitectura do Sistema}
+
+O sistema foi concebido segundo os princípios de \textbf{Arquitetura Hexagonal} (Ports \& Adapters), em cinco contextos delimitados (DDD):
+
+\begin{center}
+\begin{tabular}{lp{9cm}}
+\toprule
+\textbf{Contexto} & \textbf{Responsabilidade} \\
+\midrule
+\textit{Identity} & Registo, autenticação (magic link), gestão de perfil \\
+\textit{Topic}    & Criação de tópicos via URL/PDF, geração de tarefas por IA (pipeline assíncrono) \\
+\textit{Enrollment} & Inscrição, entrega diária de tarefas, progressão por dia com timezone \\
+\textit{Struggle} & Sessões de remediação adaptativa quando o utilizador falha \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Stack Tecnológica}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Componente} & \textbf{Tecnologia} \\
+\midrule
+Backend           & Kotlin 2.x + Spring Boot 3.2 (JDK 21) \\
+Frontend Web      & React 18 + TypeScript 5.7 + Vite + Tailwind CSS 4 \\
+Base de Dados     & PostgreSQL 16 + extensão \texttt{pgvector} (busca semântica) \\
+Cache             & Redis 7 \\
+Armazenamento     & MinIO (S3-compatible, para PDFs e conteúdo ingerido) \\
+IA / LLM          & Mistral AI \texttt{mistral-small-latest} via LangChain4j \\
+Autenticação      & JWT + Magic Link (Resend) \\
+Migrações DB      & Flyway (V1–V23, 23 migrações) \\
+Observabilidade   & Micrometer + Prometheus + Grafana \\
+Orquestração      & Docker Compose (7 serviços) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+%% ============================================================
+\section{Repositórios e Acesso}
+%% ============================================================
+
+O projecto está distribuído por três repositórios na organização GitHub \textbf{UREKA-Play4Change}:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{p{7.5cm}X}
+\toprule
+\textbf{Repositório} & \textbf{Conteúdo} \\
+\midrule
+\texttt{play4change-core}\\[0.4em]
+\href{https://github.com/UREKA-Play4Change/play4change-core}{\footnotesize\texttt{github.com/UREKA-Play4Change/play4change-core}} &
+  Backend Spring Boot (Kotlin), AI agent LangChain4j, infra Docker Compose (7 serviços), cliente Compose multiplatform \\[0.8em]
+\texttt{play4change-web}\\[0.4em]
+\href{https://github.com/UREKA-Play4Change/play4change-web}{\footnotesize\texttt{github.com/UREKA-Play4Change/play4change-web}} &
+  Painel de administração web (React 18 + TypeScript + Vite + Tailwind CSS) \\[0.8em]
+\texttt{play4chage-report}\\[0.4em]
+\href{https://github.com/UREKA-Play4Change/play4chage-report}{\footnotesize\texttt{github.com/UREKA-Play4Change/play4chage-report}} &
+  Relatório académico (LaTeX) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Tipo de Acesso}
+
+\begin{mdframed}[style=infobox]
+\textbf{Os repositórios são públicos.} Não são necessárias credenciais para clonar ou consultar o código. O júri pode aceder directamente sem criar conta GitHub.
+\end{mdframed}
+
+Para clonar todos os repositórios:
+
+\begin{lstlisting}[style=bash]
+# Backend + infra (repositório principal)
+git clone https://github.com/UREKA-Play4Change/play4change-core.git
+
+# Painel de administração web
+git clone https://github.com/UREKA-Play4Change/play4change-web.git
+
+# Relatório (opcional)
+git clone https://github.com/UREKA-Play4Change/play4chage-report.git
+\end{lstlisting}
+
+%% ============================================================
+\section{Requisitos do Sistema}
+%% ============================================================
+
+\subsection{Pré-requisitos Obrigatórios}
+
+Para correr o sistema completo basta ter instalado:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Ferramenta} & \textbf{Versão mínima} & \textbf{Verificação} \\
+\midrule
+Docker Engine       & 24.x                   & \cmd{docker --version} \\
+Docker Compose      & v2.x (plugin)          & \cmd{docker compose version} \\
+Git                 & qualquer               & \cmd{git --version} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{mdframed}[style=warningbox]
+\textbf{Nota:} O Docker Compose v2 utiliza \cmd{docker compose} (sem hífen). Se o sistema usar a versão v1 antiga, o comando é \cmd{docker-compose}. Este documento usa a sintaxe v2.
+\end{mdframed}
+
+\subsection{Pré-requisitos Opcionais (apenas para o painel web)}
+
+Necessário apenas se o júri quiser correr o frontend em modo de desenvolvimento (a instalação Docker já inclui a versão de produção compilada):
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Ferramenta} & \textbf{Versão mínima} & \textbf{Verificação} \\
+\midrule
+Node.js             & 20.x LTS               & \cmd{node --version} \\
+npm                 & 10.x                   & \cmd{npm --version} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%% ============================================================
+\section{Variáveis de Ambiente e Credenciais}
+%% ============================================================
+
+\subsection{Ficheiro \texttt{.env} (backend / Docker Compose)}
+
+O repositório \texttt{play4change-core} inclui um ficheiro \file{.env} na raiz com todos os valores necessários para execução local. \textbf{O júri não precisa de criar nem editar este ficheiro} — está pronto a usar.
+
+As variáveis críticas e os seus valores de demonstração são:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Variável} & \textbf{Valor demo} & \textbf{Propósito} \\
+\midrule
+\env{DB\_USER} & \texttt{play4change} & Utilizador PostgreSQL \\
+\env{DB\_PASS} & \texttt{play4change} & Password PostgreSQL \\
+\env{JWT\_SECRET} & \textit{(no .env)} & Chave de assinatura JWT \\
+\env{MISTRAL\_API\_KEY} & \textit{(no .env)} & Chave Mistral AI \\
+\env{RESEND\_API\_KEY} & \textit{(no .env)} & Chave email (Resend) \\
+\env{MINIO\_ROOT\_USER} & \texttt{minioadmin} & Utilizador MinIO \\
+\env{MINIO\_ROOT\_PASSWORD} & \texttt{minioadmin} & Password MinIO \\
+\env{GRAFANA\_ADMIN\_PASSWORD} & \texttt{admin} & Password Grafana \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Credenciais de Acesso aos Serviços}
+
+\begin{mdframed}[style=infobox]
+\textbf{Credenciais de demonstração (locais):}
+
+\begin{tabular}{llll}
+\textbf{Serviço} & \textbf{URL} & \textbf{Utilizador} & \textbf{Password} \\
+\hline
+PostgreSQL & \texttt{localhost:5432} & \texttt{play4change} & \texttt{play4change} \\
+MinIO Console & \texttt{http://localhost:9001} & \texttt{minioadmin} & \texttt{minioadmin} \\
+Grafana & \texttt{http://localhost:3000} & \texttt{admin} & \texttt{admin} \\
+\end{tabular}
+\end{mdframed}
+
+\subsection{Comportamento sem Chaves Externas}
+
+O sistema foi desenhado para funcionar em modo degradado quando as chaves externas não estão disponíveis:
+
+\begin{itemize}
+  \item \textbf{Sem \env{MISTRAL\_API\_KEY}}: a geração de tarefas usa um adaptador stub (\texttt{NoOpTaskGenerationAdapter}) — os tópicos são criados mas as tarefas ficam vazias. Para ver IA em acção, a chave deve estar configurada no \file{.env}.
+
+  \item \textbf{Sem \env{RESEND\_API\_KEY}}: os e-mails de magic link são impressos nos \textbf{logs do servidor} em vez de serem enviados. O júri pode obter o link directamente nos logs com:
+  \begin{lstlisting}[style=bash]
+  docker compose logs server | grep "magic-link"
+  \end{lstlisting}
+
+\end{itemize}
+
+%% ============================================================
+\section{Instalação e Arranque}
+%% ============================================================
+
+\subsection{Passo 1 — Clonar o Repositório Principal}
+
+\begin{lstlisting}[style=bash]
+git clone https://github.com/UREKA-Play4Change/play4change-core.git
+cd play4change-core
+\end{lstlisting}
+
+\subsection{Passo 2 — Verificar o Ficheiro \texttt{.env}}
+
+O ficheiro \file{.env} já existe na raiz do repositório. Verificar que está presente:
+
+\begin{lstlisting}[style=bash]
+ls -la .env
+cat .env   # confirmar que os valores estao preenchidos
+\end{lstlisting}
+
+\subsection{Passo 3 — Arrancar todos os Serviços}
+
+\begin{lstlisting}[style=bash]
+docker compose up --build
+\end{lstlisting}
+
+Na primeira execução, o Docker irá:
+\begin{enumerate}
+  \item Descarregar as imagens base (pgvector, MinIO, Redis, Nginx, Prometheus, Grafana);
+  \item Compilar o servidor Spring Boot (demora 2--4 minutos);
+  \item Executar as 23 migrações Flyway automaticamente;
+  \item Iniciar todos os serviços com health checks.
+\end{enumerate}
+
+O sistema está pronto quando se vir no terminal:
+
+\begin{lstlisting}
+play4change-server  | Started Application in X.XXX seconds
+\end{lstlisting}
+
+Para correr em background:
+\begin{lstlisting}[style=bash]
+docker compose up --build -d
+\end{lstlisting}
+
+\subsection{Passo 4 — Confirmar que os Serviços estão Activos}
+
+\begin{lstlisting}[style=bash]
+docker compose ps
+# Todos os servicos devem estar em estado "running" ou "healthy"
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Serviço} & \textbf{Porta} & \textbf{Estado esperado} \\
+\midrule
+\service{postgres}   & 5432 & healthy \\
+\service{redis}      & 6379 & healthy \\
+\service{minio}      & 9000, 9001 & healthy \\
+\service{server}     & 8080, 9090 & healthy \\
+\service{nginx}      & 80 & running \\
+\service{prometheus} & 9090 & running \\
+\service{grafana}    & 3000 & running \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Passo 5 — Parar o Sistema}
+
+\begin{lstlisting}[style=bash]
+# Parar sem apagar dados
+docker compose down
+
+# Parar e apagar todos os dados (reset completo)
+docker compose down -v
+\end{lstlisting}
+
+%% ============================================================
+\section{Scripts de Apoio}
+%% ============================================================
+
+O repositório \texttt{play4change-core} inclui um directório \file{scripts/} com utilitários para simplificar operações comuns. Conceder permissão de execução na primeira utilização:
+
+\begin{lstlisting}[style=bash]
+chmod +x scripts/*.sh
+\end{lstlisting}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Script} & \textbf{Descrição e exemplo de uso} \\
+\midrule
+\cmd{scripts/check-health.sh} &
+  Aguarda que todos os serviços (postgres, redis, minio, server) estejam prontos e imprime o estado de cada um. Aceita \texttt{--timeout 120} para ajustar o tempo de espera.\newline
+  \texttt{./scripts/check-health.sh} \\[0.5em]
+\cmd{scripts/logs.sh} &
+  Segue os logs do Docker Compose com filtro opcional por serviço e padrão de texto.\newline
+  \texttt{./scripts/logs.sh server} \quad \texttt{./scripts/logs.sh server magic-link} \\[0.5em]
+\cmd{scripts/promote-admin.sh} &
+  Promove um utilizador a ADMIN pelo e-mail (o utilizador deve ter feito login pelo menos uma vez).\newline
+  \texttt{./scripts/promote-admin.sh jury@example.com} \\[0.5em]
+\cmd{scripts/setup.sh} &
+  Apaga todos os volumes, reconstrói e arranca todos os serviços de raiz. \textbf{Atenção: destrói dados existentes.}\newline
+  \texttt{./scripts/setup.sh} \\[0.5em]
+\cmd{scripts/restart-server.sh} &
+  Recompila o JAR do servidor e reinicia apenas o contentor \service{server}, preservando os dados de postgres, minio e redis.\newline
+  \texttt{./scripts/restart-server.sh} \\[0.5em]
+\cmd{scripts/db-shell.sh} &
+  Abre uma sessão interactiva \texttt{psql} no contentor postgres.\newline
+  \texttt{./scripts/db-shell.sh} \\[0.5em]
+\cmd{scripts/db-query.sh} &
+  Executa uma instrução SQL directamente no postgres.\newline
+  \texttt{./scripts/db-query.sh "SELECT id, email, role FROM users;"} \\[0.5em]
+\cmd{scripts/migration-status.sh} &
+  Mostra o historial completo de migrações Flyway: versão, descrição, estado e data de instalação.\newline
+  \texttt{./scripts/migration-status.sh} \\[0.5em]
+\cmd{scripts/minio-init.sh} &
+  Cria o bucket MinIO necessário. Requer o cliente \texttt{mc} instalado (\texttt{brew install minio/stable/mc}).\newline
+  \texttt{./scripts/minio-init.sh} \\[0.5em]
+\cmd{scripts/run-tests.sh} &
+  Corre os testes com o perfil correcto (\texttt{server}, \texttt{ai} ou \texttt{all}).\newline
+  \texttt{./scripts/run-tests.sh server} \quad \texttt{./scripts/run-tests.sh all} \\[0.5em]
+\cmd{scripts/build-android.sh} &
+  Compila o APK Android em modo debug (por defeito) ou release.\newline
+  \texttt{./scripts/build-android.sh} \quad \texttt{./scripts/build-android.sh release} \\[0.5em]
+\cmd{scripts/check-deps.sh} &
+  Executa a análise OWASP de dependências (2--5 minutos) e abre o relatório HTML resultante.\newline
+  \texttt{./scripts/check-deps.sh} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+%% ============================================================
+\section{Guia de Verificação para o Júri}
+%% ============================================================
+
+Esta secção descreve o percurso completo que o júri pode seguir para verificar que o sistema funciona correctamente, da autenticação à entrega adaptativa de tarefas.
+
+\subsection{Verificação 1 — Health Check da API}
+
+\begin{lstlisting}[style=bash]
+curl http://localhost:9090/actuator/health
+# Resposta esperada:
+# {"status":"UP","components":{"db":{"status":"UP"},...}}
+\end{lstlisting}
+
+Ou abrir no browser: \href{http://localhost:9090/actuator/health}{\texttt{http://localhost:9090/actuator/health}}
+
+\subsection{Verificação 2 — Documentação Swagger da API}
+
+Abrir no browser:
+
+\begin{mdframed}[style=infobox]
+\centering
+\href{http://localhost:8080/swagger-ui.html}{\large\texttt{http://localhost:8080/swagger-ui.html}}
+\end{mdframed}
+
+Todos os endpoints estão documentados e podem ser testados directamente na interface Swagger.
+
+\subsection{Verificação 3 — Criar uma Conta (Magic Link)}
+
+\begin{enumerate}
+  \item Aceder ao painel de administração web em: \href{http://localhost:80}{\texttt{http://localhost:80}}
+  \item No ecrã de login, introduzir um endereço de e-mail (qualquer e-mail, real ou fictício).
+  \item Clicar em \textbf{``Enviar Magic Link''}.
+  \item Como o ambiente é local sem chave Resend, obter o link nos logs do servidor:
+  \begin{lstlisting}[style=bash]
+  docker compose logs server | grep -i "magic\|verify\|token"
+  \end{lstlisting}
+  \item Copiar o URL de verificação do log e abrir no browser. A sessão é autenticada automaticamente.
+\end{enumerate}
+
+\begin{mdframed}[style=warningbox]
+\textbf{Alternativa via API directamente (sem frontend):}
+\begin{lstlisting}[style=bash]
+# 1. Solicitar magic link
+curl -X POST http://localhost:8080/auth/magic-link \
+  -H "Content-Type: application/json" \
+  -d '{"email": "jury@example.com"}'
+
+# 2. Ver o token nos logs
+docker compose logs server | grep "verify"
+
+# 3. Verificar o token (substituir TOKEN pelo valor obtido)
+curl "http://localhost:8080/auth/verify?token=TOKEN"
+# Resposta: {"accessToken":"...","refreshToken":"..."}
+\end{lstlisting}
+\end{mdframed}
+
+\subsection{Verificação 4 — Promover Conta a Administrador}
+\label{sec:promote}
+
+Após criar a conta com o e-mail \texttt{jury@example.com} (ou o e-mail escolhido), promover a administrador:
+
+\begin{lstlisting}[style=bash]
+# Na raiz do repositorio play4change-core
+chmod +x scripts/promote-admin.sh
+./scripts/promote-admin.sh jury@example.com
+\end{lstlisting}
+
+\textbf{Saída esperada:}
+\begin{lstlisting}
+OK: 'jury@example.com' promoted to ADMIN.
+They must log out and log in again for the new role to take effect.
+\end{lstlisting}
+
+Após a promoção, fazer logout e novo login para o JWT reflectir o papel de ADMIN.
+
+\subsection{Verificação 5 — Estatísticas Públicas da Plataforma}
+
+\begin{lstlisting}[style=bash]
+curl http://localhost:8080/api/stats/public
+# Resposta: {"totalUsers":1,"totalTopics":0,"totalEnrollments":0,...}
+\end{lstlisting}
+
+\subsection{Verificação 6 — Criar um Tópico de Aprendizagem via IA}
+
+Este passo requer a chave \env{MISTRAL\_API\_KEY} configurada no \file{.env}. Com a conta ADMIN autenticada:
+
+\begin{mdframed}[style=infobox]
+\textbf{Via Painel Web (recomendado):}
+\begin{enumerate}
+  \item Navegar para \texttt{http://localhost/admin/topics/new}
+  \item Introduzir um URL de conteúdo cívico (ex.: página Wikipedia sobre reciclagem urbana)
+  \item Seleccionar dificuldade, idioma e categoria
+  \item Clicar em \textbf{``Criar Tópico''}
+  \item Acompanhar o progresso em tempo real (SSE) na página de detalhes do tópico
+\end{enumerate}
+\end{mdframed}
+
+\begin{mdframed}[style=warningbox]
+\textbf{Via API (com token JWT de ADMIN):}
+\begin{lstlisting}[style=bash]
+curl -X POST http://localhost:8080/admin/topics \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -d '{
+    "sourceUrl": "https://pt.wikipedia.org/wiki/Reciclagem",
+    "language": "pt",
+    "durationDays": 7,
+    "difficulty": "BEGINNER",
+    "category": "ENVIRONMENT"
+  }'
+\end{lstlisting}
+Acompanhar progresso: \cmd{GET /admin/topics/\{id\}/progress} (SSE stream)
+\end{mdframed}
+
+\subsection{Verificação 7 — Inscrição num Tópico e Tarefa Diária}
+
+Com a conta (papel USER) e um tópico activo (\texttt{status: ACTIVE}):
+
+\begin{lstlisting}[style=bash]
+# Inscrever no topico (substituir TOPIC_ID e ACCESS_TOKEN)
+curl -X POST http://localhost:8080/topics/TOPIC_ID/enroll \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+
+# Obter a tarefa do dia
+curl http://localhost:8080/tasks/today?topicId=TOPIC_ID \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+
+# Submeter resposta (substituir ASSIGNMENT_ID e escolha A/B/C/D)
+curl -X POST http://localhost:8080/tasks/ASSIGNMENT_ID/submit \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -d '{"selectedOption": "A"}'
+\end{lstlisting}
+
+\subsection{Verificação 8 — Observabilidade (Grafana + Prometheus)}
+
+\begin{itemize}
+  \item \textbf{Grafana}: \href{http://localhost:3000}{\texttt{http://localhost:3000}} — login: \texttt{admin} / \texttt{admin}\\
+    Dashboards pré-provisionados mostram métricas de geração de tarefas, latências P50/P95/P99, e contadores de submissões.
+
+  \item \textbf{Prometheus}: \href{http://localhost:9090}{\texttt{http://localhost:9090}}\\
+    Métricas brutas em \texttt{/actuator/prometheus} (porta 9090 do servidor).
+\end{itemize}
+
+\subsection{Verificação 9 — MinIO Console (Armazenamento)}
+
+\begin{itemize}
+  \item Aceder a \href{http://localhost:9001}{\texttt{http://localhost:9001}}
+  \item Login: \texttt{minioadmin} / \texttt{minioadmin}
+  \item O bucket \texttt{play4change} contém o conteúdo ingerido dos tópicos (PDF ou HTML extraído)
+\end{itemize}
+
+%% ============================================================
+\section{Painel de Administração Web}
+%% ============================================================
+
+O painel web (\texttt{play4change-web}) está incluído na imagem Docker do Nginx em modo de produção. Não é necessário correr o servidor de desenvolvimento Node.js para aceder ao painel.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{URL} & \textbf{Funcionalidade} \\
+\midrule
+\texttt{http://localhost/} & Página pública com missão e estatísticas em tempo real \\
+\texttt{http://localhost/admin/login} & Login (magic link) \\
+\texttt{http://localhost/admin/dashboard} & Dashboard com resumo de actividade \\
+\texttt{http://localhost/admin/topics} & Listagem de todos os tópicos (com filtros de estado) \\
+\texttt{http://localhost/admin/topics/new} & Criar tópico a partir de URL ou PDF \\
+\texttt{http://localhost/admin/topics/\{id\}} & Detalhe, edição de tarefas, pré-requisitos \\
+\texttt{http://localhost/admin/learning-paths} & Visualização do grafo de pré-requisitos (DAG) \\
+\texttt{http://localhost/admin/users} & Gestão de utilizadores e promoção a ADMIN \\
+\texttt{http://localhost/admin/reports} & Relatórios de tarefas sinalizadas pelos utilizadores \\
+\texttt{http://localhost/admin/badges} & Badges de micro-competências por tópico \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{mdframed}[style=warningbox]
+\textbf{Nota sobre autenticação:} O painel web requer conta com papel \textbf{ADMIN}. A primeira conta criada via magic link tem papel USER por defeito. Usar o script \cmd{./scripts/promote-admin.sh \textless{}email\textgreater{}} para promover a ADMIN (ver Secção~\ref{sec:promote}).
+\end{mdframed}
+
+%% ============================================================
+\section{Resumo Rápido para o Júri}
+%% ============================================================
+
+\begin{mdframed}[style=successbox]
+\textbf{Checklist mínima para verificar o projecto:}
+
+\begin{enumerate}
+  \item \textbf{Clonar}: \cmd{git clone https://github.com/UREKA-Play4Change/play4change-core.git \&\& cd play4change-core}
+  \item \textbf{Arrancar}: \cmd{docker compose up --build} \quad (aguardar ``Started Application'')
+  \item \textbf{Health check}: \cmd{curl http://localhost:9090/actuator/health}
+  \item \textbf{Swagger}: \href{http://localhost:8080/swagger-ui.html}{\texttt{http://localhost:8080/swagger-ui.html}}
+  \item \textbf{Painel web}: \href{http://localhost}{\texttt{http://localhost}} $\to$ Login $\to$ Magic Link $\to$ obter token nos logs
+  \item \textbf{Promover a ADMIN}: \cmd{./scripts/promote-admin.sh \textless{}email\textgreater{}} \quad (re-login necessário)
+  \item \textbf{Grafana}: \href{http://localhost:3000}{\texttt{http://localhost:3000}} \quad (\texttt{admin}/\texttt{admin})
+  \item \textbf{MinIO}: \href{http://localhost:9001}{\texttt{http://localhost:9001}} \quad (\texttt{minioadmin}/\texttt{minioadmin})
+\end{enumerate}
+\end{mdframed}
+
+\vspace{1em}
+
+\begin{center}
+\small\color{gray}
+Junho 2026 · ISEL — Instituto Superior de Engenharia de Lisboa · U!REKA European University\\
+Radesh Ilesh Gamanbhai Govind (A51602) · \href{mailto:A51620@alunos.isel.pt}{\texttt{A51620@alunos.isel.pt}}
+\end{center}
+
+\end{document}
