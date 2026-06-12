@@ -4,3 +4,17 @@
 
 # Claude Code
 .claude/
+
+# LaTeX compiled output
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lol
+*.lot
+*.out
+*.synctex.gz
+*.toc

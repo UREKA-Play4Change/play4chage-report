@@ -5,17 +5,49 @@
 \chapter{Conclusão}
 \label{cha:conclusao}
 
+% ─────────────────────────────────────────────────────────────────────────────
 \section{Síntese do trabalho realizado}
 \label{sec:sintese-trabalho}
+% ─────────────────────────────────────────────────────────────────────────────
 
-Resumir o trabalho desenvolvido e em que medida os objetivos definidos inicialmente (Secção~\ref{sec:objetivos}) foram alcançados.
+Este trabalho partiu de uma questão simples mas exigente: \emph{como pode uma plataforma de educação digital, informal e gamificada, apoiada por inteligência artificial, ajudar os cidadãos a desenvolver as competências de que precisam para participar na transição para cidades sustentáveis --- e, ao mesmo tempo, conseguir que continuem a usá-la ao longo do tempo?} Para responder a esta questão, foi concebido e implementado o \emph{Play4Change}: um protótipo funcional organizado à volta de três pilares complementares --- reconhecimento, envolvimento e personalização.
 
+Olhando para os objectivos definidos na Secção~\ref{sec:objetivos}, o balanço é positivo. O \textbf{sistema de distintivos} foi implementado e validado: 16 distintivos foram emitidos a 9 utilizadores em condições reais de utilização, com 100\% das conclusões de tópicos a resultar na emissão do respectivo emblema, o que confirma que o limiar de mestria $\alpha = 0.60$ funcionou como portão de qualidade efectivo. Os \textbf{mecanismos de envolvimento} foram implementados e geraram evidências de hábito real no Grupo~A: sequências de até 13 dias consecutivos de utilização em utilizadores que completaram múltiplos tópicos são um resultado que nenhum incentivo externo obrigatório pode explicar. A \textbf{personalização adaptativa} foi o pilar com resultados mais consistentes: 99\% de acerto final nas tarefas e 98\% de resolução das sessões adaptativas demonstram que o ciclo detecção--remediação--resolução funciona eficazmente, e o exemplo de sessão apresentado no Capítulo~\ref{cha:avaliacao} ilustra concretamente como a IA consegue conduzir um utilizador de uma confusão conceptual genuína a uma compreensão clara em menos de 3 minutos.
+
+Do ponto de vista técnico, o protótipo representa uma proposta arquitectural coerente e funcional: um servidor em Kotlin com Spring Boot 3 e arquitectura hexagonal, uma aplicação móvel em Kotlin Multiplatform com Compose, um painel de administração React, infraestrutura observável com Prometheus e Grafana, e uma pipeline CI/CD com três \emph{workflows} GitHub Actions que garantem qualidade, rastreabilidade e distribuição automatizada. A plataforma chegou ao estado de produção com utilizadores reais, dados comportamentais registados e uma avaliação junto de 12 participantes --- o que, para um protótipo desenvolvido no âmbito de um projecto académico, representa um nível de maturidade acima do esperado numa primeira iteração.
+
+A contribuição mais original deste trabalho é a combinação, num único produto, de \textbf{tema} (educação cívica para a transição sustentável) e de \textbf{personalização gerativa} (uso de um LLM para gerar percursos adaptativos em tempo real, com base no perfil de dificuldade de cada utilizador). Tanto quanto foi possível apurar na análise do estado da arte, esta combinação não está presente em nenhuma das plataformas existentes analisadas.
+
+% ─────────────────────────────────────────────────────────────────────────────
 \section{Limitações}
 \label{sec:limitacoes}
+% ─────────────────────────────────────────────────────────────────────────────
 
-Identificar as principais limitações do projeto e do processo de desenvolvimento.
+A honestidade sobre as limitações é parte integrante de qualquer trabalho de investigação e desenvolvimento. As limitações do \emph{Play4Change} organizam-se em três níveis.
 
+\textbf{Limitações da avaliação.} A amostra do questionário ($n=12$, amostragem por conveniência) é insuficiente para conclusões estatisticamente robustas. Os resultados devem ser lidos como hipóteses e indicadores, não como evidências definitivas. O período de utilização coberto pelos dados comportamentais é relativamente curto e sem protocolo de tarefa estruturado, o que significa que alguns utilizadores podem ter explorado apenas partes da plataforma. Não há grupo de controlo, pelo que não é possível atribuir causalmente os resultados à plataforma em vez de a outros factores.
+
+\textbf{Limitações do protótipo.} Nenhum tópico de conteúdo foi validado por especialistas em educação cívica ou em sustentabilidade urbana. A qualidade pedagógica dos conteúdos gerados pelo LLM depende da qualidade dos \emph{prompts} e do modelo --- e embora a validação de esquema JSON e a abordagem RAG~\cite{lewis2020rag} reduzam o risco de conteúdos malformados, não eliminam o risco de imprecisões factuais (\emph{hallucinations}). A cobertura de testes de integração e o tratamento de erros de rede na aplicação móvel ficaram abaixo do que seria desejável numa versão de produção madura. A plataforma não foi submetida a auditoria de segurança independente.
+
+\textbf{Limitações de alcance.} O \textbf{paradoxo de acessibilidade} identificado na Secção~\ref{sec:dois-grupos} é talvez a limitação mais estrutural: a plataforma é mais eficaz para quem já tem literacia digital de base, mas pode afastar precisamente quem mais beneficiaria de a desenvolver. Este paradoxo não é específico do \emph{Play4Change} --- afecta a maioria das plataformas de educação digital~\cite{kasneci2023chatgpt} --- mas é especialmente problemático num contexto de educação cívica onde o objectivo explícito é reduzir desigualdades de participação. Resolver este paradoxo exigirá abordagens complementares que estão fora do âmbito do presente protótipo.
+
+% ─────────────────────────────────────────────────────────────────────────────
 \section{Trabalho futuro}
 \label{sec:trabalho-futuro}
+% ─────────────────────────────────────────────────────────────────────────────
 
-Apontar possíveis direções de evolução e melhoria do Play4Change.
+As limitações identificadas apontam directamente para os caminhos mais prioritários de evolução. Há cinco direcções que merecem destaque pela sua relevância directa para a missão da plataforma.
+
+\textbf{Integração social e comunitária.} A sugestão mais recorrente na avaliação qualitativa foi a introdução de funcionalidades sociais: comparação de progresso entre amigos, desafios colectivos e partilha de conquistas. Este vector está directamente alinhado com a dimensão de \emph{relação} da Teoria da Autodeterminação~\cite{deci1985intrinsic} e com a evidência na literatura de que a componente social é um dos motores de retenção mais eficazes em contextos de gamificação~\cite{ott2019gamification}. Uma versão futura do \emph{Play4Change} que incorpore esta dimensão poderia transformar o que é hoje uma experiência individual numa experiência de aprendizagem colectiva e contextualizada na comunidade local.
+
+\textbf{Personalização geográfica.} Vários participantes sugeriram que a plataforma deveria adaptar as perguntas à cidade ou região onde o utilizador se encontra, usando dados públicos disponíveis para tornar os conteúdos hiper-locais. Esta ideia --- questionar um utilizador em Lisboa sobre a qualidade do ar no Parque das Nações, ou um utilizador no Porto sobre a ciclovia da Avenida dos Aliados --- está conceptualmente alinhada com os centros de competência da U!REKA~\citep{ureka2026alliance} e poderia aumentar significativamente a relevância percebida dos conteúdos.
+
+\textbf{Validação pedagógica dos conteúdos.} Uma versão madura da plataforma precisaria de um processo de revisão dos conteúdos gerados pela IA por especialistas em educação cívica e em sustentabilidade urbana. Este processo poderia ser estruturado de várias formas: revisão editorial periódica por amostragem, \emph{feedback} dos utilizadores sobre a qualidade das explicações, ou um mecanismo de marcação de conteúdos suspeitos. A ausência deste componente é a limitação de qualidade mais importante a resolver antes de qualquer escalonamento da plataforma.
+
+\textbf{Onboarding adaptado ao Grupo~B.} O paradoxo de acessibilidade identificado na avaliação sugere que os utilizadores com menor literacia digital precisam de uma experiência de entrada diferente: tutoriais guiados interactivos, sessões de apoio inicial presencial integradas na distribuição, ou uma versão simplificada da interface com menos opções e navegação mais linear. Investigar que intervenções de \emph{onboarding} reduzem efectivamente a barreira para este grupo --- sem infantilizar a experiência para o Grupo~A --- é um problema de investigação com impacto directo na missão do projecto.
+
+\textbf{Distintivos com valor no mundo real.} A avaliação revelou que os utilizadores percebem os distintivos como um reconhecimento simbólico interessante, mas com valor limitado fora da aplicação. Uma direcção possível são os \emph{Open Badges} --- um padrão aberto (IMS Global) para emissão de credenciais digitais verificáveis que podem ser partilhadas em perfis profissionais e reconhecidas por empregadores ou instituições. Integrar este padrão numa versão futura do \emph{Play4Change} ligaria o reconhecimento dentro da plataforma a valor tangível fora dela, potencialmente aumentando a motivação dos utilizadores mais orientados para resultados concretos.
+
+\medskip
+
+Em síntese, o \emph{Play4Change} é um primeiro passo viável e com valor demonstrado. Os dados de utilização e a avaliação com utilizadores reais confirmam que a proposta tem fundamento --- há utilizadores que a adoptam com entusiasmo genuíno, completam percursos, resolvem dificuldades com a ajuda da IA e regressam dias seguidos. O caminho até uma plataforma madura, acessível a todos os perfis de cidadão e com conteúdos validados é longo, mas este protótipo fornece uma base técnica, pedagógica e conceptual sólida sobre a qual construí-lo.
