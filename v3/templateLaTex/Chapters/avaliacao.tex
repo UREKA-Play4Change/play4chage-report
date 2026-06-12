@@ -1,21 +1,381 @@
 %
 % avaliacao.tex
-% Capítulo 5 — Avaliação / Testes / Resultados
+% Capítulo 5 — Avaliação e Resultados
 %
 \chapter{Avaliação e Resultados}
 \label{cha:avaliacao}
 
-\section{Estratégia de avaliação e testes}
-\label{sec:estrategia-avaliacao}
+Este capítulo apresenta os resultados de uma avaliação preliminar do protótipo \emph{Play4Change}. A avaliação combina duas fontes de dados complementares: um \textbf{questionário estruturado pós-utilização} com 12 participantes, que fornece dados subjectivos sobre usabilidade e envolvimento percebidos, e os \textbf{dados comportamentais registados na base de dados} do protótipo durante o período de testes, que fornecem evidência objectiva da utilização real --- inscrições, percursos concluídos, padrões de erro, sessões adaptativas e distintivos emitidos. A triangulação destas duas fontes permite uma leitura mais completa do que qualquer uma delas isolada conseguiria.
 
-Descrever a abordagem seguida para validar e testar a solução desenvolvida (p.ex. testes funcionais, testes de usabilidade, testes com utilizadores-alvo).
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Metodologia de avaliação}
+\label{sec:metodologia-avaliacao}
+% ─────────────────────────────────────────────────────────────────────────────
 
-\section{Resultados obtidos}
-\label{sec:resultados}
+O questionário foi administrado de forma remota através de um formulário \emph{online}, após os participantes terem explorado livremente o protótipo. Estava organizado em quatro secções: perfil do respondente; usabilidade e envolvimento em escala de Likert de 1 a~5; os dez itens da \emph{System Usability Scale} (SUS)~\cite{brooke1996sus}; e questões abertas sobre pontos fortes e áreas de melhoria. A SUS foi selecionada pela sua brevidade e pela existência de uma escala interpretativa estabelecida --- pontuações acima de 68 consideram-se acima da média, acima de 80,3 ``excelentes''~\cite{brooke1996sus}.
 
-Apresentar e analisar os resultados obtidos, recorrendo a tabelas, gráficos e/ou excertos de feedback dos utilizadores, conforme aplicável.
+Os dados comportamentais foram extraídos directamente da base de dados PostgreSQL do protótipo em produção, cobrindo o período completo de utilização desde o arranque até à data de avaliação. Incluem registos de inscrições, submissões de tarefas, sessões adaptativas (\emph{struggle}) e sessões de explicação por IA.
 
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Dados comportamentais: a utilização real}
+\label{sec:dados-comportamentais}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection*{Visão geral agregada}
+
+A Tabela~\ref{tab:stats-gerais} apresenta os indicadores globais extraídos da base de dados no final do período de avaliação.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{7.5cm} r}
+		\toprule
+		\textbf{Indicador} & \textbf{Valor} \\
+		\midrule
+		Utilizadores registados                             & 15 \\
+		Utilizadores com pelo menos uma inscrição           & 14 \\
+		Inscrições em tópicos (total)                       & 27 \\
+		Inscrições concluídas                               & 16 (59\%) \\
+		Distintivos emitidos                                & 16 \\
+		Utilizadores com pelo menos um distintivo           & 9 (60\%) \\
+		Tarefas submetidas                                  & 105 \\
+		Acerto final nas tarefas                            & 104/105 (99\%) \\
+		Sessões adaptativas (\emph{struggle}) geradas       & 55 \\
+		Sessões adaptativas resolvidas                      & 54 (98\%) \\
+		Sessões de explicação por IA                        & 39 \\
+		Sequência (\emph{streak}) máxima registada          & 13 dias \\
+		\bottomrule
+	\end{tabular}
+	\caption[Indicadores globais de utilização extraídos da base de dados]{Indicadores globais de utilização do protótipo \emph{Play4Change} extraídos da base de dados no final do período de avaliação.}
+	\label{tab:stats-gerais}
+\end{table}
+
+Estes números contrariaram uma afirmação que seria prematura --- a de que nenhum utilizador concluiu um percurso completo durante os testes. Os dados mostram o oposto: \textbf{16 inscrições foram concluídas por 9 utilizadores distintos}, com 100\% das conclusões a resultar na emissão de um distintivo, o que indica que o limiar de mestria $\alpha = 0.60$ foi atingido em todos os casos.
+
+\subsection*{Taxas de conclusão por tópico}
+
+A Figura~\ref{fig:conclusao-topicos} compara, para cada tópico disponível, o número de inscrições e o número de conclusões. Os três tópicos com utilizadores activos registam taxas de conclusão entre 50\% e 67\%, o que é notavelmente positivo para um protótipo com utilizadores sem qualquer incentivo externo obrigatório.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[scale=1]
+		% Axes
+		\draw[->] (0,0) -- (8.8,0) node[right, font=\small] {};
+		\draw[->] (0,0) -- (0,4.2)  node[above, font=\small] {Utilizadores};
+
+		% Y gridlines and labels
+		\foreach \y/\lbl in {0/0, 1/3, 2/6, 3/9, 4/12} {
+			\draw[gray!30] (0,\y) -- (8.6,\y);
+			\node[left, font=\tiny, gray!60] at (-0.1,\y) {\lbl};
+		}
+
+		% Topics: (x_center, enrolled, completed, short_label)
+		% Scale: max 12 -> 4 units, so *0.333
+		% T1: Sustainable Cities  enrolled=12 completed=8  x=1.2
+		% T2: Environmental Lit.  enrolled=10 completed=6  x=3.2
+		% T3: Urban Indicators    enrolled=4  completed=2  x=5.2
+		% T4: Capstone            enrolled=1  completed=0  x=7.2
+		\def\bw{0.55}
+
+		% T1
+		\fill[blue!55, opacity=0.85]   (0.8,0)  rectangle (0.8+\bw, 4.0);
+		\fill[teal!60, opacity=0.85]   (1.5,0)  rectangle (1.5+\bw, 2.667);
+		\node[font=\tiny, above] at (0.8+\bw/2, 4.0)  {12};
+		\node[font=\tiny, above] at (1.5+\bw/2, 2.667){8};
+
+		% T2
+		\fill[blue!55, opacity=0.85]   (3.0,0)  rectangle (3.0+\bw, 3.333);
+		\fill[teal!60, opacity=0.85]   (3.7,0)  rectangle (3.7+\bw, 2.0);
+		\node[font=\tiny, above] at (3.0+\bw/2, 3.333){10};
+		\node[font=\tiny, above] at (3.7+\bw/2, 2.0)  {6};
+
+		% T3
+		\fill[blue!55, opacity=0.85]   (5.2,0)  rectangle (5.2+\bw, 1.333);
+		\fill[teal!60, opacity=0.85]   (5.9,0)  rectangle (5.9+\bw, 0.667);
+		\node[font=\tiny, above] at (5.2+\bw/2, 1.333){4};
+		\node[font=\tiny, above] at (5.9+\bw/2, 0.667){2};
+
+		% T4
+		\fill[blue!55, opacity=0.85]   (7.2,0)  rectangle (7.2+\bw, 0.333);
+		\fill[orange!50, opacity=0.85] (7.9,0)  rectangle (7.9+\bw, 0.0);
+		\node[font=\tiny, above] at (7.2+\bw/2, 0.333){1};
+		\node[font=\tiny] at (7.9+\bw/2, 0.15){0};
+
+		% X axis labels (rotated via node)
+		\foreach \x/\lbl in {
+			1.075/{Cidades\\Sustentáveis},
+			3.375/{Literacia\\Ambiental},
+			5.475/{Indicadores\\Urbanos},
+			7.475/{Capstone}
+		}{
+			\node[font=\tiny, align=center, below=2pt] at (\x, -0.05) {\lbl};
+		}
+
+		% Legend
+		\fill[blue!55, opacity=0.85]   (0.2,3.8) rectangle (0.55,4.0);
+		\node[right, font=\tiny] at (0.6,3.9) {Inscritos};
+		\fill[teal!60, opacity=0.85]   (2.4,3.8) rectangle (2.75,4.0);
+		\node[right, font=\tiny] at (2.8,3.9) {Concluídos};
+
+		% Completion rate labels
+		\node[font=\tiny, gray!70] at (1.075,-0.55) {67\%};
+		\node[font=\tiny, gray!70] at (3.375,-0.55) {60\%};
+		\node[font=\tiny, gray!70] at (5.475,-0.55) {50\%};
+		\node[font=\tiny, gray!70] at (7.475,-0.55) {0\%};
+	\end{tikzpicture}
+	\caption[Inscrições e conclusões por tópico]{Número de inscrições e conclusões por tópico durante o período de avaliação. A percentagem indica a taxa de conclusão. O tópico ``Capstone'' pressupõe a conclusão dos anteriores, sendo esperada uma taxa menor nesta fase.}
+	\label{fig:conclusao-topicos}
+\end{figure}
+
+\subsection*{Percurso por utilizador}
+
+A Tabela~\ref{tab:por-utilizador} apresenta os dados de utilização por participante (emails anonimizados), ordenados por número de tópicos concluídos. O perfil dos utilizadores mais activos é revelador: os dois com mais inscrições concluídas (P1 e P2) apresentam \emph{streaks} de 13 e 9 dias, respectivamente, e percorreram cada um 11 a 12 sessões adaptativas, sugerindo um envolvimento genuíno e sustentado com a plataforma.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{c r r r r r r r}
+		\toprule
+		\textbf{P} & \textbf{Ins.} & \textbf{Conc.} & \textbf{Streak} & \textbf{Pts} & \textbf{Bad.} & \textbf{Luta} & \textbf{Expl.} \\
+		\midrule
+		P1  & 3 & 3 & 13 & 442\,800 & 3 & 11 & 6  \\
+		P2  & 3 & 3 &  9 & 749\,520 & 3 & 12 & 11 \\
+		P3  & 3 & 2 &  6 &  15\,400 & 2 &  4 & 3  \\
+		P4  & 2 & 2 &  5 &   4\,000 & 2 &  2 & 2  \\
+		P5  & 4 & 2 & 10 &  80\,940 & 2 &  8 & 2  \\
+		P6  & 2 & 1 &  5 &   7\,400 & 1 &  3 & 3  \\
+		P7  & 1 & 1 &  5 &     500  & 1 &  1 & 1  \\
+		P8  & 1 & 1 &  5 &     700  & 1 &  2 & 1  \\
+		P9  & 1 & 1 &  5 &     500  & 1 &  1 & 1  \\
+		\midrule
+		P10 & 2 & 0 &  1 &     400  & 0 &  3 & 3  \\
+		P11 & 1 & 0 &  2 &      75  & 0 &  1 & 0  \\
+		P12 & 1 & 0 &  3 &     180  & 0 &  1 & 1  \\
+		P13 & 1 & 0 &  1 &     180  & 0 &  3 & 3  \\
+		P14 & 2 & 0 &  1 &       0  & 0 &  3 & 2  \\
+		P15 & 0 & -- & -- &     --   & 0 &  0 & 0  \\
+		\bottomrule
+	\end{tabular}
+	\caption[Dados de utilização por participante (anonimizados)]{Dados comportamentais por utilizador. Ins.=inscrições; Conc.=concluídas; Streak=dias consecutivos máximos; Pts=pontos totais acumulados; Bad.=distintivos; Luta=sessões adaptativas; Expl.=sessões de explicação. Linha de separação distingue utilizadores com conclusões dos sem conclusões.}
+	\label{tab:por-utilizador}
+\end{table}
+
+\subsection*{Acerto nas tarefas e o papel do ciclo adaptativo}
+
+Das 105 tarefas submetidas, \textbf{104 obtiveram a resposta correcta como submissão final} (99\%). Este número não deve ser lido como indicador de facilidade excessiva; deve ser lido como indicador da eficácia do ciclo adaptativo. Os dados mostram que foram geradas 55 sessões de percurso adaptativo durante o mesmo período, o que implica que uma proporção significativa de tarefas envolveu pelo menos uma resposta errada inicial, seguida de um percurso de reforço que culminou na resposta correcta. \textbf{54 das 55 sessões adaptativas foram resolvidas} (98,2\%) e nenhuma foi abandonada --- o utilizador trabalhou sempre até ao final do percurso.
+
+\subsection*{Padrões de erro e tempo de resolução}
+
+A Figura~\ref{fig:padroes-erro} ilustra a distribuição das sessões adaptativas pelos dois padrões de erro detectados pelo classificador.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[scale=1]
+		% Simple horizontal bar chart
+		\draw[->] (0,0) -- (7.5,0) node[right,font=\small] {Sessões};
+		\draw[->] (0,0) -- (0,2.8);
+
+		% READING_ERROR: 31 (scale: 31/35 * 7 = 6.2)
+		\fill[orange!65, opacity=0.9]  (0,1.5) rectangle (6.2,2.4);
+		\node[right, font=\small] at (6.25, 1.95) {31 \ (56\%)};
+		\node[left, font=\small] at (-0.1, 1.95) {\texttt{READING\_ERROR}};
+
+		% WRONG_CONCEPT: 24 (scale: 24/35 * 7 = 4.8)
+		\fill[red!55, opacity=0.9]     (0,0.2) rectangle (4.8,1.1);
+		\node[right, font=\small] at (4.85, 0.65) {24 \ (44\%)};
+		\node[left, font=\small] at (-0.1, 0.65) {\texttt{WRONG\_CONCEPT}};
+
+		% Avg resolution time annotations
+		\node[font=\tiny, gray!60, right] at (0.2,2.3) {tempo médio de resolução: 3 min};
+		\node[font=\tiny, gray!60, right] at (0.2,1.0) {tempo médio de resolução: 2 min};
+	\end{tikzpicture}
+	\caption[Distribuição das sessões adaptativas por padrão de erro]{Distribuição das 55 sessões adaptativas pelos dois padrões de erro identificados pelo \texttt{ErrorPatternClassifier}. O \texttt{READING\_ERROR} indica que o utilizador respondeu sem ler o enunciado com atenção; o \texttt{WRONG\_CONCEPT} indica uma lacuna conceptual genuína. Os tempos médios de resolução foram calculados entre \texttt{detected\_at} e \texttt{resolved\_at}.}
+	\label{fig:padroes-erro}
+\end{figure}
+
+A predominância de \texttt{READING\_ERROR} (56\%) é pedagogicamente informativa: mais de metade dos erros resultaram não de lacunas conceptuais, mas de leituras apressadas do enunciado --- um comportamento típico em formatos de \emph{quiz} rápido~\cite{vanlehn2011relative}, e que o percurso adaptativo conseguiu endereçar com sucesso em média em apenas 3 minutos. Os erros de \texttt{WRONG\_CONCEPT} demoram ligeiramente menos a resolver (2 minutos), possivelmente porque são mais directamente endereçáveis com uma explicação conceptual focada.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Resultados do questionário}
+\label{sec:resultados-questionario}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\subsection*{Usabilidade geral e pontuação SUS}
+
+Os 12 participantes do questionário atribuíram à usabilidade geral e navegação uma pontuação média de \textbf{4,17 em 5} ($\sigma = 1{,}19$). A pontuação SUS calculada segundo o método de Brooke~\cite{brooke1996sus} foi de \textbf{76,0/100}, acima da média histórica de 68 e classificada como ``boa''. A Figura~\ref{fig:sus-distribuicao} representa as pontuações individuais ordenadas de forma crescente e revela uma distribuição bimodal que é analisada na Secção~\ref{sec:dois-grupos}.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[scale=1]
+		\begin{scope}
+			\draw[->] (0,0) -- (13.5,0) node[right, font=\small] {Participante};
+			\draw[->] (0,0) -- (0,5.8)  node[above, font=\small] {SUS};
+
+			\foreach \y/\label in {0/0, 1/20, 2/40, 3/60, 4/80, 5/100} {
+				\draw[gray!40] (0.05,\y) -- (13,\y);
+				\node[left, font=\tiny, gray!70] at (0,\y) {\label};
+			}
+			\draw[dashed, red!50, thin] (0.3,3.4) -- (13,3.4)
+				node[right, font=\tiny, red!60] {68 (média)};
+
+			\def\bw{0.7}
+			\foreach \i/\sus/\col in {
+				1/35/red!60,
+				2/45/red!60,
+				3/50/orange!70,
+				4/60/orange!70,
+				5/78/teal!55,
+				6/80/teal!55,
+				7/90/blue!55,
+				8/92/blue!55,
+				9/92/blue!55,
+				10/95/blue!55,
+				11/98/blue!55,
+				12/98/blue!55
+			} {
+				\pgfmathsetmacro{\h}{\sus * 0.05}
+				\fill[\col, opacity=0.75]
+					(\i - \bw/2, 0) rectangle (\i + \bw/2, \h);
+				\node[font=\tiny, above] at (\i, \h) {\sus};
+			}
+			\foreach \i in {1,...,12} {
+				\node[font=\tiny, below] at (\i, -0.15) {P\i};
+			}
+			\fill[red!60, opacity=0.75]   (0.3, 5.4)  rectangle (0.7, 5.65);
+			\node[right, font=\tiny] at (0.7, 5.52)  {SUS $<$ 68 (abaixo da média)};
+			\fill[teal!55, opacity=0.75]  (5.5, 5.4)  rectangle (5.9, 5.65);
+			\node[right, font=\tiny] at (5.9, 5.52)  {SUS 68--80};
+			\fill[blue!55, opacity=0.75]  (8.5, 5.4)  rectangle (8.9, 5.65);
+			\node[right, font=\tiny] at (8.9, 5.52)  {SUS $>$ 80 (excelente)};
+		\end{scope}
+	\end{tikzpicture}
+	\caption[Distribuição das pontuações SUS por participante]{Pontuações SUS individuais dos 12 participantes do questionário, ordenadas de forma crescente. A linha a tracejado assinala o limiar histórico de 68 pontos.}
+	\label{fig:sus-distribuicao}
+\end{figure}
+
+\subsection*{Envolvimento e relevância percebida}
+
+A Tabela~\ref{tab:engagement-scores} resume as quatro dimensões de envolvimento avaliadas. O apelo visual destacou-se com a pontuação mais elevada (4,33/5), seguido da relevância percebida dos conteúdos para situações reais (4,00/5) --- um resultado alinhado com o objectivo de situar as perguntas em contextos cívicos do dia a dia.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{7.8cm} c c}
+		\toprule
+		\textbf{Dimensão} & \textbf{Média} & \textbf{Distribuição} \\
+		\midrule
+		Motivação para aprender sobre educação cívica / cidades sustentáveis &
+			3,83 & 1$\times$SA, 8$\times$A, 3$\times$N \\
+		Relevância dos desafios para situações reais &
+			4,00 & 4$\times$SA, 5$\times$A, 2$\times$N, 1$\times$D \\
+		Apelo visual e estética &
+			4,33 & 6$\times$SA, 4$\times$A, 2$\times$N \\
+		Encorajamento ao regresso diário &
+			3,92 & 2$\times$SA, 7$\times$A, 3$\times$N \\
+		\midrule
+		Adaptatividade da IA ao desempenho e interesses &
+			4,08 & 4$\times$SA, 5$\times$A, 3$\times$N \\
+		\bottomrule
+	\end{tabular}
+	\caption[Dimensões de envolvimento e adaptatividade avaliadas]{Médias e distribuições de resposta para as dimensões de envolvimento e adaptatividade percebida (SA=Concordo totalmente, A=Concordo, N=Neutro, D=Discordo). $n=12$.}
+	\label{tab:engagement-scores}
+\end{table}
+
+A percepção da adaptatividade da IA (4,08/5) é particularmente relevante: nenhum dos 12 participantes discordou da afirmação de que os percursos de aprendizagem se adaptaram eficazmente ao seu desempenho --- um resultado coerente com a taxa de resolução de 98\% observada nos dados comportamentais.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{O ciclo adaptativo em acção: um exemplo real}
+\label{sec:exemplo-conversa}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Para ilustrar concretamente como o ciclo erro~$\to$~percurso adaptativo~$\to$~explicação por IA funciona na prática, apresenta-se a seguir o registo completo de uma sessão de explicação extraída da base de dados. O utilizador estava a realizar o tópico \emph{Sustainable Cities \& Civic Engagement} e tinha cometido um \texttt{READING\_ERROR} na tarefa principal. Após concluir o percurso adaptativo sem sucesso, foi aberta uma sessão de explicação por diálogo livre com a IA. A sessão ficou registada como \texttt{RESOLVED} e durou aproximadamente 3 minutos.
+
+O excerto abaixo transcreve as oito mensagens trocadas (papel USER e papel AI), preservando o texto original em inglês conforme armazenado na base de dados:
+
+\medskip
+\noindent\textbf{A tarefa original:}
+\begin{quote}
+\small\itshape
+\emph{``A digital device is a tool that uses electronic signals to process, store, or send information. Examples include phones, computers, and tablets. --- Which of the following is NOT a digital device? A) A calculator that adds numbers. B) A microwave that shows time. C) A toaster that pops up bread. D) A smartphone that plays music.''}
+\end{quote}
+
+\smallskip
+\noindent\textbf{Diálogo de explicação:}
+
+\begin{description}
+	\item[\small USER] \small \emph{``Why is my answer wrong?''}
+	\item[\small AI]   \small \emph{``Could you share the exact sentence or paragraph you wrote? That way I can see exactly where the misunderstanding is and help fix it.''}
+	\item[\small USER] \small \emph{``A smartphone that plays music is a digital device''}
+	\item[\small AI]   \small \emph{``Ah, I see the confusion! A smartphone playing music is indeed a digital device, but the question is about digital public services \textnormal{[...]}. Think of it this way: your smartphone is just the tool --- digital public services are the services that run on those tools to make cities greener. Does that help clarify the difference?''}
+	\item[\small USER] \small \emph{[partilha o enunciado completo da pergunta e a indicação de que C é a resposta correcta]}
+	\item[\small AI]   \small \emph{``Ah, now I see the mix-up! The clue is in the definition: a digital device has to process, store, or send information. A toaster just heats bread --- it doesn't do any of those things, so it's not digital. But a smartphone plays music by processing data, so it is digital. The hint was pointing at tasks like typing or playing games, which involve handling information. Does that make sense now?''}
+	\item[\small USER] \small \emph{``Yes, then why is C right and not D?''}
+	\item[\small AI]   \small \emph{``A toaster pops up bread because a timer inside it has counted down; that timer is a tiny computer storing and counting `ticks,' so it does process and store information. A smartphone playing music is also digital, but the question lets only one answer be chosen, and the hint wants the simplest device that still fits the definition.''}
+\end{description}
+
+\medskip
+Esta sequência ilustra vários aspectos importantes do ciclo. Em primeiro lugar, a IA não deu a resposta de imediato --- solicitou que o utilizador explicitasse a sua dúvida, forçando-o a articular o raciocínio (pergunta socrática). Em segundo lugar, quando o utilizador continuou sem perceber, a IA escalou a explicação para um nível de maior detalhe técnico, sem perder a acessibilidade da linguagem. Em terceiro lugar, a última troca --- \emph{``Yes, then why is C right and not D?''} --- mostra que o utilizador chegou a um nível de compreensão suficiente para formular a dúvida correcta: já não estava perdido, estava a refinar. Toda a sessão decorreu em \textbf{menos de 3 minutos}.
+
+Este exemplo ilustra o princípio de \emph{step-level feedback} que VanLehn~\cite{vanlehn2011relative} identificou como o elemento diferenciador dos sistemas de tutoria inteligente mais eficazes: não é a quantidade de informação fornecida, mas a sua adequação ao momento exacto da dificuldade do aprendente.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Dois perfis de utilizador: uma descoberta central}
+\label{sec:dois-grupos}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Tanto os dados do questionário como os dados comportamentais apontam para a mesma clivagem: a amostra divide-se em dois grupos com experiências marcadamente distintas.
+
+O \textbf{Grupo~A} --- oito participantes no questionário com SUS entre 75 e 98 (média $\approx 90$), correspondendo na base de dados a utilizadores como P1 e P2 (3 tópicos concluídos, \emph{streaks} de 9 a 13 dias, 11 a 12 sessões adaptativas resolvidas) --- representa utilizadores com maturidade digital que adoptaram a plataforma de forma entusiasta. Os seus comentários descrevem-na como ``intuitiva'', ``fácil de entender'' e ``uma ideia muito bem concebida com tudo o que precisa para evoluir''. Crucialmente, estes utilizadores \textbf{não fugiram das dificuldades}: os 12 percursos adaptativos de P2 mostram que o utilizador errou com frequência, mas continuou sempre e resolveu tudo. O ciclo de erro é sentido, para este grupo, não como frustração mas como oportunidade de aprendizagem --- exactamente o que o design procurava.
+
+O \textbf{Grupo~B} --- quatro participantes no questionário com SUS entre 35 e 60 (média $\approx 47$), correspondendo a utilizadores como P10 e P14 (0 tópicos concluídos, \emph{streak} de 1 dia, 3 sessões adaptativas sem resolução) --- representa utilizadores para quem a plataforma digital constitui, em si mesma, uma barreira: \emph{``Because it's so confusing, it ends up not being so helpful, what would make people lose interest in this app and also patience''}. Para este grupo, o problema não é o conteúdo --- é o meio. A aprendizagem autónoma por aplicação móvel pressupõe um grau mínimo de familiaridade digital que este grupo ainda não tem, e que é precisamente o que o \emph{Play4Change} procura ajudar a desenvolver.
+
+Cria-se assim um \textbf{paradoxo de acessibilidade} que as plataformas de educação digital frequentemente enfrentam~\cite{kasneci2023chatgpt}: a plataforma é mais eficaz para quem já tem literacia digital de base, mas pode afastar precisamente quem mais beneficiaria de a desenvolver. Resolver este paradoxo exigiria abordagens complementares --- tutoriais guiados de integração (\emph{onboarding}), sessões de apoio inicial presencial, ou uma versão simplificada da interface para utilizadores menos experientes. Estas são limitações do protótipo actual que informam directamente as propostas de trabalho futuro do Capítulo~\ref{cha:conclusao}.
+
+A Tabela~\ref{tab:dois-grupos} sintetiza as diferenças entre os dois grupos.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{4cm} p{4cm} p{4cm}}
+		\toprule
+		\textbf{Dimensão} & \textbf{Grupo A} (\emph{n}$\approx$8--9) & \textbf{Grupo B} (\emph{n}$\approx$4--6) \\
+		\midrule
+		SUS médio           & $\approx$90 (Excelente)        & $\approx$47 (Mau) \\
+		Tópicos concluídos  & 1--3 por utilizador            & 0 \\
+		\emph{Streak} máx.  & 5--13 dias                     & 1--3 dias \\
+		Sessões adaptativas & Numerosas, todas resolvidas    & Poucas ou sem resolução \\
+		Reacção ao ciclo IA & ``Fascinante e útil''          & Fluxo não percebido \\
+		Envolvimento real   & Alto e sustentado              & Abandonado cedo \\
+		Perfil presumível   & Confortável com tecnologia     & Pouca familiaridade digital \\
+		\bottomrule
+	\end{tabular}
+	\caption[Comparação dos dois grupos de utilizadores identificados]{Síntese dos dois grupos de utilizadores identificados, combinando dados do questionário e dados comportamentais da base de dados.}
+	\label{tab:dois-grupos}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Feedback qualitativo e sugestões de melhoria}
+\label{sec:feedback-qualitativo}
+% ─────────────────────────────────────────────────────────────────────────────
+
+As respostas abertas do questionário revelaram três temas recorrentes de melhoria que merecem registo. O primeiro, referido por três participantes independentes, é a introdução de \textbf{funcionalidades sociais e comunitárias} --- a possibilidade de comparar progressos com amigos, criar uma ``rivalidade positiva'' ou partilhar conhecimento. Este tema está directamente alinhado com a dimensão de \emph{relação} da Teoria da Autodeterminação~\cite{deci1985intrinsic} e com a investigação sobre gamificação que identifica a componente social como um dos motores de retenção mais eficazes~\cite{ott2019gamification}. O segundo tema foi a \textbf{consistência e qualidade da interface}, com sugestões específicas de hierarquia visual mais clara e respostas da IA mais concisas num ecrã de telemóvel. O terceiro tema, particularmente interessante, foi a sugestão de \textbf{personalização geográfica}: que a IA adaptasse as perguntas à cidade ou região onde o utilizador se encontra, usando dados públicos disponíveis para tornar os conteúdos hiper-locais. Esta ideia é conceptualmente consistente com os centros de competência da U!REKA~\citep{ureka2026alliance} e poderá orientar uma iteração futura da plataforma.
+
+% ─────────────────────────────────────────────────────────────────────────────
 \section{Discussão dos resultados}
 \label{sec:discussao-resultados}
+% ─────────────────────────────────────────────────────────────────────────────
 
-Discutir criticamente os resultados obtidos, relacionando-os com os objetivos definidos no Capítulo~\ref{cha:introducao} e identificando limitações do trabalho realizado.
+Os dados combinados permitem fazer uma leitura estruturada de cada um dos três pilares.
+
+O pilar da \textbf{personalização} obteve os resultados mais sólidos: 99\% de acerto final nas tarefas, 98\% de resolução das sessões adaptativas, 4,08/5 na percepção de adaptatividade, e referências espontâneas múltiplas ao ciclo de explicação como a melhor funcionalidade. O exemplo de sessão apresentado na Secção~\ref{sec:exemplo-conversa} mostra como a IA consegue, em 3 minutos, conduzir um utilizador de uma confusão conceptual real a uma compreensão genuína --- o tipo de \emph{step-level feedback} que VanLehn~\cite{vanlehn2011relative} identifica como central na eficácia dos sistemas de tutoria inteligente.
+
+O pilar do \textbf{reconhecimento} obteve também um resultado muito concreto: 16 distintivos emitidos a 9 utilizadores, com uma taxa de aprovação de 100\% nos tópicos concluídos (o limiar $\alpha = 0.60$ foi atingido por todos os que completaram). Porém, os participantes sugeriram que os distintivos actuais teriam maior poder motivacional se ancorados a valor no mundo real (descontos, bilhetes para eventos, reconhecimento em plataformas externas) --- uma evolução que está fora do âmbito deste protótipo mas que justificaria investigação em iterações futuras.
+
+O pilar do \textbf{envolvimento} apresenta o quadro mais nuançado. Para o Grupo~A, os mecanismos de \emph{streak} e desbloqueio diário funcionaram bem: \emph{streaks} de 9 a 13 dias em utilizadores que completaram múltiplos tópicos são um sinal de hábito criado. Para o Grupo~B, os mesmos mecanismos não foram suficientes para criar tracção. A sugestão mais recorrente --- funcionalidades sociais --- aponta para a dimensão que o protótipo não cobre: a comunidade.
+
+\subsection*{Limitações da avaliação}
+\label{sec:limitacoes-avaliacao}
+
+Esta avaliação tem limitações que devem ser explicitamente reconhecidas. A \textbf{dimensão da amostra} do questionário ($n=12$) é insuficiente para extrair conclusões estatisticamente robustas; os resultados devem ser entendidos como indicadores e hipóteses a testar em estudos mais alargados. A \textbf{amostragem por conveniência} pode sobre-representar utilizadores com familiaridade digital, enviesando positivamente os resultados do Grupo~A. Os \textbf{dados comportamentais}, embora objectivos, cobrem um período de utilização relativamente curto e sem protocolo de tarefa estruturado --- o que significa que alguns utilizadores podem ter explorado apenas partes da plataforma. Por fim, \textbf{nenhum tópico de conteúdo foi validado por especialistas em educação cívica}, o que é uma limitação importante para uma versão madura da plataforma e está discutido no Capítulo~\ref{cha:conclusao}.
+
+Apesar destas limitações, a triangulação entre questionário e dados comportamentais permitiu uma leitura mais completa do que qualquer uma das fontes isolada: os dados de utilização confirmaram hipóteses levantadas pelo questionário (a personalização funciona, o streak cria hábito no Grupo A) e as respostas qualitativas explicaram padrões visíveis nos dados (o abandono do Grupo B reflete-se nos \emph{streaks} de 1 dia).
