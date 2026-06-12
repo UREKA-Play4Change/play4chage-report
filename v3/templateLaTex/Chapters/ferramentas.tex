@@ -1,28 +1,213 @@
 %
 % ferramentas.tex
-% Capítulo 3 — Ferramentas, Tecnologias e Utilização de IA
+% Capítulo 4 — Ferramentas, Tecnologias e Utilização de IA
 %
-\chapter{Ferramentas, Tecnologias e Utilização de Inteligência Artificial}
+\chapter{Ferramentas, Tecnologias e Metodologia}
 \label{cha:ferramentas}
 
-\section{Tecnologias e ferramentas utilizadas}
-\label{sec:tecnologias-utilizadas}
+Este capítulo descreve o conjunto de tecnologias que constituem o ecossistema técnico do \emph{Play4Change}, a pipeline de integração e entrega contínua que garante a qualidade do código em cada alteração, e a forma como a inteligência artificial foi utilizada ao longo do próprio processo de desenvolvimento --- não apenas como funcionalidade da plataforma, mas como ferramenta de trabalho.
 
-Descrever as principais tecnologias, linguagens, frameworks, bibliotecas e plataformas utilizadas no desenvolvimento do Play4Change (p.ex. linguagens de programação, motores de jogo/frameworks de front-end e back-end, bases de dados, serviços cloud, ferramentas de design, etc.), justificando as escolhas efetuadas.
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Arquitectura tecnológica}
+\label{sec:tecnologias}
+% ─────────────────────────────────────────────────────────────────────────────
 
-\section{Metodologias e processos de trabalho}
-\label{sec:metodologias-processos}
+O \emph{Play4Change} é composto por quatro camadas tecnológicas distintas: o servidor de aplicação, a aplicação móvel, o painel de administração web e a infraestrutura de suporte. A Tabela~\ref{tab:tecnologias} resume as tecnologias principais em cada camada.
 
-Descrever a metodologia de desenvolvimento adotada (p.ex. Scrum/Kanban, controlo de versões, integração contínua, gestão de tarefas) e as ferramentas de apoio utilizadas (p.ex. Git/GitHub, Trello/Jira, Figma).
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{2.8cm} p{3.8cm} p{6.2cm}}
+		\toprule
+		\textbf{Camada} & \textbf{Tecnologia} & \textbf{Papel} \\
+		\midrule
+		Servidor        & Spring Boot 3.2 (Kotlin)    & API REST, lógica de negócio, orquestração de IA \\
+		                & PostgreSQL 16 + pgvector    & Base de dados relacional e vectorial \\
+		                & Redis 7                     & Cache de sessões e controlo de ritmo (\emph{rate limiting}) \\
+		                & MinIO                       & Armazenamento de objectos (imagens, assets) \\
+		                & Mistral 7B / LangChain4j    & Geração de conteúdo adaptativo e explicações \\
+		                & Resend                      & Envio transacional de correio electrónico \\
+		\addlinespace
+		Móvel           & Kotlin Multiplatform 2.3    & Base de código partilhada Android/iOS \\
+		                & Compose Multiplatform 1.10  & Interface declarativa nativa \\
+		                & Decompose 3.3               & Navegação e gestão de estado \\
+		                & Koin                        & Injecção de dependências \\
+		\addlinespace
+		Web (admin)     & React 18 + TypeScript       & Painel de administração de conteúdos \\
+		                & Vite + Tailwind CSS         & \emph{Bundler} e design system utilitário \\
+		                & TanStack Query              & Gestão de estado remoto e cache HTTP \\
+		\addlinespace
+		Infraestrutura  & Docker + Docker Compose     & Orquestração local e de produção \\
+		                & nginx 1.27                  & \emph{Reverse proxy} e servidor do cliente estático \\
+		                & Prometheus + Grafana        & Observabilidade, métricas e alertas \\
+		\bottomrule
+	\end{tabular}
+	\caption[Tecnologias utilizadas no Play4Change por camada]{Tecnologias principais do \emph{Play4Change}, organizadas por camada funcional.}
+	\label{tab:tecnologias}
+\end{table}
 
-\section{Utilização de Inteligência Artificial}
-\label{sec:utilizacao-ia}
+\subsection*{Servidor}
 
-Descrever, de forma transparente, em que fases e de que forma foram utilizadas ferramentas de Inteligência Artificial (p.ex. assistentes de programação, geração/revisão de texto, geração de imagens) ao longo do desenvolvimento deste trabalho, incluindo:
+O servidor foi implementado em \textbf{Kotlin} com o \emph{framework} \textbf{Spring Boot 3.2}, seguindo uma arquitectura hexagonal (\emph{Ports \& Adapters})~\cite{cockburn2005hexagonal} que separa a lógica de negócio das suas dependências externas. A escolha do Kotlin em vez do Java tradicional permitiu aproveitar a expressividade da linguagem --- em particular as \emph{coroutines} para operações assíncronas, os tipos não-anuláveis para redução de erros de \emph{null pointer}, e o estilo funcional para as transformações de dados. O Spring Boot forneceu a base REST, a gestão de transações e o suporte à autenticação com JWT~\cite{rfc7519}.
 
-\begin{itemize}
-	\item Quais as ferramentas/modelos de IA utilizados;
-	\item Em que tarefas foram aplicadas (p.ex. apoio à escrita, geração de código, depuração, criação de conteúdos gráficos, pesquisa);
-	\item De que forma o trabalho produzido com apoio de IA foi revisto, validado e integrado pelo autor;
-	\item Considerações éticas e limitações identificadas no recurso a estas ferramentas.
-\end{itemize}
+A base de dados \textbf{PostgreSQL 16} foi estendida com a extensão \textbf{pgvector}, que adiciona suporte a vectores de \emph{embeddings} directamente no mesmo motor relacional. Esta co-localização elimina a necessidade de um sistema vectorial separado e mantém todas as garantias ACID para a camada de personalização. O \textbf{Redis} é utilizado para a cache de resultados de consultas frequentes e para controlo de ritmo das chamadas à API de IA. A integração com o modelo de linguagem \textbf{Mistral 7B} é feita através do \textbf{LangChain4j 0.36.2}~\cite{langchain4j}, implementando o padrão RAG~\cite{lewis2020rag} descrito no Capítulo~\ref{cha:enquadramento}.
+
+\subsection*{Aplicação móvel}
+
+A aplicação móvel foi desenvolvida com \textbf{Kotlin Multiplatform (KMP) 2.3} e \textbf{Compose Multiplatform 1.10}, o que permite partilhar a maior parte da lógica de negócio e da interface entre Android e iOS a partir de um único código-base. A navegação e a gestão de estado são tratadas pelo \textbf{Decompose 3.3}, que oferece uma abstracção de \emph{stack} de componentes compatível com ambas as plataformas e com testes unitários.
+
+\subsection*{Painel de administração}
+
+O painel web de administração é uma aplicação \textbf{React 18} em \textbf{TypeScript}, construída com \textbf{Vite} e \textbf{Tailwind CSS}. Permite criar e gerir tópicos, tarefas e conteúdos, monitorizar inscrições e visualizar dados de utilização. O \textbf{TanStack Query} é utilizado para a gestão de estado remoto, garantindo cache automática, revalidação e tratamento consistente de estados de carregamento e erro.
+
+\subsection*{Infraestrutura de produção}
+
+Todo o ambiente de produção é definido num único ficheiro \texttt{docker-compose.yml} com sete serviços: servidor Spring Boot, PostgreSQL, Redis, MinIO, nginx, Prometheus e Grafana. O \textbf{nginx} actua como \emph{reverse proxy} --- recebe os pedidos externos na porta 80, encaminha as chamadas à API (prefixadas em \texttt{/play4change-server/}) para o servidor na porta 8080, e serve o cliente React como conteúdo estático. O \textbf{Prometheus} recolhe métricas expostas pelo actuador Spring Boot a cada 15 segundos e o \textbf{Grafana} apresenta-as em três \emph{dashboards} pré-configurados: um \emph{dashboard} geral, um centrado na latência da IA e um que mostra o fluxo do aprendente em tempo real. A Figura~\ref{fig:infra} ilustra a topologia de produção.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		box/.style={draw, rounded corners, align=center, font=\small,
+		            minimum width=2.2cm, minimum height=0.9cm, fill=gray!8},
+		ext/.style={box, fill=blue!8},
+		obs/.style={box, fill=orange!10},
+		db/.style={box, fill=green!8},
+		seta/.style={-{Latex[length=2mm]}, thick},
+		lbl/.style={font=\tiny, gray!60}
+	]
+		\node[ext] (client)  at (0,0)       {Cliente\\(móvel/web)};
+		\node[box] (nginx)   at (3.2,0)     {nginx\\reverse proxy};
+		\node[box] (server)  at (6.4,0)     {Spring Boot\\:8080};
+		\node[db]  (pg)      at (6.4,-2.2)  {PostgreSQL\\+pgvector};
+		\node[db]  (redis)   at (9.2,-2.2)  {Redis};
+		\node[db]  (minio)   at (3.6,-2.2)  {MinIO};
+		\node[ext] (mistral) at (9.8,0)     {Mistral 7B\\(LangChain4j)};
+		\node[obs] (prom)    at (6.4,2.2)   {Prometheus\\:9090};
+		\node[obs] (grafana) at (9.2,2.2)   {Grafana\\:3000};
+
+		\draw[seta] (client.east)  -- node[above,lbl]{HTTP 80} (nginx.west);
+		\draw[seta] (nginx.east)   -- node[above,lbl]{:8080}   (server.west);
+		\draw[seta] (server.south) -- (pg.north);
+		\draw[seta] (server.east) to[bend left=10] (redis.north);
+		\draw[seta] (server.south) -- ++(0,-0.4) -| (minio.north);
+		\draw[seta] (server.east)  -- node[above,lbl]{API} (mistral.west);
+		\draw[seta, dashed] (prom.south) -- node[right,lbl]{scrape} (server.north);
+		\draw[seta] (prom.east)    -- (grafana.west);
+	\end{tikzpicture}
+	\caption[Topologia de infraestrutura de produção do Play4Change]{Topologia de infraestrutura de produção: o nginx recebe todo o tráfego externo e distribui-o; o servidor Spring Boot comunica com as quatro dependências de dados e com a API de IA; o Prometheus recolhe métricas do servidor e o Grafana apresenta-as em \emph{dashboards}.}
+	\label{fig:infra}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Pipeline de integração e entrega contínua}
+\label{sec:cicd}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O \emph{Play4Change} adopta uma pipeline de \emph{Continuous Integration / Continuous Delivery} (CI/CD) implementada em \textbf{GitHub Actions}, composta por três \emph{workflows} distintos com responsabilidades bem delimitadas. A Figura~\ref{fig:cicd-pipeline} ilustra como os três \emph{workflows} se articulam com os eventos do repositório.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[
+		wfevent/.style={draw, rounded corners, fill=blue!10, align=center,
+		                font=\small, minimum width=2.8cm, minimum height=0.85cm},
+		wfstep/.style={draw, rounded corners, fill=gray!8, align=center,
+		               font=\small, minimum width=2.8cm, minimum height=0.85cm},
+		wfpass/.style={draw, rounded corners, fill=green!10, align=center,
+		               font=\small, minimum width=2.8cm, minimum height=0.85cm},
+		wfwarn/.style={draw, rounded corners, fill=orange!12, align=center,
+		               font=\small, minimum width=2.8cm, minimum height=0.85cm},
+		seta/.style={-{Latex[length=2mm]}, thick},
+		lbl/.style={font=\tiny, gray!55, align=left}
+	]
+		% ── Workflow 1: CI ────────────────────────────────────────
+		\node[lbl]      at (-1.4, 0.65) {CI (cada commit/PR)};
+		\node[wfevent]  (push)     at (0,   0)    {\emph{push} / PR\\para \texttt{main}};
+		\node[wfstep]   (gitleaks) at (3.4, 0)    {Gitleaks\\secret scan};
+		\node[wfstep]   (build)    at (6.8, 0)    {Gradle build\\+ testes};
+		\node[wfstep]   (detekt)   at (10.2,0)    {Detekt\\análise estática};
+		\node[wfpass]   (ciok)     at (13.2,0)    {CI passou\\merge ok};
+
+		\draw[seta] (push)--(gitleaks);
+		\draw[seta] (gitleaks)--(build);
+		\draw[seta] (build)--(detekt);
+		\draw[seta] (detekt)--(ciok);
+
+		% ── Workflow 2: Release ───────────────────────────────────
+		\node[lbl]      at (-1.4,-2.05) {Release (tag semântica)};
+		\node[wfevent]  (tag)      at (0,  -2.6)  {\emph{push} de tag\\\texttt{v*}};
+		\node[wfstep]   (apkbuild) at (3.4,-2.6)  {Build APK\\release + sign};
+		\node[wfstep]   (semver)   at (6.8,-2.6)  {Calcular\\versionCode};
+		\node[wfpass]   (release)  at (10.2,-2.6) {GitHub Release\\APK anexado};
+
+		\draw[seta] (tag)--(apkbuild);
+		\draw[seta] (apkbuild)--(semver);
+		\draw[seta] (semver)--(release);
+
+		% ── Workflow 3: OWASP ─────────────────────────────────────
+		\node[lbl]      at (-1.4,-4.65) {OWASP (semanal, auto)};
+		\node[wfevent]  (cron)     at (0,  -5.2)  {Agendado\\segunda 06:00 UTC};
+		\node[wfstep]   (deps)     at (3.4,-5.2)  {Copiar JARs\\runtime};
+		\node[wfstep]   (owasp)    at (6.8,-5.2)  {OWASP dep-check\\CVSS $\ge$ 7};
+		\node[wfwarn]   (report)   at (10.2,-5.2) {Relatório HTML\\artefacto 30 dias};
+
+		\draw[seta] (cron)--(deps);
+		\draw[seta] (deps)--(owasp);
+		\draw[seta] (owasp)--(report);
+
+	\end{tikzpicture}
+	\caption[Pipeline CI/CD do Play4Change com os três workflows GitHub Actions]{Os três \emph{workflows} da pipeline CI/CD do \emph{Play4Change}: o primeiro corre em cada \emph{commit} ou \emph{pull request}; o segundo é desencadeado por uma \emph{tag} semântica e produz o APK assinado; o terceiro corre semanalmente e verifica vulnerabilidades CVE nas dependências.}
+	\label{fig:cicd-pipeline}
+\end{figure}
+
+\subsection*{Workflow 1 --- Integração Contínua}
+
+O \emph{workflow} de CI é desencadeado em todos os \emph{commits} para a \emph{branch} \texttt{main} e em todos os \emph{pull requests} que a ela se destinam. Corre num agente \emph{macOS} (exigência do \emph{toolchain} Android) e executa quatro passos em sequência:
+
+\begin{enumerate}
+	\item \textbf{Gitleaks} --- varredura de segredos no histórico completo do repositório (\texttt{fetch-depth:~0}). Se forem detectadas credenciais, chaves de API ou outros segredos comprometidos no código, o \emph{workflow} falha imediatamente antes de qualquer compilação.
+	\item \textbf{JDK 21 (Eclipse Temurin)} --- configuração do ambiente Java com cache automática das dependências Gradle entre execuções, reduzindo o tempo de compilação em execuções subsequentes.
+	\item \textbf{Gradle build + testes} --- compila todos os módulos (servidor, móvel, \emph{common}) e executa os testes unitários e de integração com JUnit~5, MockK e SpringMockK. O passo exclui explicitamente o \emph{packaging} de \emph{release} para reduzir o tempo de execução em CI.
+	\item \textbf{Detekt} --- análise estática do código Kotlin do servidor, verificando aderência às regras definidas em \texttt{detekt.yml}: complexidade ciclomática, tamanho de funções, dependências em concretos em vez de interfaces, e estilo de código.
+\end{enumerate}
+
+Apenas se todos os passos passarem é que um \emph{pull request} pode ser integrado na \emph{branch} principal. A Tabela~\ref{tab:ci-gates} resume os critérios de qualidade verificados em cada passo.
+
+\begin{table}[h]
+	\centering
+	\small
+	\begin{tabular}{p{2.8cm} p{5.0cm} p{5.0cm}}
+		\toprule
+		\textbf{Ferramenta} & \textbf{O que verifica} & \textbf{Critério de falha} \\
+		\midrule
+		Gitleaks            & Segredos no histórico git                    & Qualquer correspondência com os detectores predefinidos \\
+		JUnit 5 + MockK     & Testes unitários e de integração             & Qualquer teste falhado \\
+		Detekt              & Qualidade e estilo do código Kotlin          & Violações acima do limiar configurado \\
+		\bottomrule
+	\end{tabular}
+	\caption[Critérios de qualidade verificados na pipeline de CI]{Ferramentas e critérios de qualidade verificados em cada execução da pipeline de integração contínua.}
+	\label{tab:ci-gates}
+\end{table}
+
+\subsection*{Workflow 2 --- Release do APK Android}
+
+O \emph{workflow} de \emph{release} é desencadeado exclusivamente por \emph{tags} com prefixo \texttt{v} (por exemplo, \texttt{v1.2.3}). Este mecanismo garante que os binários de produção são sempre rastreáveis a uma versão explícita. O \emph{workflow}: restaura os ficheiros sensíveis (\emph{keystore} e \texttt{google-services.json}) a partir de segredos encriptados do repositório, nunca armazenados em texto simples; calcula automaticamente o \texttt{versionCode} Android a partir da \emph{tag} semântica, segundo a fórmula $\text{MAJOR} \times 10000 + \text{MINOR} \times 100 + \text{PATCH}$; compila e assina o APK de \emph{release} com a \emph{keystore} de produção; e cria automaticamente uma \emph{GitHub Release} com o \texttt{play4change.apk} anexado, tornando-o imediatamente disponível para distribuição sem qualquer passo manual.
+
+\subsection*{Workflow 3 --- Verificação semanal de dependências (OWASP)}
+
+O terceiro \emph{workflow} corre automaticamente todas as segundas-feiras às 06:00 UTC. Utiliza a ferramenta \textbf{OWASP Dependency Check} para analisar todos os JARs do servidor e dos módulos móveis em busca de vulnerabilidades conhecidas registadas na base de dados CVE (\emph{Common Vulnerabilities and Exposures}). O \emph{workflow} falha se forem encontradas vulnerabilidades com \emph{score} CVSS igual ou superior a 7 (``\emph{High}'' ou ``\emph{Critical}''), forçando uma resposta atempada. Os relatórios HTML gerados ficam disponíveis como artefactos no GitHub durante 30 dias. Esta verificação periódica é particularmente relevante para uma plataforma que usa um LLM externo e que processa dados de utilizadores --- onde uma dependência comprometida poderia ter impacto directo na privacidade dos dados ou na integridade dos conteúdos gerados.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Metodologia de desenvolvimento}
+\label{sec:metodologia-desenvolvimento}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O desenvolvimento do \emph{Play4Change} seguiu um processo iterativo e incremental, próximo de uma metodologia ágil informal adequada a uma equipa de dimensão reduzida. O controlo de versões foi feito com \textbf{Git} e o repositório alojado no \textbf{GitHub}, com uma estratégia de \emph{feature branches}: cada nova funcionalidade ou correcção é desenvolvida numa \emph{branch} dedicada (por exemplo, \texttt{feature/jwt-auth} ou \texttt{bugfix/daily-reminders}), submetida como \emph{pull request} e sujeita a revisão de código antes de ser integrada na \emph{branch} \texttt{main}. Toda a integração é protegida pela pipeline de CI descrita na secção anterior.
+
+A gestão de dependências é centralizada no ficheiro \texttt{gradle/libs.versions.toml}, o que garante consistência entre todos os módulos do projecto e facilita actualizações coordenadas. O \textbf{Flyway} é utilizado para a gestão de migrações da base de dados: cada alteração ao esquema SQL é registada como um ficheiro de migração versionado, aplicado de forma automática e ordenada aquando do arranque do servidor, garantindo que o estado da base de dados é sempre rastreável e reproduzível em qualquer ambiente.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Utilização de inteligência artificial no desenvolvimento}
+\label{sec:ia-no-desenvolvimento}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A declaração completa sobre as ferramentas de inteligência artificial utilizadas, o âmbito da sua aplicação e as considerações éticas associadas encontra-se no capítulo pré-textual \emph{Utilização de Inteligência Artificial} (página~\pageref{cha:declaracao-ia}).
