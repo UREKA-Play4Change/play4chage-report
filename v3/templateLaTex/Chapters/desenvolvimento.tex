@@ -833,6 +833,8 @@ Seja $\mathbf{s} \in \mathbb{R}^{1024}$ o \emph{embedding} do novo contexto de d
 	\label{eq:reuse-strategy}
 \end{equation}
 
+Os limiares $\theta_f = 0.90$ e $\theta_p = 0.65$ foram calibrados empiricamente durante o desenvolvimento do protótipo: valores de similaridade coseno acima de 0.90 correspondem, na prática, a contextos de dificuldade quase idênticos --- mesmo tópico, mesmo padrão de erro, audiência semelhante --- onde a reutilização directa é segura sem re-contextualização pelo LLM. O intervalo $0.65$--$0.90$ capta contextos do mesmo domínio temático mas com diferenças suficientes no padrão de erro para justificar que o LLM adapte as subtarefas ao novo contexto específico. Abaixo de 0.65 a similaridade é insuficiente para qualquer reutilização útil: o modelo gera de raiz, sem material de referência.
+
 A Tabela~\ref{tab:dedup-thresholds} resume as três estratégias e o comportamento de cada uma.
 
 \begin{table}[h]
@@ -983,7 +985,7 @@ A Figura~\ref{fig:maquina-estados} apresenta a máquina de estados completa que 
 	\label{fig:maquina-estados}
 \end{figure}
 
-O parâmetro de profundidade máxima (\texttt{MAX\_STRUGGLE\_DEPTH = 1}) é uma decisão consciente do protótipo: em vez de gerar cadeias de recuperação indefinidamente longas, o sistema escalona rapidamente para o modo de explicação quando uma segunda tentativa adaptativa também falha. Esta opção reflecte a ideia de que, a partir de certo ponto, o que o utilizador precisa não é de mais perguntas, mas de uma explicação clara e da possibilidade de fazer as suas próprias perguntas --- em linha com os princípios do \emph{mastery learning} de Bloom \citep{bloom1968learning} e com a abordagem de tutores inteligentes baseados em diálogo (\emph{Intelligent Tutoring Systems}) \citep{vanlehn2011relative}.
+O parâmetro de profundidade máxima (\texttt{MAX\_STRUGGLE\_DEPTH = 1}) é uma decisão consciente do protótipo, apoiada num princípio central de Bloom sobre \emph{mastery learning} \citep{bloom1968learning}: um aprendente que falhou o mesmo conceito duas vezes consecutivas --- primeiro na tarefa original, depois no percurso adaptativo --- não beneficia de mais exercícios do mesmo tipo; o que precisa é de uma mudança qualitativa no modo de instrução. Aumentar a profundidade para 2 ou mais repetiria a mesma modalidade (exercícios guiados estruturados) com um utilizador já frustrado, o que a literatura sobre tutores inteligentes associa a abandono \citep{vanlehn2011relative}. A escalonagem para diálogo aberto com o LLM representa essa mudança qualitativa: em vez de mais prática estruturada, o utilizador passa a ter acesso a uma explicação holística e à possibilidade de formular as suas próprias perguntas --- o padrão socrático que VanLehn identifica como o diferenciador dos ITS mais eficazes.
 
 \subsection{Modo de explicação e diálogo com a IA}
 \label{ssec:explicacao}
