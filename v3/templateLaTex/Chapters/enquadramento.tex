@@ -12,11 +12,15 @@ Antes de se analisar o panorama de soluções existentes, é importante clarific
 
 \subsection*{Gamificação}
 
+\begin{sloppypar}
 A gamificação consiste na aplicação de elementos e mecânicas tipicamente associados a jogos --- como pontos, níveis, distintivos, tabelas de classificação ou sequências de progresso --- a contextos que não são, em si, jogos, com o objetivo de aumentar a motivação e o envolvimento dos utilizadores~\cite{ott2019gamification}. No domínio da educação digital, a gamificação é frequentemente usada precisamente para responder ao problema do abandono: ao tornar o processo de aprendizagem mais apelativo e ao reconhecer visivelmente o progresso da pessoa, procura-se que esta sinta vontade de continuar. É desta lógica que nascem, em larga medida, dois dos três pilares do \emph{Play4Change}: o \textbf{reconhecimento} --- a visibilidade tangível do progresso através de distintivos que assinalam competências adquiridas --- e o \textbf{envolvimento} --- os mecanismos que tornam o regresso à aplicação algo natural e motivador, e não mais uma tarefa.
+\end{sloppypar}
 
 A literatura sobre gamificação em contextos educativos revela resultados promissores, mas também aponta limites importantes. O estudo de revisão sistemática de Toda et al.~\cite{ott2019gamification}, que analisou mais de uma década de investigação, conclui que os elementos da chamada tríade \emph{PBL} (\emph{Points, Badges, Leaderboards}) têm impacto positivo no envolvimento e na persistência a curto prazo, mas que o seu efeito sustentado depende criticamente do modo como são integrados no contexto pedagógico. Em particular, os autores alertam para um risco que o design de qualquer plataforma gamificada deve considerar: o da motivação extrínseca --- aprender para ganhar pontos ou subir numa tabela --- substituir gradualmente a motivação intrínseca, sobretudo em utilizadores que, à partida, já estariam motivados a aprender.
 
+\begin{sloppypar}
 Esta tensão entre motivação extrínseca e intrínseca é central na Teoria da Autodeterminação (\emph{Self-Determination Theory})~\cite{deci1985intrinsic}, que identifica três necessidades psicológicas básicas cujo suporte favorece a motivação duradoura: a \textbf{autonomia} (sentir que as próprias escolhas fazem sentido), a \textbf{competência} (sentir-se capaz e em crescimento) e a \textbf{relação} (sentir-se ligado aos outros). Uma plataforma que se limita a acumular pontos satisfaz potencialmente apenas a competência, e de forma superficial; o \emph{Play4Change} procura alargar este espectro: as sequências de dias consecutivos (\emph{streaks}) apelam à autonomia ao tornar o regresso uma decisão da própria pessoa, os distintivos reconhecem competência genuína (só são atribuídos quando se domina um tópico a um nível mínimo), e a estrutura de tópicos relacionados com a vida cívica real procura tornar a aprendizagem significativa para além do jogo em si.
+\end{sloppypar}
 
 \subsection*{Aprendizagem adaptativa}
 
@@ -32,7 +36,9 @@ A aprendizagem por mestria (\emph{mastery learning})~\cite{bloom1968learning} é
 
 A inteligência artificial tem vindo a tornar a aprendizagem adaptativa cada vez mais viável e acessível, ao permitir analisar o desempenho de cada utilizador e gerar ou ajustar conteúdos de forma praticamente individual --- algo que seria muito difícil de fazer manualmente, à escala de milhares de utilizadores~\cite{kasneci2023chatgpt}. É também esta capacidade que torna possível um dos objetivos centrais do \emph{Play4Change}: que cada pessoa sinta que a aplicação ``percebe'' onde tem mais dificuldade e a ajuda a esclarecer essas dúvidas, em vez de a confrontar com um conjunto fixo e genérico de exercícios.
 
+\begin{sloppypar}
 Os Modelos de Linguagem de Grande Dimensão (\emph{Large Language Models}, LLM) tornaram concreta uma possibilidade que antes era apenas teórica: gerar conteúdos pedagógicos personalizados a pedido, em linguagem natural, de forma economicamente acessível e à escala. Kasneci et al.~\cite{kasneci2023chatgpt} identificam, numa análise abrangente das oportunidades e desafios dos LLM na educação, que entre as potencialidades mais relevantes estão precisamente a geração de exercícios adaptados ao nível do aprendente, a explicação de conceitos de formas diferentes consoante o perfil da pessoa, e o \emph{feedback} imediato e personalizado. Os mesmos autores sublinham, porém, que a utilização acrítica destes modelos levanta desafios sérios: a possibilidade de gerar conteúdos incorretos ou imprecisos (\emph{hallucinations}), a necessidade de supervisão editorial, e o risco de substituição do pensamento crítico do aprendente por uma dependência excessiva nas respostas da máquina.
+\end{sloppypar}
 
 Para mitigar o risco de qualidade, o \emph{Play4Change} adopta uma abordagem de geração ancorada em contexto, inspirada no padrão \emph{Retrieval-Augmented Generation} (RAG)~\cite{lewis2020rag}: em vez de pedir ao modelo que gere conteúdo livremente a partir de um pedido vago, o sistema constrói um \emph{prompt} estruturado que inclui o perfil de dificuldade do utilizador, o tópico pedagógico em causa, exemplos de exercícios anteriores considerados bem-sucedidos e um esquema JSON que o modelo deve respeitar na resposta. Adicionalmente, a resposta do modelo é validada contra esse esquema e, em caso de falha de formato, o pedido é reenviado com uma indicação explícita dos erros encontrados. Esta combinação de contexto estruturado, exemplos de referência e validação pós-geração procura tornar a saída do LLM suficientemente fiável para ser apresentada ao utilizador sem revisão humana prévia --- reconhecendo, ao mesmo tempo, que esta garantia é parcial e que a supervisão editorial dos conteúdos gerados continua a ser um passo importante para uma versão madura da plataforma.
 
@@ -55,7 +61,7 @@ A Tabela~\ref{tab:comparacao-plataformas} resume esta análise, posicionando cad
 \begin{table}[h]
 	\centering
 	\small
-	\begin{tabular}{p{2.4cm} p{3.6cm} p{3.6cm} p{3.6cm}}
+	\begin{tabular}{p{2.0cm} p{3.55cm} p{3.55cm} p{4.1cm}}
 		\toprule
 		\textbf{Plataforma} & \textbf{Reconhecimento} & \textbf{Envolvimento} & \textbf{Personalização} \\
 		\midrule
@@ -77,7 +83,7 @@ A Tabela~\ref{tab:comparacao-plataformas} resume esta análise, posicionando cad
 		Khan Academy &
 			Pontos de energia, distintivos e mapas de progresso que tornam visível o que já foi dominado &
 			Painel de progresso e missões que ajudam o utilizador a saber sempre ``o que vem a seguir'' &
-			Aprendizagem por mestria (\emph{mastery learning})~\cite{bloom1968learning}: só se avança quando se domina o tema anterior \\
+			Aprendizagem por mestria (\emph{mastery learn\-ing}) \cite{bloom1968learning}: só se avança quando se domina o tema anterior \\
 		\addlinespace
 		edX &
 			Certificados verificados e indicadores de conclusão por módulo &
