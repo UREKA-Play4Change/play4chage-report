@@ -202,7 +202,7 @@ A predominância de \texttt{READING\_ERROR} (56\%) é pedagogicamente informativ
 
 \subsection*{Usabilidade geral e pontuação SUS}
 
-Os 12 participantes do questionário atribuíram à usabilidade geral e navegação uma pontuação média de \textbf{4,17 em 5} ($\sigma = 1{,}19$). A pontuação SUS calculada segundo o método de Brooke~\cite{brooke1996sus} foi de \textbf{76,0/100}, acima da média histórica de 68 e classificada como ``boa''. A Figura~\ref{fig:sus-distribuicao} representa as pontuações individuais ordenadas de forma crescente e revela uma distribuição bimodal que é analisada na Secção~\ref{sec:dois-grupos}.
+Os 12 participantes do questionário atribuíram à usabilidade geral e navegação uma pontuação média de \textbf{4,17 em 5} ($\sigma = 1{,}19$). A pontuação SUS calculada segundo o método de Brooke~\cite{brooke1996sus} foi de \textbf{76,0/100}, acima da média histórica de 68. Importa, contudo, sublinhar que a dimensão da amostra ($n=12$) não permite qualquer extrapolação estatística: a pontuação deve ser lida como \emph{um indicador inicial positivo, mas estatisticamente irrelevante dada a dimensão da amostra}, e não como uma validação conclusiva da usabilidade da plataforma. A Figura~\ref{fig:sus-distribuicao} representa as pontuações individuais ordenadas de forma crescente e revela uma distribuição bimodal que é analisada na Secção~\ref{sec:dois-grupos}.
 
 \begin{figure}[h]
 	\centering
@@ -281,7 +281,7 @@ A Tabela~\ref{tab:engagement-scores} resume as quatro dimensões de envolvimento
 	\label{tab:engagement-scores}
 \end{table}
 
-A percepção da adaptatividade da IA (4,08/5) é particularmente relevante: nenhum dos 12 participantes discordou da afirmação de que os percursos de aprendizagem se adaptaram eficazmente ao seu desempenho --- um resultado coerente com a taxa de resolução de 98\% observada nos dados comportamentais.
+A percepção da adaptatividade da IA (4,08/5) é, neste contexto, um dado qualitativo digno de nota: nenhum dos 12 participantes discordou da afirmação de que os percursos de aprendizagem se adaptaram eficazmente ao seu desempenho. Ainda que a dimensão da amostra ($n=12$) impeça qualquer generalização estatística, este resultado é coerente com a taxa de resolução de 98\% observada nos dados comportamentais e constitui uma hipótese de investigação a aprofundar em estudos futuros com amostras de maior dimensão.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{O ciclo adaptativo em ação: um exemplo real}
@@ -302,6 +302,7 @@ O excerto abaixo transcreve as oito mensagens trocadas (papel USER e papel AI), 
 \smallskip
 \noindent\textbf{Diálogo de explicação:}
 
+\begin{sloppypar}
 \begin{description}
 	\item[\small USER] \small \emph{``Why is my answer wrong?''}
 	\item[\small AI]   \small \emph{``Could you share the exact sentence or paragraph you wrote? That way I can see exactly where the misunderstanding is and help fix it.''}
@@ -312,6 +313,7 @@ O excerto abaixo transcreve as oito mensagens trocadas (papel USER e papel AI), 
 	\item[\small USER] \small \emph{``Yes, then why is C right and not D?''}
 	\item[\small AI]   \small \emph{``A toaster pops up bread because a timer inside it has counted down; that timer is a tiny computer storing and counting `ticks,' so it does process and store information. A smartphone playing music is also digital, but the question lets only one answer be chosen, and the hint wants the simplest device that still fits the definition.''}
 \end{description}
+\end{sloppypar}
 
 \medskip
 Esta sequência ilustra vários aspectos importantes do ciclo. Em primeiro lugar, a IA não deu a resposta de imediato --- solicitou que o utilizador explicitasse a sua dúvida, forçando-o a articular o raciocínio (pergunta socrática). Em segundo lugar, quando o utilizador continuou sem perceber, a IA escalou a explicação para um nível de maior detalhe técnico, sem perder a acessibilidade da linguagem. Em terceiro lugar, a última troca --- \emph{``Yes, then why is C right and not D?''} --- mostra que o utilizador chegou a um nível de compreensão suficiente para formular a dúvida correta: já não estava perdido, estava a refinar. Toda a sessão decorreu em \textbf{menos de 3 minutos}.
@@ -329,7 +331,7 @@ O \textbf{Grupo~A} --- oito participantes no questionário com SUS entre 75 e 98
 
 O \textbf{Grupo~B} --- quatro participantes no questionário com SUS entre 35 e 60 (média $\approx 47$), correspondendo a utilizadores como P10 e P14 (0 tópicos concluídos, \emph{streak} de 1 dia, 3 sessões adaptativas sem resolução) --- representa utilizadores para quem a plataforma digital constitui, em si mesma, uma barreira: \emph{``Because it's so confusing, it ends up not being so helpful, what would make people lose interest in this app and also patience''}. Para este grupo, o problema não é o conteúdo --- é o meio. A aprendizagem autónoma por aplicação móvel pressupõe um grau mínimo de familiaridade digital que este grupo ainda não tem, e que é precisamente o que o \emph{Play4Change} procura ajudar a desenvolver.
 
-Cria-se assim um \textbf{paradoxo de acessibilidade} que as plataformas de educação digital frequentemente enfrentam~\cite{kasneci2023chatgpt}: a plataforma é mais eficaz para quem já tem literacia digital de base, mas pode afastar precisamente quem mais beneficiaria de a desenvolver. Resolver este paradoxo exigiria abordagens complementares --- tutoriais guiados de integração (\emph{onboarding}), sessões de apoio inicial presencial, ou uma versão simplificada da interface para utilizadores menos experientes. Estas são limitações do protótipo atual que informam diretamente as propostas de trabalho futuro do Capítulo~\ref{cha:conclusao}.
+Os dados do Grupo~B demonstram uma falha crítica no desenho da experiência de utilização (UX). Ao exigir literacia digital prévia para operar uma plataforma desenhada para ensinar literacia cívica e digital, o protótipo falhou o seu público-alvo primário. Este não é um ``paradoxo de acessibilidade'' inevitável das plataformas de educação digital --- é uma falha de requisitos que deve ser reconhecida e corrigida. No seu estado atual, a plataforma \emph{Play4Change} é viável apenas para utilizadores com o perfil do Grupo~A. Iterar para o Grupo~B exigiria uma reformulação profunda do processo de integração (\emph{onboarding}), eventualmente com apoio presencial, e possivelmente uma interface alternativa simplificada --- trabalho futuro discutido no Capítulo~\ref{cha:conclusao}.
 
 A Tabela~\ref{tab:dois-grupos} sintetiza as diferenças entre os dois grupos.
 
@@ -361,7 +363,7 @@ A Tabela~\ref{tab:dois-grupos} sintetiza as diferenças entre os dois grupos.
 As respostas abertas do questionário revelaram três temas recorrentes de melhoria que merecem registo. O primeiro, referido por três participantes independentes, é a introdução de \textbf{funcionalidades sociais e comunitárias} --- a possibilidade de comparar progressos com amigos, criar uma ``rivalidade positiva'' ou partilhar conhecimento. Este tema está diretamente alinhado com a dimensão de \emph{relação} da Teoria da Autodeterminação~\cite{deci1985intrinsic} e com a investigação sobre gamificação que identifica a componente social como um dos motores de retenção mais eficazes~\cite{ott2019gamification}. O segundo tema foi a \textbf{consistência e qualidade da interface}, com sugestões específicas de hierarquia visual mais clara e respostas da IA mais concisas num ecrã de telemóvel. O terceiro tema, particularmente interessante, foi a sugestão de \textbf{personalização geográfica}: que a IA adaptasse as perguntas à cidade ou região onde o utilizador se encontra, usando dados públicos disponíveis para tornar os conteúdos hiper-locais. Esta ideia é conceptualmente consistente com os centros de competência da U!REKA~\citep{ureka2026alliance} e poderá orientar uma iteração futura da plataforma.
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Posicionamento face a abordagens alternativas no contexto U!REKA}
+\section[Posicionamento face a abordagens alternativas no contexto U!REKA]{Posicionamento face a abordagens alternativas\linebreak no contexto U!REKA}
 \label{sec:posicionamento-ureka}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -386,7 +388,7 @@ Os dados combinados permitem fazer uma leitura estruturada de cada um dos três 
 
 O pilar da \textbf{personalização} obteve os resultados mais sólidos: 99\% de acerto final nas tarefas, 98\% de resolução das sessões adaptativas, 4,08/5 na percepção de adaptatividade, e referências espontâneas múltiplas ao ciclo de explicação como a melhor funcionalidade. O exemplo de sessão apresentado na Secção~\ref{sec:exemplo-conversa} mostra como a IA consegue, em 3 minutos, conduzir um utilizador de uma confusão conceptual real a uma compreensão genuína --- o tipo de \emph{step-level feedback} que VanLehn~\cite{vanlehn2011relative} identifica como central na eficácia dos sistemas de tutoria inteligente.
 
-O pilar do \textbf{reconhecimento} obteve também um resultado muito concreto: 16 distintivos emitidos a 9 utilizadores, com uma taxa de aprovação de 100\% nos tópicos concluídos (o limiar $\alpha = 0.60$ foi atingido por todos os que completaram). Porém, os participantes sugeriram que os distintivos atuais teriam maior poder motivacional se ancorados a valor no mundo real (descontos, bilhetes para eventos, reconhecimento em plataformas externas) --- uma evolução que está fora do âmbito deste protótipo mas que justificaria investigação em iterações futuras.
+O pilar do \textbf{reconhecimento} obteve também um resultado muito concreto: 16 distintivos emitidos a 9 utilizadores, com uma taxa de aprovação de 100\% nos tópicos concluídos (o limiar $\alpha = 0.60$ foi atingido por todos os que completaram). Este limiar foi \textbf{definido de forma heurística}, sem validação empírica prévia da sua adequação pedagógica; faltam testes longitudinais que permitam determinar se esta métrica tem, de facto, qualquer impacto real na retenção dos utilizadores a médio e longo prazo. Porém, os participantes sugeriram que os distintivos atuais teriam maior poder motivacional se ancorados a valor no mundo real (descontos, bilhetes para eventos, reconhecimento em plataformas externas) --- uma evolução que está fora do âmbito deste protótipo mas que justificaria investigação em iterações futuras.
 
 O pilar do \textbf{envolvimento} apresenta o quadro mais nuançado. Para o Grupo~A, os mecanismos de \emph{streak} e desbloqueio diário funcionaram bem: \emph{streaks} de 9 a 13 dias em utilizadores que completaram múltiplos tópicos são um sinal de hábito criado. Para o Grupo~B, os mesmos mecanismos não foram suficientes para criar tração. A sugestão mais recorrente --- funcionalidades sociais --- aponta para a dimensão que o protótipo não cobre: a comunidade.
 
