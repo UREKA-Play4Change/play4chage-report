@@ -1,0 +1,352 @@
+%
+% Capítulo 5 — Testes e Validação
+%
+\chapter{Testes e Validação} \label{cap:testes}
+
+A validação do Play4Change assenta em quatro camadas complementares: testes unitários que verificam o comportamento isolado do domínio e dos serviços de aplicação, testes de integração que exercitam a camada HTTP em contexto Spring parcial, testes de segurança que confrontam as defesas com os vectores de ataque identificados na análise de risco (§\ref{sec:riscos}), e um questionário de usabilidade aplicado a doze utilizadores reais. Juntas, estas camadas cobrem 60 ficheiros de teste distribuídos pelos módulos \textit{server} e \textit{play4change-web}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Estratégia de Testes} \label{sec:estrategia-testes}
+
+A estratégia decorre directamente das decisões de arquitectura do sistema e assenta em três princípios.
+
+\textbf{Princípio~1 — Isolamento total pelo padrão hexagonal.} Todas as dependências externas (repositórios, portas de e-mail, publicadores de eventos, geradores de IA) são interfaces. Em cada teste unitário, essas interfaces são substituídas por duplicados criados com a biblioteca \textit{Mockk}, eliminando qualquer dependência de base de dados, rede ou ficheiro em disco. Os testes de domínio e de serviços de aplicação executam em memória pura, na ordem dos microssegundos.
+
+\textbf{Princípio~2 — \texttt{Either<Error, T>} como contrato de resultado.} A biblioteca Arrow impõe que cada caso de uso devolva \texttt{Either<DomainError,~T>} em vez de lançar excepções. Os testes verificam \texttt{.isLeft()}~/~\texttt{.isRight()} e inspeccionam o tipo concreto do erro (e.g.\ \texttt{BadRequest.InvalidField}, \texttt{NotFound.ResourceNotFound}), tornando os casos de insucesso tão explícitos e verificáveis como os de sucesso.
+
+\textbf{Princípio~3 — Separação clara dos três níveis.} A suite divide-se em camadas com responsabilidades distintas, conforme a Tabela~\ref{tab:suite-nivel}.
+
+\begin{table}[htb]
+\centering
+\caption{Níveis da suite de testes automatizados.}
+\label{tab:suite-nivel}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Nível} & \textbf{Ferramenta principal} & \textbf{Contexto Spring} & \textbf{Dependências externas} \\
+\midrule
+Unitário   & JUnit~5 + Mockk         & Nenhum               & Todas em mock \\
+Integração & @WebMvcTest + MockMvc   & Parcial (camada web) & Serviços em mock \\
+Segurança  & JUnit~5 + @WebMvcTest   & Parcial ou nenhum    & Todas em mock \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+No frontend (React/Vite), os testes de componente e de utilitários utilizam \textit{Vitest} com \textit{React Testing Library}.
+
+\begin{table}[htb]
+\centering
+\caption{Dimensão da suite de testes por módulo.}
+\label{tab:suite-dimensao}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Módulo} & \textbf{Ficheiros de teste} & \textbf{Linguagem} & \textbf{Ferramenta} \\
+\midrule
+Servidor — aplicação, domínio e infra & 37 & Kotlin     & JUnit~5 + Mockk \\
+Servidor — camada web / controllers   & 10 & Kotlin     & @WebMvcTest + MockMvc \\
+Frontend — componentes e utilitários  & 13 & TypeScript & Vitest + RTL \\
+\midrule
+\textbf{Total} & \textbf{60} & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Testes Unitários} \label{sec:testes-unitarios}
+
+\subsection{Objetos de Valor — \texttt{Name}} \label{sec:testes-vos}
+
+O \texttt{Name} é o objeto de valor que representa o nome de perfil de um utilizador. A sua construção é encapsulada no método de fábrica \texttt{Name.create(raw:~String?)}, que devolve \texttt{Result.Success} ou \texttt{Result.Failure}. O ficheiro \texttt{NameValidationTest.kt} (8 testes) verifica cada aresta da especificação, cobrindo entradas nulas, só espaços, comprimentos abaixo e acima dos limites (2–100 caracteres) e caracteres de controlo. A tabela seguinte sumariza os casos.
+
+\begin{table}[htb]
+\centering
+\caption{Casos de teste do objeto de valor \texttt{Name}.}
+\label{tab:name-testes}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Caso} & \textbf{Entrada} & \textbf{Resultado esperado} \\
+\midrule
+Null               & \texttt{null}            & \texttt{Result.Failure} \\
+Só espaços         & \texttt{"\ \ \ "}         & \texttt{Result.Failure} \\
+Comprimento 1      & \texttt{"A"}             & \texttt{Result.Failure} \\
+Comprimento 101    & \texttt{"A"~$\times$~101} & \texttt{Result.Failure} \\
+Caracter de controlo & \texttt{"Alice\textbackslash u0000Bob"} & \texttt{Result.Failure} \\
+Comprimento 2 (limite inf.) & \texttt{"Al"}   & \texttt{Result.Success} \\
+Comprimento 100 (limite sup.) & \texttt{"A"~$\times$~100} & \texttt{Result.Success} \\
+Válido             & \texttt{"Alice"}         & \texttt{Result.Success("Alice")} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Autenticação — \texttt{TokenService} e \texttt{MagicLinkService}} \label{sec:testes-auth}
+
+O \texttt{TokenServiceTest.kt} (2 testes) valida a mecânica de revogação de família de tokens JWT. Quando um token de actualização é revogado, toda a família (\texttt{familyId}) é invalidada, protegendo contra reutilização em caso de roubo (ameaça R04, §\ref{sec:riscos}). O segundo teste confirma que \texttt{revoke} é silencioso quando o token não existe — zero chamadas a \texttt{revokeAllByFamilyId} e zero chamadas a \texttt{markUsed}.
+
+O \texttt{MagicLinkServiceTest.kt} (6 testes) cobre o ciclo completo do fluxo magic link. A Figura~\ref{fig:seq-test-magic-link} ilustra as três propriedades de segurança verificadas: (1)~o token em claro nunca é guardado na base de dados — apenas o seu SHA-256; (2)~o método \texttt{claimToken} é um \texttt{UPDATE~\ldots~WHERE~used=false} atómico ao nível da base de dados, garantindo que um segundo consumo concorrente falha com excepção; (3)~a criação automática de utilizador ocorre na primeira verificação bem-sucedida.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=\textwidth]{./figures/seq-test-magic-link.png}
+\caption{Teste unitário do \texttt{MagicLinkService}: três propriedades de segurança — hash do token, consumo atómico e criação automática de utilizador.}
+\label{fig:seq-test-magic-link}
+\end{figure}
+
+\subsection{Baralhagem Anti-fraude e Cadência de Entrega} \label{sec:testes-tasks}
+
+O \texttt{AntiCheatShuffleTest.kt} (5 testes) valida a baralhagem determinística de opções (§\ref{sec:atribuicao}). O algoritmo usa \texttt{(userId, taskId, enrollmentId)} como semente de modo a que: (1)~o mesmo utilizador veja sempre a mesma ordem (determinismo); (2)~utilizadores distintos recebam ordens distintas (entropia mínima de 2 ordens em 3 utilizadores); (3)~o índice canónico da resposta correcta seja sempre mapeado correctamente através da permutação; e (4)~a permutação seja uma bijecção — todos os índices presentes exactamente uma vez.
+
+O \texttt{TaskDeliveryRateTest.kt} (6 testes) valida dois modos de operação e o guarda de arranque. Em modo produção (\texttt{devMode=false}, \texttt{taskRateMinutes=1440}) uma tarefa submetida há 5 minutos bloqueia a próxima com \texttt{TodayTaskResult.NotAvailableYet}. Em modo desenvolvimento (\texttt{devMode=true}, \texttt{taskRateMinutes=2}) o mesmo mecanismo funciona com janela de 2 minutos, permitindo testes acelerados. O \texttt{TaskDeliveryStartupGuard} detecta na inicialização da JVM qualquer configuração \texttt{devMode=true} com perfil \texttt{prod} activo, lançando \texttt{IllegalStateException} antes de qualquer pedido HTTP ser aceite.
+
+O \texttt{EnrollmentPrerequisiteGateTest.kt} (6 testes) valida que o \texttt{EnrollmentService} recusa inscrições quando os pré-requisitos não estão completos, devolvendo \texttt{Either.Left(BadRequest.InvalidField("prerequisites"))}. O teste de pré-requisitos parciais confirma que se o tópico exige A e C, mas o utilizador só completou A, a inscrição é igualmente recusada.
+
+\subsection{Gestão de Tópicos e Detecção de Ciclos no DAG} \label{sec:testes-topicos}
+
+O \texttt{TopicPrerequisiteServiceTest.kt} (9 testes) valida o algoritmo de detecção de ciclos no grafo orientado acíclico (DAG) de pré-requisitos, conforme ilustrado na Figura~\ref{fig:seq-test-dag-cycle}. São testados três cenários: ciclo directo ($A \to B$, $B \to A$), ciclo transitivo ($A \to C \to B \to A$) e grafo válido sem ciclo. Adicionalmente, o auto-ciclo (tópico como pré-requisito de si próprio) é rejeitado imediatamente e a referência a um tópico inexistente devolve \texttt{Either.Left(NotFound.ResourceNotFound)}.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.92\textwidth]{./figures/seq-test-dag-cycle.png}
+\caption{Teste unitário da detecção de ciclos: DFS sobre o DAG de pré-requisitos valida três cenários (ciclo directo, transitivo e grafo válido).}
+\label{fig:seq-test-dag-cycle}
+\end{figure}
+
+O \texttt{GenerationPhaseTransitionTest.kt} (8 testes) valida cada transição válida da máquina de estados \texttt{GenerationPhase}: \texttt{INGESTION} $\to$ \texttt{ANALYSIS} $\to$ \texttt{GENERATION} $\to$ \texttt{INDEXING} $\to$ \texttt{ACTIVE}. A recuperação após falha é coberta pelo percurso \texttt{GENERATION} $\to$ \texttt{FAILED} $\to$ \texttt{INGESTION} (regeneração). Cada transição verifica três invariantes: o log regista \texttt{fromPhase} e \texttt{toPhase} correctamente; \texttt{topicRepository.updatePhase} é chamado com a fase destino; e a duração (\texttt{durationMs}) é não-negativa.
+
+\subsection{Deteção e Escalamento de Dificuldades} \label{sec:testes-struggle-unit}
+
+O \texttt{StruggleDetectionTest.kt} (3 testes) verifica que qualquer resposta errada despola imediatamente a criação assíncrona de uma sessão de dificuldade, independentemente do número de tentativas anteriores. A lógica de remapeamento de índices via \texttt{optionOrder} é testada explicitamente: a opção seleccionada é mapeada para o índice canónico antes da comparação com \texttt{correctAnswerIndex}.
+
+O \texttt{StruggleResolutionTest.kt} (4 testes) valida o ciclo de vida completo de uma \texttt{StruggleSession}, conforme a Figura~\ref{fig:seq-test-struggle-escalation}. Os três cenários testados são: submissão parcial (\texttt{sessionResolved=false}, sessão permanece \texttt{OPEN}); todas completas e aprovadas (\texttt{status=RESOLVED}, assignment reposto a \texttt{PENDING} com \texttt{wrongAttemptCount} preservado para métricas exactas); e todas falhadas com \texttt{depth}~$\geq$~\texttt{MAX\_STRUGGLE\_DEPTH} (escalamento para \texttt{ExplanationUseCase.createSession}).
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=\textwidth]{./figures/seq-test-struggle-escalation.png}
+\caption{Teste unitário do ciclo de vida da \texttt{StruggleSession}: três cenários — submissão parcial, resolução com aprovação e escalamento para sessão de explicação IA.}
+\label{fig:seq-test-struggle-escalation}
+\end{figure}
+
+O \texttt{ErrorPatternClassifierTest.kt} (8 testes) valida a classificação determinística de padrões de erro com prioridade estrita: \texttt{TIME\_PRESSURE} (submissão após \texttt{dueAt}) tem precedência sobre \texttt{READING\_ERROR} ($|\text{diff}| \leq 1$), que por sua vez tem precedência sobre \texttt{WRONG\_CONCEPT}. O teste \textit{TIME\_PRESSURE beats READING\_ERROR} confirma explicitamente que quando ambas as condições se verificam, \texttt{TIME\_PRESSURE} prevalece por ser verificado primeiro.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Testes de Integração} \label{sec:testes-integracao}
+
+Os testes de integração arrancam um contexto Spring parcial (\texttt{@WebMvcTest}) e exercitam a camada HTTP completa — serialização JSON, filtros de segurança, validação de \textit{beans} e tratamento de erros — com os serviços de aplicação em mock.
+
+\subsection{Limitação de Taxa — \texttt{RateLimitTest}} \label{sec:testes-rate-int}
+
+Este é o teste de integração mais sofisticado da suite. O contexto inclui o \texttt{SecurityConfig} real e o \texttt{RateLimitService} real (Bucket4j), mas substitui o \texttt{TimeMeter} por um \texttt{ManualTimeMeter} que permite avançar o relógio programaticamente, eliminando qualquer dependência de tempo de parede. A Figura~\ref{fig:seq-test-rate-limit-int} ilustra o padrão.
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=\textwidth]{./figures/seq-test-rate-limit-int.png}
+\caption{Teste de integração do rate limiting: cinco pedidos admitidos, sexto rejeitado com 429, reset após avanço do relógio com \texttt{ManualTimeMeter} e isolamento por IP.}
+\label{fig:seq-test-rate-limit-int}
+\end{figure}
+
+Os quatro casos cobertos são: limite estrito (5 pedidos $\to$ 202; 6.º $\to$ 429); reset de janela temporal (avançar 11 minutos via \texttt{ManualTimeMeter} $\to$ bucket reposto $\to$ 202); isolamento por IP (esgotamento do IP~A não afecta o IP~B); e presença do cabeçalho \texttt{Retry-After} na resposta 429.
+
+\subsection{Controlo de Acesso ao Swagger} \label{sec:testes-swagger}
+
+Dois ficheiros de teste em perfis Spring distintos validam a política de acesso à documentação da API. A Tabela~\ref{tab:swagger-acesso} apresenta a matriz de controlo testada.
+
+\begin{table}[htb]
+\centering
+\caption{Matriz de acesso ao Swagger UI testada por \texttt{SwaggerAccessControlTest}.}
+\label{tab:swagger-acesso}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Perfil} & \textbf{Papel} & \textbf{HTTP esperado} & \textbf{Verificação} \\
+\midrule
+default (dev) & nenhum & não é 401 nem 403 & \texttt{status != 401 \&\& status != 403} \\
+prod          & nenhum & 401                & \texttt{status().isUnauthorized()} \\
+prod          & USER   & 403                & \texttt{status().isForbidden()} \\
+prod          & ADMIN  & não é 401 nem 403  & \texttt{status != 401 \&\& status != 403} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Controladores REST} \label{sec:testes-controllers}
+
+A suite inclui dez ficheiros \texttt{@WebMvcTest} que cobrem os endpoints principais. A Tabela~\ref{tab:controllers-testes} sumariza os controladores e os casos verificados.
+
+\begin{table}[htb]
+\centering
+\caption{Cobertura dos testes de integração por controlador REST.}
+\label{tab:controllers-testes}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Controlador} & \textbf{Casos testados} \\
+\midrule
+\texttt{AdminTopicPrerequisiteController} & GET pré-requisitos, POST com ciclo, POST sem ciclo, grafo de aprendizagem, 404 \\
+\texttt{StruggleController}               & GET sessão activa, submissão de tarefa adaptativa, autenticação obrigatória \\
+\texttt{TaskReportController}             & Criar relatório, correcção pelo admin, dismissal, listagem por tópico \\
+\texttt{UserPreferencesController}        & Língua (BCP~47) e fuso horário (ZoneId) — válidos e inválidos \\
+\texttt{UserProfileController}            & GET perfil, PATCH com nome válido e inválido \\
+\texttt{BadgeController}                  & Crachás do utilizador, estatísticas de admin \\
+\texttt{AdminTaskController}              & Estatísticas de tarefa, tarefas com dificuldade, actualização em lote \\
+\texttt{TopicController}                  & Transições de fase, SSE de eventos \\
+\texttt{SwaggerDefaultProfileTest}        & Acesso sem autenticação em perfil padrão \\
+\texttt{AuthControllerValidationTest}     & Formato de e-mail, token de verificação inválido \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Frontend — Vitest + React Testing Library} \label{sec:testes-frontend}
+
+A suite Vitest/React Testing Library inclui 13 ficheiros de teste que cobrem componentes, \textit{hooks}, adaptadores de dados e utilitários de validação, conforme a Tabela~\ref{tab:frontend-testes}.
+
+\begin{table}[htb]
+\centering
+\caption{Ficheiros de teste do frontend (Vitest + RTL).}
+\label{tab:frontend-testes}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Ficheiro} & \textbf{O que valida} \\
+\midrule
+\texttt{ProtectedRoute.test.tsx}  & Redireccionamento de utilizadores não autenticados para \texttt{/login} \\
+\texttt{validators.test.ts}       & Formato de e-mail, URL, lista de URLs (1–5), ficheiro PDF (tipo + tamanho $\leq$ 100~MB) \\
+\texttt{useTopics.test.ts}        & Estado de carregamento, erro e dados do hook \texttt{useTopics} \\
+\texttt{mockTopicAdapter.test.ts} & Fidelidade dos adaptadores de dados em mock \\
+\texttt{LoginPage.test.tsx}       & Submissão de formulário, mensagens de erro \\
+\texttt{AuthVerifyPage.test.tsx}  & Verificação de token da URL, estados de carregamento \\
+\texttt{CreateTopicPage.test.tsx} & Validação de formulário, submissão com sucesso \\
+\texttt{UserList.test.tsx}        & Renderização de lista, filtros \\
+\texttt{PromoteUser.test.tsx}     & Confirmação de promoção, feedback visual \\
+\texttt{BadgeOverview.test.tsx}   & Renderização de crachás e contagens \\
+\texttt{ReportList.test.tsx}      & Listagem, filtro por estado \\
+\texttt{ReportDetail.test.tsx}    & Detalhe de relatório, acções de admin \\
+\texttt{formatters.test.ts}       & Formatação de datas, pontos e níveis de audiência \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Testes de Segurança} \label{sec:testes-seguranca}
+
+Os testes de segurança validam as defesas contra as ameaças identificadas na análise de risco (§\ref{sec:riscos}). Cada vector tem cobertura de teste dedicada.
+
+\subsection{Prevenção de SSRF — \texttt{UrlSsrfValidatorTest}} \label{sec:testes-ssrf}
+
+O vector SSRF é crítico porque os administradores submetem URLs de conteúdo que a aplicação irá buscar para gerar tarefas com IA (§\ref{sec:ingestao}). O \texttt{UrlSsrfValidatorTest.kt} (10 testes) valida que \texttt{UrlSsrfValidator.validate()} lança \texttt{UrlSsrfViolationException} para cada categoria de URL proibida, conforme a Tabela~\ref{tab:ssrf-casos}.
+
+\begin{table}[htb]
+\centering
+\caption{Casos de teste de prevenção de SSRF — \texttt{UrlSsrfValidatorTest}.}
+\label{tab:ssrf-casos}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{URL testada} & \textbf{Categoria} & \textbf{Resultado} \\
+\midrule
+\texttt{https://localhost/admin}         & Loopback              & \texttt{UrlSsrfViolationException} \\
+\texttt{https://127.0.0.1/admin}         & Loopback IPv4         & \texttt{UrlSsrfViolationException} \\
+\texttt{https://192.168.1.1/secret}      & RFC~1918 (192.168.x.x) & \texttt{UrlSsrfViolationException} \\
+\texttt{https://10.0.0.1/internal}       & RFC~1918 (10.x.x.x)   & \texttt{UrlSsrfViolationException} \\
+\texttt{https://172.16.0.1/internal}     & RFC~1918 (172.16–31.x) & \texttt{UrlSsrfViolationException} \\
+\texttt{https://169.254.1.1/metadata}    & Link-local            & \texttt{UrlSsrfViolationException} \\
+\texttt{https://[::1]/admin}             & IPv6 loopback         & \texttt{UrlSsrfViolationException} \\
+\texttt{http://example.com/page}         & Esquema HTTP (não HTTPS) & \texttt{UrlSsrfViolationException} \\
+\texttt{https://nonexistent.tld.invalid} & Host inexistente (DNS falha) & \texttt{UrlSsrfViolationException} \\
+\texttt{https://1.1.1.1/}               & IP público conhecido  & Sem excepção \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Sanitização de Output IA — \texttt{AiOutputSanitiserTest}} \label{sec:testes-xss-unit}
+
+O modelo de linguagem Mistral AI pode, sob condições adversariais, gerar saída contendo marcação HTML. O \texttt{AiOutputSanitiserTest.kt} (5 testes) valida que \texttt{AiOutputSanitiser.sanitise()} remove correctamente todas as tags, scripts e entidades HTML (§\ref{sec:xss}). Os casos verificados incluem: remoção de \texttt{<b>} preservando texto, remoção completa de \texttt{<script>alert('xss')</script>} (resultado: string vazia), normalização de parágrafos e negrito, descodificação de entidades HTML (\texttt{\&amp;} $\to$ \texttt{\&}), e preservação de texto simples sem alteração.
+
+\subsection{Força Bruta e Magic Link} \label{sec:testes-bruta}
+
+A protecção contra força bruta no endpoint \texttt{/auth/magic-link} é validada pelos quatro testes de integração descritos em §\ref{sec:testes-rate-int}, que verificam o limite absoluto de 5 pedidos por IP por janela de 10 minutos, o reset após expiração, o isolamento por IP e o cabeçalho \texttt{Retry-After}.
+
+As quatro propriedades de segurança do fluxo magic link (token em claro nunca armazenado, normalização de e-mail, rejeição de token inválido ou expirado, e rejeição de consumo concorrente) são validadas pelo \texttt{MagicLinkServiceTest.kt}, descrito em §\ref{sec:testes-auth} e ilustrado na Figura~\ref{fig:seq-test-magic-link}.
+
+\subsection{Anti-fraude e Guarda de Arranque} \label{sec:testes-antifrude}
+
+Dois mecanismos de segurança de negócio complementam os testes de segurança de rede.
+
+A baralhagem determinística (§\ref{sec:testes-tasks}) impede que estudantes partilhem a ordem de opções correcta entre si, porque cada utilizador recebe uma permutação diferente baseada nos seus identificadores. O teste de entropia mínima confirma que 3 utilizadores distintos produzem pelo menos 2 ordens diferentes.
+
+O \texttt{TaskDeliveryStartupGuard} impede que uma configuração de desenvolvimento (cadência reduzida a 2 minutos) seja activada em produção. Um erro de configuração é detectado na inicialização da JVM, antes de qualquer pedido HTTP ser aceite, o que assegura que utilizadores não podem completar tópicos em minutos em vez de dias. Os dois testes de falha confirmam: \texttt{devMode=true} com perfil \texttt{prod} $\to$ \texttt{IllegalStateException}; e \texttt{taskRateMinutes=0} $\to$ \texttt{IllegalArgumentException}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Testes de Usabilidade} \label{sec:testes-usabilidade}
+
+\subsection{Metodologia} \label{sec:usab-metodologia}
+
+A avaliação de usabilidade foi conduzida através de um questionário Google Forms aplicado a 12 participantes entre 8 e 12 de Junho de 2026. Os participantes incluíam 4 estudantes actuais do ISEL, 7 testadores externos e 1 antigo aluno. O questionário estava organizado em quatro secções: (1)~avaliação global de usabilidade e navegação (escala 1–5); (2)~quatro declarações de envolvimento em escala de Likert 1–5; (3)~a escala SUS (\textit{System Usability Scale}) de Brooke~\cite{brooke1996sus}, com 10 itens em escala de Likert 1–5; e (4)~questões abertas sobre problemas técnicos, melhor funcionalidade e sugestões de melhoria.
+
+\subsection{Análise SUS} \label{sec:usab-sus}
+
+A pontuação SUS é calculada segundo a fórmula de Brooke: para cada item ímpar (positivo) subtrai-se 1 ao valor; para cada item par (negativo) subtrai-se o valor a 5; soma-se os 10 resultados e multiplica-se por 2,5, obtendo uma escala de 0 a 100. A Tabela~\ref{tab:sus-scores} apresenta as pontuações individuais e a Figura~\ref{fig:chart-sus} ilustra a distribuição.
+
+\begin{table}[htb]
+\centering
+\caption{Pontuações SUS por participante (\textit{n}~=~12).}
+\label{tab:sus-scores}
+\begin{tabular}{@{}lllr@{}}
+\toprule
+\textbf{Part.} & \textbf{Perfil} & \textbf{Classificação} & \textbf{SUS} \\
+\midrule
+P01 & Estudante & Bom        & 80,0 \\
+P02 & Estudante & Excelente  & 97,5 \\
+P03 & Externo   & Excelente  & 90,0 \\
+P04 & Externo   & Não aceitável & 45,0 \\
+P05 & Alumni    & Não aceitável & 35,0 \\
+P06 & Externo   & Marginal   & 50,0 \\
+P07 & Externo   & Bom        & 77,5 \\
+P08 & Externo   & Excelente  & 95,0 \\
+P09 & Estudante & Marginal   & 60,0 \\
+P10 & Externo   & Excelente  & 97,5 \\
+P11 & Externo   & Excelente  & 92,5 \\
+P12 & Estudante & Excelente  & 92,5 \\
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Média}} & \textbf{76,0} \\
+\multicolumn{3}{@{}l}{\textbf{Mediana}} & \textbf{85,0} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htb]
+\centering
+\includegraphics[width=\textwidth]{./figures/chart-sus.png}
+\caption{Distribuição das pontuações SUS por participante (\textit{n}~=~12). A linha tracejada indica a média (76,0). As bandas de cor distinguem as quatro categorias: Excelente ($\geq$85), Bom (70–85), Marginal (50–70) e Não aceitável ($<$50).}
+\label{fig:chart-sus}
+\end{figure}
+
+A média de 76,0 situa-se na categoria \textit{Bom} da escala SUS (70–85), enquanto a mediana de 85,0 marca precisamente a fronteira com a categoria \textit{Excelente}. A discrepância entre média e mediana reflecte dois participantes com pontuações baixas (P04~=~45 e P05~=~35) que puxam a média para baixo; sem esses dois outliers, a média sobe para 83,25. Seis dos doze participantes (50\%) obtiveram pontuações na categoria \textit{Excelente} ($\geq$85), dois na categoria \textit{Bom} (70–85), dois na categoria \textit{Marginal} (50–70) e dois na categoria \textit{Não aceitável} ($<$50). A avaliação global de usabilidade e navegação obteve uma média de 4,25 em 5 pontos.
+
+As declarações de envolvimento, medidas em escala 1–5, obtiveram os resultados apresentados na Tabela~\ref{tab:sus-engagement}. A declaração relativa ao design visual foi a que obteve pontuação mais alta (4,33), o que é consistente com os comentários qualitativos que elogiam a interface. A declaração relativa ao encorajamento para regressar diariamente obteve a pontuação mais baixa (3,92), sugerindo margem de melhoria na retenção.
+
+\begin{table}[htb]
+\centering
+\caption{Médias das declarações de envolvimento (escala Likert 1–5, \textit{n}~=~12).}
+\label{tab:sus-engagement}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Declaração} & \textbf{Média} \\
+\midrule
+A aplicação motivou-me a aprender sobre educação cívica / cidades inteligentes & 3,83 \\
+Os desafios pareceram relevantes para problemas do mundo real                  & 4,00 \\
+O design visual e a estética do jogo foram apelativos                         & 4,33 \\
+Senti-me encorajado/a a regressar e completar desafios diariamente            & 3,92 \\
+\midrule
+Os caminhos de aprendizagem IA adaptaram-se eficazmente ao meu desempenho     & 4,08 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análise Qualitativa} \label{sec:usab-qualitativa}
+
+As respostas abertas revelaram um conjunto consistente de pontos fortes e de oportunidades de melhoria.
+
+\textbf{Pontos fortes mais mencionados.} A funcionalidade de explicação adaptativa após resposta errada foi identificada como a melhor funcionalidade por quatro participantes, em formulações como \textit{``o facto de apresentar explicações rápidas quando não se acerta em alguma pergunta''} e \textit{``quando foi dado o feedback por parte do AI, ele soube perceber onde errei e aprendi com o texto dele''}. A intuitivi\-dade da interface foi destacada por quatro participantes, e a adaptabilidade da IA ao desempenho individual foi mencionada por três. Os desafios diários e a relevância das questões para o mundo real foram igualmente referidos positivamente.
+
+\textbf{Problemas técnicos identificados.} Quatro classes de bugs foram reportadas. A mais grave foi uma \textit{race condition} visual no caminho de consolidação: um participante descreveu que a resposta era inicialmente marcada correcta e meio segundo depois aparecia como errada. Também foram reportados: a barra de pesquisa oculta durante a inserção de e-mail no ecrã de autenticação; algumas respostas correctas marcadas como erradas de forma intermitente; e questões repetidas em caminhos alternativos. Dois participantes com pontuações SUS mais baixas (P04 e P05) apontaram explicitamente a confusão causada pela transição abrupta para um novo desafio após resposta errada, sem qualquer explicação do que aconteceu — comportamento que ocorre antes da sessão de struggle ser criada.
+
+\textbf{Sugestões de melhoria.} As sugestões mais recorrentes foram a adição de funcionalidades sociais (lista de amigos, tabelas de classificação, rivalidade positiva), a diversificação dos tópicos disponíveis, a maior concisão das explicações IA em dispositivos móveis, e a possibilidade de personalização geográfica das questões com base na localização do utilizador. Um participante sugeriu também a atribuição de medalhas e reconhecimentos ao atingir determinados níveis de aprendizagem, como mecanismo adicional de motivação.
+
+\textbf{Conclusão da avaliação.} Os resultados SUS indicam uma usabilidade global na categoria \textit{Bom}, com a maioria dos participantes a classificar o sistema como \textit{Excelente}. Os dois outliers negativos convergem num problema específico de comunicação de estado após erro, cujo impacto pode ser mitigado através de uma transição animada e de uma mensagem explicativa antes da navegação para o caminho de struggle.
