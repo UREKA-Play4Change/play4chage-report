@@ -1,0 +1,171 @@
+%
+% enquadramento.tex
+% Capítulo 2 — Enquadramento / Estado da arte
+%
+\chapter{Enquadramento e Estado da Arte}
+\label{cha:enquadramento}
+
+\section{Conceitos fundamentais}
+\label{sec:conceitos-fundamentais}
+
+Três conceitos estruturam os pilares do \emph{Play4Change}: gamificação, aprendizagem adaptativa e inteligência artificial. A sua articulação sustenta diretamente reconhecimento, envolvimento e personalização --- os pilares definidos na Secção~\ref{sec:objetivos-pilares}.
+
+\subsection*{Gamificação}
+
+A gamificação aplica mecânicas de jogo --- pontos, níveis, distintivos, \emph{streaks} --- a contextos não-lúdicos para aumentar motivação e persistência~\cite{ott2019gamification}. Fundamenta dois pilares: \textbf{reconhecimento} (distintivos que assinalam competências dominadas) e \textbf{envolvimento} (mecanismos de regresso natural à plataforma).
+
+Os mecanismos de \emph{Points} e \emph{Badges} geram envolvimento a curto prazo, mas podem substituir motivação intrínseca por extrínseca~\cite{ott2019gamification}. A Teoria da Autodeterminação~\cite{deci1985intrinsic} identifica três necessidades psicológicas que sustentam motivação duradoura:
+
+\begin{itemize}
+    \item \textbf{Autonomia:} os \emph{streaks} reforçam um regresso voluntário --- a decisão é sempre da pessoa.
+    \item \textbf{Competência:} os distintivos são atribuídos apenas quando um tópico é efetivamente dominado, não por mera participação.
+    \item \textbf{Relação:} os tópicos cívicos ancoram a aprendizagem em situações reais, tornando-a significativa para além do jogo.
+\end{itemize}
+
+\subsection*{Aprendizagem adaptativa}
+
+A aprendizagem adaptativa ajusta percurso, ritmo e dificuldade ao desempenho individual em vez de um currículo uniforme~\cite{vanlehn2011relative}. Sustenta o pilar da \textbf{personalização}.
+
+Três resultados de investigação fundamentam esta abordagem:
+
+\begin{itemize}
+    \item \textbf{Problema das 2 sigma~\cite{bloom1984sigma}:} tutoria individual supera o ensino convencional em 2 desvios padrão --- um dos efeitos mais expressivos documentados em pedagogia.
+    \item \textbf{\emph{Step-level feedback}~\cite{vanlehn2011relative}:} ITS com retroalimentação por passo obtêm ganhos de 0,4 a 1,0 desvio padrão face ao ensino convencional --- podendo constituir uma alternativa escalável à tutoria individual humana.
+    \item \textbf{Aprendizagem por mestria~\cite{bloom1968learning}:} o utilizador não avança enquanto não dominar o tópico atual; no \emph{Play4Change}, reforçada por um grafo de pré-requisitos e geração de percursos de remediação em tempo real.
+\end{itemize}
+
+\subsection*{IA na personalização}
+
+Os modelos de linguagem de grande escala (LLM) permitem gerar conteúdos pedagógicos personalizados a pedido, em linguagem natural e à escala~\cite{kasneci2023chatgpt}. O risco principal é a geração de conteúdo factualmente incorreto (\emph{hallucinations}) --- afirmações plausíveis mas sem suporte documental, particularmente graves num contexto de educação cívica.
+
+\paragraph*{RAG como condicionador da geração.}
+O padrão \emph{Retrieval-Augmented Generation} (RAG)~\cite{lewis2020rag} vai além da simples injeção de contexto no \emph{prompt}. Na formulação original de Lewis et al., o modelo combina memória paramétrica (os pesos do LLM) com memória não-paramétrica (documentos recuperados em tempo real). O resultado é que a distribuição de probabilidade de geração fica condicionada pelos documentos recuperados: o conteúdo verificado fornecido no contexto reduz --- sem eliminar --- a probabilidade de o modelo gerar afirmações sem suporte documental~\cite{gao2023rag}. Note-se que o RAG não restringe literalmente o espaço latente do modelo (os seus pesos permanecem inalterados); o que muda é a distribuição condicional de geração para aquele \emph{prompt} específico. No \emph{Play4Change}, o \emph{prompt} inclui o perfil de dificuldade do utilizador, o tópico pedagógico ativo e exemplos de exercícios validados --- ancorando a geração em conteúdo previamente curado pela equipa pedagógica da U!REKA~\citep{ureka2026alliance}.
+
+\paragraph*{Limites da janela de contexto e \emph{chunking}.}
+Os LLM têm janelas de contexto finitas, medidas em \emph{tokens}. Documentos extensos não cabem integralmente num único \emph{prompt}, tornando a segmentação (\emph{chunking}) uma decisão de engenharia crítica. A estratégia mais simples divide o texto em blocos de tamanho fixo, mas pode cortar unidades semânticas a meio; a segmentação semântica preserva coerência, mas exige um \emph{pipeline} de processamento mais complexo. Adicionalmente, Liu et al.~\cite{liu2023lost} demonstraram que, mesmo quando o contexto cabe na janela, o desempenho do modelo degrada quando a informação relevante se encontra no meio de um contexto longo --- fenómeno designado \emph{lost in the middle}. Estas limitações fundamentam uma decisão de implementação concreta no \emph{Play4Change}: um limite máximo de 8\,000 caracteres no texto extraído para o \emph{prompt} de geração, como compromisso entre completude do contexto e integridade da janela do modelo (detalhe no Capítulo~3).
+
+\paragraph*{Métricas de avaliação de sistemas RAG.}
+As métricas clássicas de geração de linguagem natural (BLEU, ROUGE) são inadequadas para avaliar saídas de LLM em arquiteturas RAG, pois não medem fidelidade factual. O \emph{framework} RAGAS~\cite{es2023ragas} propõe três métricas especializadas:
+
+\begin{itemize}
+    \item \textbf{Faithfulness:} o grau em que a resposta gerada contém apenas afirmações suportadas pelo contexto recuperado --- a principal barreira contra alucinações.
+    \item \textbf{Answer Relevance:} o grau em que a resposta é pertinente relativamente à questão colocada, independentemente da fidelidade factual.
+    \item \textbf{Context Precision:} a proporção do contexto recuperado que é de facto relevante para a geração --- mede a qualidade do módulo de recuperação.
+\end{itemize}
+
+No protótipo atual, estas métricas não são computadas automaticamente. A garantia de integridade estrutural é assegurada por validação de esquema JSON após geração: caso a resposta não conforme com a estrutura esperada, o pedido é reenviado ao LLM com indicação explícita dos erros, sem revisão humana no caminho crítico. Esta abordagem garante integridade estrutural mas não substitui uma avaliação de fidelidade factual --- uma limitação a endereçar em iterações futuras.
+
+\section{Educação cívica e competências para a transição sustentável}
+\label{sec:educacao-civica}
+
+Literacia cívica e literacia digital são indissociáveis: o quadro \emph{DigComp 2.2}~\cite{vuorikari2022digcomp} formaliza as competências de avaliação crítica e de colaboração digital como condição da participação cívica informada em contextos de transição sustentável~\citep{ureka2026alliance}. Uma revisão sistemática da literatura sobre gamificação de processos de participação cívica (\emph{e-participation}) conclui que mecânicas de jogo estão associadas a ganhos de envolvimento, motivação e aprendizagem cívica em contextos informais~\cite{hassan2020gameful}, o que reforça --- além do \emph{quê} conta como competência (DigComp) --- o \emph{porquê} de uma abordagem gamificada e informal ser adequada para a desenvolver.
+
+O \emph{Play4Change} endereça a \textbf{aprendizagem informal} --- cidadãos fora de contextos formais --- através de três princípios:
+
+\begin{itemize}
+    \item \textbf{Informalidade:} sessões curtas em formato de jogo, sem avaliação nem pressão institucional.
+    \item \textbf{Acessibilidade imediata:} aplicação móvel sem registo obrigatório, sem custo, disponível em qualquer momento.
+    \item \textbf{Relevância percebida:} conteúdos ancorados em situações reais da vida urbana, não em matéria académica abstrata.
+\end{itemize}
+
+\section{Trabalho relacionado}
+\label{sec:trabalho-relacionado}
+
+A análise de plataformas de referência não se baseia em sobreposição temática --- nenhuma das plataformas estudadas é uma ferramenta de educação cívica urbana --- mas numa auditoria estrita de mecânicas de retenção, progressão e gamificação. O argumento de fundo é que os padrões arquiteturais de sucesso são transferíveis independentemente do domínio de conteúdo: o \emph{Play4Change} extrai estas mecânicas para responder ao elevado défice de retenção e abandono que caracteriza a aprendizagem informal, aplicando-as de forma inovadora ao contexto da U!REKA~\citep{ureka2026alliance} e da sustentabilidade urbana. Cinco plataformas foram analisadas segundo os três pilares --- reconhecimento, envolvimento e personalização --- conforme sintetizado na Tabela~\ref{tab:comparacao-plataformas}.
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\begin{tabular}{p{2.0cm} p{3.55cm} p{3.55cm} p{4.1cm}}
+		\toprule
+		\textbf{Plataforma} & \textbf{Reconhecimento} & \textbf{Envolvimento} & \textbf{Personalização} \\
+		\midrule
+		Kahoot! &
+			Pontuações e pódios em tempo real que celebram o desempenho individual e do grupo &
+			Formato de jogo/quiz competitivo, muito eficaz a tornar o momento de avaliação divertido &
+			Pouco adaptativo: os mesmos quizzes são apresentados a todos os participantes \\
+		\addlinespace
+		Duolingo &
+			Sistema de níveis, ligas e distintivos que assinalam claramente cada progresso &
+			Sequências diárias (\emph{streaks}), lembretes e notificações que incentivam o regresso todos os dias &
+			Ajusta a dificuldade dos exercícios de acordo com os erros e acertos do utilizador \\
+		\addlinespace
+		Coursera &
+			Certificados formais e emblemas associados à conclusão de cursos e módulos &
+			Estrutura por prazos e módulos que organiza o estudo, mas com pouca componente lúdica &
+			Percursos de aprendizagem recomendados com base nos interesses e no histórico do utilizador \\
+		\addlinespace
+		Khan Academy &
+			Pontos de energia, distintivos e mapas de progresso que tornam visível o que já foi dominado &
+			Painel de progresso e missões que ajudam o utilizador a saber sempre ``o que vem a seguir'' &
+			Aprendizagem por mestria (\emph{mastery learn\-ing}) \cite{bloom1968learning}: só se avança quando se domina o tema anterior \\
+		\addlinespace
+		edX &
+			Certificados verificados e indicadores de conclusão por módulo &
+			Fóruns de discussão e prazos que criam uma sensação de comunidade e de ritmo &
+			Conteúdos relativamente uniformes, com pouca adaptação automática ao desempenho individual \\
+		\bottomrule
+	\end{tabular}
+	\caption[Análise comparativa de plataformas de educação digital segundo os três pilares do Play4Change]{Benchmarking de produto de cinco plataformas de educação digital amplamente conhecidas, segundo os três pilares definidos para o \emph{Play4Change}: reconhecimento, envolvimento e personalização.}
+	\label{tab:comparacao-plataformas}
+\end{table}
+
+A comparação é intencionalmente agnóstica quanto ao domínio de conteúdo. Duas distinções estruturais delimitam o âmbito da transferência:
+
+\begin{itemize}
+    \item \textbf{Dimensão temática:} nenhuma das plataformas estudadas foi concebida para educação cívica urbana; são, porém, provas de conceito da eficácia das mecânicas de retenção que o \emph{Play4Change} pretende incorporar. O que se importa não é o \emph{quê} que ensinam, mas o \emph{como} mantêm os utilizadores.
+    \item \textbf{Ponto de acesso:} todas são primariamente web; o \emph{Play4Change} é \emph{mobile-native} --- o canal privilegiado dos segmentos que mais importa incluir, e onde o défice de abandono é mais pronunciado.
+\end{itemize}
+
+A Figura~\ref{fig:plataformas-pilares} posiciona cada plataforma nos três eixos.
+
+\begin{figure}[htbp]
+	\centering
+	\begin{tikzpicture}[scale=1, every node/.style={font=\small}]
+		\def\R{3.5}
+		% Background grid: concentric triangles marking the levels baixo / médio / alto
+		\foreach \lvl in {1,2,3} {
+			\draw[gray!30, thin] (90:{\lvl*\R/3}) -- (210:{\lvl*\R/3}) -- (330:{\lvl*\R/3}) -- cycle;
+		}
+		\node[gray!55, font=\tiny] at (90:{1*\R/3}) [above left=-1pt] {baixo};
+		\node[gray!55, font=\tiny] at (90:{2*\R/3}) [above left=-1pt] {médio};
+		\node[gray!55, font=\tiny] at (90:{3*\R/3}) [above left=-1pt] {alto};
+
+		% The three axes -- one per pillar
+		\draw[gray!55, -{Latex[length=2mm]}] (0,0) -- (90:{1.22*\R}) node[above, font=\bfseries\small]{Reconhecimento};
+		\draw[gray!55, -{Latex[length=2mm]}] (0,0) -- (210:{1.22*\R}) node[below left, font=\bfseries\small, align=center]{Envolvimento};
+		\draw[gray!55, -{Latex[length=2mm]}] (0,0) -- (330:{1.22*\R}) node[below right, font=\bfseries\small, align=center]{Personalização};
+
+		% Each polygon's vertices follow the order (Reconhecimento, Envolvimento, Personalização),
+		% with levels 1=baixo, 2=médio, 3=alto, drawn from the comparison in Table~\ref{tab:comparacao-plataformas}
+		\draw[red!70!black, thick]        (90:{2*\R/3}) -- (210:{3*\R/3}) -- (330:{1*\R/3}) -- cycle; % Kahoot!
+		\draw[teal!70!black, thick]       (90:{3*\R/3}) -- (210:{3*\R/3}) -- (330:{2*\R/3}) -- cycle; % Duolingo
+		\draw[blue!60!black, thick]       (90:{2*\R/3}) -- (210:{1*\R/3}) -- (330:{2*\R/3}) -- cycle; % Coursera
+		\draw[orange!80!black, thick]     (90:{2*\R/3}) -- (210:{2*\R/3}) -- (330:{3*\R/3}) -- cycle; % Khan Academy
+		\draw[violet!70!black, thick]     (90:{2*\R/3}) -- (210:{1*\R/3}) -- (330:{1*\R/3}) -- cycle; % edX
+		% Play4Change: the aspiration of being strong in all three pillars at once
+		\draw[black, thick, dashed]       (90:\R) -- (210:\R) -- (330:\R) -- cycle;
+	\end{tikzpicture}
+
+	\vspace{0.25cm}
+	{\small
+	\begin{tabular}{@{}l l@{\hspace{6mm}} l l@{}}
+		\textcolor{red!70!black}{\rule{0.4cm}{0.12cm}} & Kahoot! &
+		\textcolor{teal!70!black}{\rule{0.4cm}{0.12cm}} & Duolingo \\[3pt]
+		\textcolor{blue!60!black}{\rule{0.4cm}{0.12cm}} & Coursera &
+		\textcolor{orange!80!black}{\rule{0.4cm}{0.12cm}} & Khan Academy \\[3pt]
+		\textcolor{violet!70!black}{\rule{0.4cm}{0.12cm}} & edX &
+		{\footnotesize(a tracejado)} & Play4Change --- meta a alcançar \\
+	\end{tabular}}
+	\caption[Plataformas analisadas posicionadas nos três eixos do Play4Change]{Cada plataforma representada num gráfico de três eixos --- reconhecimento, envolvimento e personalização --- de acordo com o nível (baixo, médio ou alto) atribuído na Tabela~\ref{tab:comparacao-plataformas}. Os três eixos são níveis ordinais independentes, não proporções de um total fixo: uma plataforma pode estar ao nível ``alto'' nos três simultaneamente. A área a tracejado --- a única linha não sólida do gráfico --- assinala a meta do \emph{Play4Change}: alcançar um nível elevado nos três pilares em simultâneo, em vez de se destacar apenas num deles.}
+	\label{fig:plataformas-pilares}
+\end{figure}
+
+\section{Síntese e posicionamento do projeto}
+\label{sec:sintese-enquadramento}
+
+Esta análise revelou um padrão consistente: cada plataforma excele numa dimensão --- retenção diária via \emph{streaks}, reconhecimento visível de progresso ou adaptação ao ritmo individual --- mas nenhuma combina as três, nem as aplica à educação cívica. Esta conclusão orientou diretamente as decisões de design do \emph{Play4Change}.
+
+O critério de seleção foi estritamente comportamental: quais os padrões que comprovadamente reduzem o abandono e aumentam a persistência, independentemente do tema. Do conjunto de plataformas analisadas, \textbf{adotaram-se}: as sequências diárias (\emph{streaks}) e os distintivos de progresso do \emph{Duolingo} --- mecânicas de retenção diária com eficácia amplamente documentada; a progressão por mestria da \emph{Khan Academy}~\cite{bloom1968learning} --- que impede o avanço enquanto o tópico atual não for dominado; e o formato de \emph{quiz} interativo e imediato do \emph{Kahoot!}. \textbf{Não se adotaram}, pelo menos nesta fase, os certificados formais do \emph{Coursera} e do \emph{edX} --- que implicariam um nível de acreditação externo fora do âmbito de um protótipo --- nem as tabelas de classificação altamente competitivas, por potencialmente contrariarem os princípios da Teoria da Autodeterminação~\cite{deci1985intrinsic} em utilizadores menos experientes.
+
+A diferença mais fundamental entre o \emph{Play4Change} e todas as plataformas analisadas reside na combinação de \textbf{tema} (educação cívica para a transição sustentável) e de \textbf{personalização gerativa} (uso de um LLM para gerar conteúdos adaptativos em tempo real, com base no perfil de dificuldade de cada utilizador, e não apenas para selecionar conteúdos de um repositório fixo). Esta combinação, tanto quanto foi possível apurar neste levantamento, não está presente em nenhuma das plataformas existentes --- o que justifica a proposta, mas também coloca desafios concretos: o custo da inferência de IA a escala, a garantia de qualidade dos conteúdos gerados e a necessidade de validação pedagógica são dimensões que este protótipo apenas começa a explorar, e que uma versão madura da plataforma terá necessariamente de endereçar com maior rigor. O resultado, nesta fase, é um protótipo funcional: prova de viabilidade da combinação, não ainda uma plataforma completa e madura.

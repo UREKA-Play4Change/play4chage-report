@@ -1,0 +1,1378 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 4 — Desenvolvimento
+%
+\chapter{Desenvolvimento} \label{cap:desenvolvimento}
+
+O Play4Change é uma plataforma de aprendizagem adaptativa composta por três superfícies cliente(Android/iOS/Web), um serviço de backend e um módulo de geração por Inteligência Artificial, orquestrados através de uma infraestrutura totalmente contida em \textit{containers}.
+Este capítulo descreve em detalhe cada componente do sistema, as decisões de arquitetura que o estruturam e as tecnologias escolhidas para as concretizar.
+
+% -----------------------------------------------------------
+\section{Arquitetura Geral do Sistema} \label{sec:arquitetura}
+% -----------------------------------------------------------
+
+\subsection{Visão Macro e Estilo Arquitetural}
+
+O backend do Play4Change adopta a \textbf{Arquitetura Hexagonal} (\textit{Ports \& Adapters}), organizada dentro de um modelo de contextos delimitados (\textit{Bounded Contexts}) de \textit{Domain-Driven Design} (DDD)~\cite{evans2003}.
+Esta escolha não é convencional — é estruturalmente exigida pela natureza do problema: a complexidade do sistema reside no domínio (geração adaptativa de tarefas, deteção de dificuldade, percurso de consolidação), e essa lógica tem de permanecer completamente isolada de detalhes de persistência, de protocolo HTTP ou do fornecedor específico de LLM.
+
+A arquitetura organiza-se em três anéis concêntricos com dependências que fluem sempre para o interior:
+
+\begin{itemize}
+    \item \textbf{Anel de domínio:} classes Kotlin puras, sem qualquer anotação de \textit{framework}. Contém as entidades, os agregados, os eventos de domínio e as interfaces de \textit{port}.
+    \item \textbf{Anel de aplicação:} casos de uso que orquestram o domínio, chamando exclusivamente interfaces de \textit{port} — nunca implementações concretas.
+    \item \textbf{Anel de infraestrutura:} adaptadores de entrada (\textit{REST controllers}, filtros de segurança JWT) e adaptadores de saída (JPA, Resend, LangChain4j, MinIO), todos injectados pelo contentor Spring em tempo de execução.
+\end{itemize}
+
+Uma consequência prática desta separação: o domínio e a aplicação nunca referenciam LangChain4j directamente, pelo que substituir o fornecedor de LLM de Mistral para outro modelo não exige alterar nenhuma linha de lógica de negócio --- exige apenas uma nova implementação de \texttt{TaskGenerationPort} anotada com \texttt{@Primary} e, ao nível do \textit{build}, trocar a dependência de \texttt{ai-agent:langchain} pelo módulo Gradle correspondente ao novo adaptador.
+
+\subsection{Decomposição em Módulos}
+
+O sistema está decomposto em seis módulos com regras de dependência estritas, apresentados na Tabela~\ref{tab:modulos}.
+
+\begin{table}[h!]
+\centering
+\caption{Módulos do sistema Play4Change e responsabilidades}
+\label{tab:modulos}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llp{9cm}}
+\hline
+\textbf{Módulo} & \textbf{Tecnologia} & \textbf{Responsabilidade} \\
+\hline
+\texttt{server}            & Kotlin, Spring Boot 3, JVM 21          & API REST, lógica de domínio e aplicação, adaptadores de infraestrutura \\
+\texttt{ai-agent:api}      & Kotlin puro                            & Contratos de \textit{port} para geração IA — sem implementação nem dependências de \textit{runtime} \\
+\texttt{ai-agent:langchain}& Kotlin, LangChain4j, Mistral           & Adaptador IA: geração de tarefas, ramificação adaptativa, síntese de explicações \\
+\texttt{composeApp}        & Kotlin Multiplatform, Compose MP       & Cliente móvel Android e iOS — arquitectura MVI via Decompose \\
+\texttt{common}            & Kotlin Multiplatform                   & Objectos de valor partilhados, tipos de erro, \textit{result wrappers} — sem dependências de \textit{framework} \\
+\texttt{play4change-web}   & React 18, TypeScript, Vite, TanStack   & SPA de administração — gestão de tópicos, utilizadores e métricas \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+A regra de dependência é rigorosa ao nível do código: \texttt{common} não depende de nenhum módulo; \texttt{ai-agent:api} depende apenas de \texttt{common}; o \textbf{domínio e a aplicação} do \texttt{server} referenciam apenas a interface \texttt{TaskGenerationPort} de \texttt{ai-agent:api}, nunca LangChain4j directamente --- a implementação concreta é injectada em \textit{runtime} pelo mecanismo de \texttt{@Primary} do Spring. O módulo Gradle \texttt{:server} mantém, ainda assim, uma dependência de \textit{build} em \texttt{ai-agent:langchain} (necessária para que esse \textit{bean} exista no contentor Spring a injectar).
+
+\subsection{Camadas do Sistema}
+
+A Figura~\ref{fig:arquitetura} apresenta a visão macro do sistema, organizada em quatro zonas de rede com fronteiras explícitas.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/Play4change-System_Design.pdf}}
+    \caption{Arquitetura geral do sistema Play4Change}
+    \label{fig:arquitetura}
+\end{figure}
+
+\textbf{Camada de apresentação (\textit{Presentation}):} os dois clientes --- o cliente móvel (Android/iOS) e o cliente web (SPA React) --- comunicam exclusivamente via HTTPS com a camada de rede de fronteira.
+
+\textbf{Rede de fronteira (\textit{Edge Network}):} um \textit{reverse proxy} Nginx centraliza todo o tráfego de entrada. Executa duas funções distintas: encaminha os pedidos de API (\texttt{/api/**}, \texttt{/play4change-server/**}) para o processo Spring Boot via HTTP interno, e serve os ficheiros estáticos compilados da SPA React com uma directiva \texttt{try\_files} para suporte de \textit{client-side routing}. O servidor de aplicação nunca serve activos estáticos.
+
+\textbf{Rede privada (\textit{Private Network}):} o servidor Spring Boot, as bases de dados e a camada de observabilidade estão isolados numa rede privada inacessível externamente. O servidor acede ao \textbf{PostgreSQL 16} (com as extensões \texttt{pgvector} e \texttt{uuid-ossp}) para persistência relacional e vetorial --- incluindo a revogação de \textit{refresh tokens} por marcação \texttt{used=true} e o \textit{rate limiting} em memória (Bucket4j + Caffeine, por processo) --- e ao \textbf{MinIO} (compatível com S3) para armazenamento de ficheiros e APKs compilados. O Prometheus extrai métricas do \textit{endpoint} \texttt{/actuator/prometheus} a cada cinco segundos; o Grafana consome o Prometheus e apresenta \textit{dashboards} provisionados automaticamente por ficheiros de configuração.
+
+\textbf{Serviços externos:} o servidor comunica com dois serviços externos geridos por terceiros: o \textbf{Mistral AI} (via LangChain4j) para geração de tarefas e síntese de explicações, e o \textbf{Resend} como API de entrega de email para o fluxo de autenticação \textit{passwordless} por \textit{magic link}.
+
+\subsection{Domínio: Contextos Delimitados}
+
+O domínio está particionado em \textbf{oito contextos delimitados}, cada um com os seus próprios agregados, contratos de repositório e serviços de aplicação. Nenhum contexto acede directamente aos agregados de outro — a comunicação inter-contexto passa sempre por interfaces de serviço de aplicação.
+
+\begin{itemize}
+    \item \textbf{Auth} — Fluxo de \textit{magic link}, ciclo de vida de tokens JWT, gestão de papéis (\textit{roles})
+    \item \textbf{Identity} — Perfil do Learner, preferências, fuso horário, email de recuperação
+    \item \textbf{Topic} — Estrutura curricular: tópicos $\rightarrow$ módulos $\rightarrow$ \textit{templates} de tarefas (versionados, com \textit{embeddings})
+    \item \textbf{Enrollment} — Inscrição do Learner em tópicos, agendamento de atribuições, rastreio de progresso
+    \item \textbf{Struggle} — Heurísticas de deteção de dificuldade, persistência de registos de \textit{struggle}, lógica de activação adaptativa
+    \item \textbf{Explanation} — Sessões de explicação sintetizadas por IA e conversa de seguimento
+    \item \textbf{Badge} — Avaliação de critérios de conquista, ciclo de vida de atribuição de \textit{badges}
+    \item \textbf{Report} — Métricas agregadas de desempenho em tarefas para análise de administração
+\end{itemize}
+
+\subsection{Fluxo Geral de Dados}
+
+O percurso de um pedido típico do Learner ilustra como as camadas interagem sem violação das fronteiras arquitecturais.
+O cliente móvel envia um pedido HTTPS ao Nginx, que o encaminha via HTTP interno para o \textit{servlet filter} de segurança Spring.
+O filtro valida o JWT e popula o contexto de segurança; o controlador REST delega imediatamente para o caso de uso de aplicação correspondente, sem conter lógica de negócio.
+O caso de uso invoca o \textit{port} de repositório para recuperar o estado do Learner, chama o \textit{port} de geração IA se necessário (que resolve para o adaptador LangChain4j em \textit{runtime}), e persiste o resultado via JPA.
+A resposta percorre o caminho inverso sem que nenhuma camada interna tenha conhecimento do protocolo HTTP ou do formato de serialização JSON.
+
+% -----------------------------------------------------------
+\section{Backend --- Spring Server e Pipeline} \label{sec:backend}
+% -----------------------------------------------------------
+
+\subsection{Organização do Projeto} \label{sec:org-projeto}
+
+O servidor é uma aplicação Spring Boot~3 escrita em Kotlin (JVM~21), estruturada segundo os princípios da Arquitetura Hexagonal com separação estrita entre três camadas: \texttt{domain}, \texttt{application} e \texttt{infrastructure}/\texttt{web}.
+A raiz do pacote é \texttt{com.ureka.play4change}.
+O \textit{entry point} \texttt{Application.kt} regista explicitamente os pacotes dos \textit{bounded contexts} via \texttt{@SpringBootApplication(scanBasePackages\,=\,[...])} e ativa \texttt{@EnableScheduling} para os \textit{jobs} periódicos.
+
+A camada \textbf{domain} não contém nenhuma anotação Spring, JPA ou LangChain4j --- é Kotlin puro.
+Inclui as entidades, os agregados e as interfaces de \textit{port} (repositório e serviços externos) para cada um dos oito contextos delimitados: \texttt{auth}, \texttt{identity}, \texttt{topic}, \texttt{enrollment}, \texttt{struggle}, \texttt{explanation}, \texttt{badge} e \texttt{report}.
+
+A camada \textbf{application} contém os casos de uso (e.g.\ \texttt{EnrollmentUseCase}, \texttt{TopicUseCase}, \texttt{ExplanationUseCase}) e os serviços que os implementam (e.g.\ \texttt{TaskGenerationOrchestrator}, \texttt{HandleStruggleService}, \texttt{BatchInstanceGenerationService}).
+Estes serviços invocam exclusivamente interfaces de \textit{port} --- nunca implementações concretas --- garantindo que a lógica de negócio é testável de forma independente da base de dados ou do fornecedor de LLM.
+
+A camada \textbf{infrastructure} contém os adaptadores de saída: adaptadores JPA para cada repositório de domínio, \texttt{MinioFileStorageAdapter} (armazenamento de objetos), \texttt{UrlScrapeAdapter} e \texttt{UnstructuredPdfAdapter} (extração de conteúdo), \texttt{ResendEmailAdapter} (email transacional) e os filtros/interceptores do pipeline HTTP.
+Os adaptadores de entrada HTTP estão no pacote \texttt{web}, separados em três sub-pacotes: \texttt{admin} (gestão de tópicos, utilizadores e eventos SSE), \texttt{user} (matrícula, tarefas, explicações) e \texttt{public} (estatísticas públicas).
+
+O contexto de autenticação está completamente isolado no pacote \texttt{auth}, com os seus próprios sub-pacotes \texttt{domain}, \texttt{application}, \texttt{port} e \texttt{adapter}, não partilhando nenhuma dependência direta com o domínio principal.
+
+O módulo de IA está separado em dois módulos Gradle:
+\texttt{ai-agent:api} define a interface \texttt{TaskGenerationPort} (contrato puro, sem dependências de \textit{runtime});
+\texttt{ai-agent:langchain} é a única localização no repositório que referencia LangChain4j e implementa esse contrato com \texttt{LangChain4jTaskGenerationAdapter} anotado com \texttt{@Primary}.
+O código do módulo \texttt{:server} (domínio e aplicação) depende apenas da interface \texttt{TaskGenerationPort} de \texttt{ai-agent:api} e nunca referencia LangChain4j directamente --- a implementação concreta é injectada pelo contentor Spring em \textit{runtime}. O \texttt{build.gradle.kts} de \texttt{:server} declara, no entanto, uma dependência de compilação em \texttt{ai-agent:langchain}, necessária para expor o \textit{bean} \texttt{@Primary} ao contentor Spring; substituir o fornecedor de LLM não exige alterar lógica de negócio, mas exige trocar essa dependência de \textit{build} --- não é, portanto, uma alteração de zero linhas de código.
+
+A gestão do esquema de base de dados é feita exclusivamente por Flyway (32 migrações, \texttt{V1} a \texttt{V32}), com \texttt{spring.jpa.hibernate.ddl-auto: validate} --- o Hibernate valida o esquema em arranque mas nunca o altera em produção.
+Queries críticas para atomicidade (e.g.\ \texttt{claimToken} para consumo único de \textit{magic links}) usam SQL nativo com \texttt{RETURNING} para eliminar janelas TOCTOU.
+
+\subsection{Pipeline de Processamento de Pedidos} \label{sec:pipeline}
+
+Cada pedido HTTP atravessa um conjunto de camadas ordenadas de forma determinista antes de atingir o \textit{controller}.
+A Figura~\ref{fig:seq-pipeline} ilustra o fluxo completo para um pedido autenticado típico.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-pipeline.png}}
+    \caption{Pipeline de processamento de um pedido HTTP autenticado}
+    \label{fig:seq-pipeline}
+\end{figure}
+
+\subsubsection*{Filtros e interceptores --- ordem de execução}
+
+Quatro componentes operam em camadas distintas antes de o pedido atingir o \textit{controller}, descritos na Tabela~\ref{tab:pipeline}.
+
+\begin{table}[h!]
+\centering
+\caption{Componentes do pipeline HTTP e responsabilidades}
+\label{tab:pipeline}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llp{9.5cm}}
+\hline
+\textbf{Ordem} & \textbf{Componente} & \textbf{Responsabilidade} \\
+\hline
+1 & \texttt{RateLimitFilter} (\texttt{HIGHEST\_PRECEDENCE})
+  & \textit{Rate limiting} por IP~$\times$~\textit{path} normalizado, via Bucket4j com \textit{cache} Caffeine; devolve \texttt{429} com \texttt{Retry-After} quando o \textit{bucket} é excedido \\
+2 & \texttt{RequestIdFilter} (\texttt{@Order(1)})
+  & Gera ou propaga o header \texttt{X-Request-Id}; coloca-o no MDC do SLF4J para correlação de logs distribuídos \\
+3 & \texttt{JwtAuthFilter} (\texttt{OncePerRequestFilter})
+  & Valida o JWT do header \texttt{Authorization: Bearer}; popula o \texttt{SecurityContextHolder} com \texttt{userId} e \texttt{role}; devolve \texttt{401} em token inválido \\
+4 & \texttt{LoggingInterceptor} (\texttt{HandlerInterceptor})
+  & Regista \texttt{→ METHOD path} em \texttt{preHandle} e \texttt{← status [Xms]} em \texttt{afterCompletion} \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+O \texttt{RateLimitFilter} tem \texttt{@Order(Ordered.HIGHEST\_PRECEDENCE)}, um valor inferior ao \texttt{@Order(1)} do \texttt{RequestIdFilter}, pelo que é efectivamente o primeiro componente a correr na cadeia --- \textbf{antes} do próprio \texttt{RequestIdFilter} e de qualquer lógica de autenticação --- o que impede ataques de força bruta mesmo sobre utilizadores não autenticados.
+Uma consequência desta ordem é que um pedido rejeitado por \textit{rate limiting} (\texttt{429}) nunca chega a ter um \texttt{X-Request-Id} atribuído nem entra no MDC de logging, pelo que não é correlacionável nos logs da mesma forma que um pedido aceite.
+Os \textit{buckets} são mantidos num \textit{cache} Caffeine com expiração de 15 minutos por inatividade e limite de 50\,000 entradas para evitar crescimento ilimitado de memória.
+Os limites por \textit{endpoint} estão descritos na Tabela~\ref{tab:ratelimits}.
+
+\begin{table}[h!]
+\centering
+\caption{Limites de \textit{rate limiting} por \textit{endpoint} (janela de 10 minutos por IP)}
+\label{tab:ratelimits}
+\begin{tabular}{ll}
+\hline
+\textbf{Endpoint} & \textbf{Capacidade} \\
+\hline
+\texttt{POST /auth/magic-link}              & 5  \\
+\texttt{POST /auth/magic-link/verify}       & 10 \\
+\texttt{POST /auth/refresh}                 & 20 \\
+\texttt{POST /explanation/.../message}      & 10 \\
+\texttt{POST /admin/topics}                 & 3  \\
+\texttt{POST /admin/topics/pdf}             & 2  \\
+\texttt{POST /admin/topics/{id}/regenerate} & 2  \\
+\hline
+\end{tabular}
+
+\bigskip
+\noindent\textit{Nota:} existe também uma regra configurada para \texttt{/topics/\{id\}/task-assignments/\{id\}/submit} (30) destinada à submissão de respostas, mas o \textit{endpoint} real de submissão é \texttt{POST /tasks/\{assignmentId\}/submit} --- um padrão de rota diferente, que a regra nunca corresponde. Na prática, a submissão da tarefa diária não está sujeita a \textit{rate limiting} (ver Secção~\ref{sec:ratelimiting} para detalhe).
+\end{table}
+
+\subsubsection*{Pipeline assíncrono de geração de tópicos}
+
+A criação de um tópico é o fluxo mais complexo do sistema, envolvendo extração de conteúdo, geração por LLM e indexação vetorial.
+A Figura~\ref{fig:seq-topic-gen} ilustra o pipeline completo, que atravessa cinco estados de máquina de estados:
+
+\begin{center}
+\texttt{INGESTION} $\rightarrow$ \texttt{ANALYSIS} $\rightarrow$ \texttt{GENERATION} $\rightarrow$ \texttt{INDEXING} $\rightarrow$ \texttt{ACTIVE}
+\end{center}
+\begin{center}
+(qualquer fase pode transitar para \texttt{FAILED} em caso de erro)
+\end{center}
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-topic-generation.png}}
+    \caption{Pipeline assíncrono de geração de tópicos com notificação SSE}
+    \label{fig:seq-topic-gen}
+\end{figure}
+
+O pedido \texttt{POST /admin/topics} devolve imediatamente \texttt{201 Created} com o tópico em estado \texttt{PENDING}; o pipeline executa em paralelo num executor dedicado (\texttt{generationExecutor}) com três \textit{threads} e fila de 25 pedidos.
+O \texttt{SupervisorJob} Kotlin garante que a falha de uma geração não cancela outras em curso.
+O Admin acompanha o progresso em tempo real via \textit{Server-Sent Events} (SSE) no \textit{endpoint} \texttt{GET /admin/topics/\{id\}/progress}, recebendo eventos \texttt{phase-change}, \texttt{generation-progress} e \texttt{complete}.
+
+Dois \textit{schedulers} Spring garantem a robustez do pipeline: o \texttt{StuckGenerationWatchdogJob} (a cada 120\,s) deteta tópicos presos em \texttt{GENERATING} por mais de 15 minutos e transita-os para \texttt{FAILED}; o \texttt{TopicExpirationJob} (a cada 60\,s) marca como \texttt{EXPIRED} os tópicos \texttt{ACTIVE} cuja \texttt{expires\_at} passou.
+
+A integração com o LLM é protegida por Resilience4j com \textit{circuit breaker} de 10 chamadas (abre a 50\% de falhas, aguarda 30\,s antes de meio-abrir), \textit{retry} de 3 tentativas com \textit{backoff} exponencial de 2\,s, e \textit{timeout} de 60\,s por geração (\texttt{withTimeoutOrNull}).
+
+\subsection{Integração com os Restantes Componentes} \label{sec:integracao}
+
+O servidor integra-se com cinco sistemas de infraestrutura e dois sistemas externos.
+Todas as integrações são mediadas por interfaces de \textit{port} no domínio --- nunca por referências diretas às implementações.
+
+\subsubsection*{Nginx}
+
+O Nginx serve simultaneamente como \textit{reverse proxy} e servidor de ficheiros estáticos da SPA React.
+A regra \texttt{location /play4change-server/} aplica \texttt{rewrite\,\^{}/play4change-server/(.*)\,/\$1\,break} antes de \texttt{proxy\_pass} ao \texttt{server:8080} --- o servidor nunca vê o prefixo de roteamento.
+O \texttt{proxy\_read\_timeout} é 120\,s para acomodar chamadas ao LLM.
+Os \textit{headers} de segurança \texttt{Strict-Transport-Security}, \texttt{X-Frame-Options: DENY}, \texttt{X-Content-Type-Options: nosniff} e \texttt{Referrer-Policy} são aplicados em todas as \textit{locations}.
+A configuração CORS no servidor (\texttt{WebMvcConfig}) define origens explícitas sem \textit{wildcards}, \texttt{allowCredentials=true} e \texttt{maxAge=3600}.
+
+\subsubsection*{PostgreSQL com pgvector}
+
+O servidor usa Spring Data JPA com Hibernate.
+Cada \textit{bounded context} tem os seus próprios adaptadores JPA (e.g.\ \texttt{MagicLinkTokenJpaAdapter}, \texttt{TaskTemplateJpaAdapter}).
+A extensão \texttt{pgvector} armazena \textit{embeddings} de 1024 dimensões nos \textit{templates} de tarefas, usados pelo \texttt{PgVectorDeduplicationService} para detetar tarefas semanticamente semelhantes antes de persistir novas geradas pelo LLM.
+
+\subsubsection*{MinIO}
+
+O \texttt{MinioFileStorageAdapter} implementa \texttt{FileStoragePort} e armazena PDFs em \texttt{topics/\{topicId\}/content.pdf} e texto de URLs em \texttt{topics/\{topicId\}/content.txt}.
+O conteúdo é descarregado pelo orquestrador no início do pipeline de geração para garantir que o LLM nunca acede diretamente ao URL original.
+
+\subsubsection*{Scraper Playwright e Unstructured.io}
+
+A extração de conteúdo é delegada a dois microserviços em contentor: para tópicos de URL, o servidor chama \texttt{http://scraper:3000} (Node.js + Playwright) para obter o HTML renderizado de páginas com \textit{client-side rendering}; para tópicos PDF, envia o ficheiro à API \texttt{http://unstructured:8000} (Unstructured.io) para extração de texto estruturado com suporte a OCR.
+O \texttt{UrlSsrfValidator} valida todos os URLs antes de os enviar ao \textit{scraper}, rejeitando endereços privados, \textit{loopback} e redes reservadas para prevenir ataques SSRF.
+
+\subsubsection*{Resend (email transacional)}
+
+O \texttt{ResendEmailAdapter} (anotado \texttt{@Primary @ConditionalOnExpression}) ativa-se apenas se a variável de ambiente \texttt{RESEND\_API\_KEY} estiver definida, invocando \texttt{https://api.resend.com/emails} via \texttt{RestTemplate}.
+Em ambiente de desenvolvimento, o \texttt{ConsoleEmailAdapter} regista o token no log sem enviar email.
+
+\subsubsection*{Prometheus e Grafana}
+
+O Spring Boot Actuator expõe \texttt{/actuator/prometheus} na porta de gestão (9090), inacessível externamente.
+Métricas instrumentadas manualmente incluem: \texttt{task.generation.duration} (histograma por status), \texttt{ai.generation.duration} (por fase), \texttt{ai.adaptive.reuse} (por estratégia: \textit{full}/\textit{partial}/\textit{fresh}), contadores de sessões de explicação e de \textit{rate limiting} excedido por prefixo de \textit{path}.
+Três \textit{dashboards} Grafana são provisionados automaticamente por ficheiros de configuração: latência de IA, fluxo do \textit{learner} e \textit{dashboard} geral.
+
+% -----------------------------------------------------------
+\section{Autenticação Passwordless} \label{sec:autenticacao}
+% -----------------------------------------------------------
+
+O Play4Change implementa autenticação \textit{passwordless} por \textit{magic link}, sem qualquer OAuth externo ou SSO.
+O design resolve três requisitos simultâneos: eliminar \textit{passwords} para o utilizador gerir, garantir resistência a ataques de reutilização de tokens, e suportar um email de recuperação alternativo como segunda via de acesso.
+
+\subsection{Modelo de Dados e Propriedades Criptográficas} \label{sec:auth-model}
+
+O subsistema de autenticação mantém quatro tabelas independentes do domínio principal.
+A Tabela~\ref{tab:auth-schema} descreve a estrutura e as propriedades de segurança de cada uma.
+
+\begin{table}[h!]
+\centering
+\caption{Tabelas do modelo de dados de autenticação}
+\label{tab:auth-schema}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lp{5cm}p{7cm}}
+\hline
+\textbf{Tabela} & \textbf{Campos relevantes} & \textbf{Função e propriedades de segurança} \\
+\hline
+\texttt{users}
+  & \texttt{id} (UUID), \texttt{email}, \texttt{provider} (\texttt{MAGIC\_LINK}), \texttt{role} (\texttt{USER|ADMIN})
+  & Perfil de autenticação; email é normalizado (lowercase + trim) antes de qualquer operação \\
+\texttt{magic\_link\_tokens}
+  & \texttt{token} (SHA-256 do token em claro), \texttt{expires\_at} (+15\,min), \texttt{used} (bool)
+  & Apenas o \textit{hash} é persistido; consumo atómico via \texttt{UPDATE ... RETURNING} elimina janelas TOCTOU \\
+\texttt{refresh\_tokens}
+  & \texttt{token\_hash} (SHA-256), \texttt{family\_id} (UUID), \texttt{expires\_at} (+7\,dias), \texttt{used} (bool)
+  & \texttt{family\_id} agrupa todos os \textit{tokens} de uma sessão; deteção de reutilização revoga toda a família \\
+\texttt{recovery\_emails}
+  & \texttt{email}, \texttt{verified} (bool), \texttt{token\_hash}, \texttt{token\_expires\_at} (+24\,h)
+  & Permite autenticação com email alternativo verificado; não cria utilizador duplicado \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Todos os tokens são gerados pela classe \texttt{AuthCrypto} com 32 bytes de \texttt{SecureRandom} (64 caracteres hexadecimais).
+\textbf{Apenas o SHA-256 do token é persistido}; o token em claro existe exclusivamente em memória e no email enviado ao utilizador, nunca na base de dados.
+
+\subsection{Fluxo de Autenticação por Magic Link} \label{sec:auth-flow}
+
+O fluxo de autenticação decorre em duas fases: pedido do \textit{magic link} e verificação do token.
+A Figura~\ref{fig:seq-magic-link} apresenta o diagrama de sequência completo, incluindo os casos de token inválido.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-magic-link.png}}
+    \caption{Diagrama de sequência --- fluxo completo de autenticação por \textit{magic link}}
+    \label{fig:seq-magic-link}
+\end{figure}
+
+Na primeira fase, o utilizador submete o email; o \texttt{MagicLinkService} normaliza-o, gera um token opaco, persiste o SHA-256 com \texttt{expires\_at\,=\,now\,+\,15\,min} e delega o envio ao \texttt{EmailPort}.
+O servidor responde \texttt{202 Accepted} imediatamente --- não confirmando nem negando a existência do email, evitando enumeração de contas.
+
+Na segunda fase, o utilizador clica no \textit{link} no email.
+No cliente móvel, o URI \texttt{play4change://auth/verify?token=rawToken} é capturado pelo \textit{deep link} da aplicação, que extrai o token e faz \texttt{POST /auth/magic-link/verify}.
+No cliente web, o GET de verificação recebe um redirect \texttt{302} que não consome o token --- apenas encaminha para o fluxo POST.
+O consumo do token é feito atomicamente por:
+\begin{center}
+\texttt{UPDATE magic\_link\_tokens SET used=true WHERE token=:hash AND used=false AND expires\_at>now() RETURNING email}
+\end{center}
+Zero linhas retornadas significa token inválido, expirado ou já utilizado --- as três condições de falha são indistinguíveis para o cliente, evitando \textit{oracle attacks}.
+
+Em caso de sucesso, o serviço verifica se o email corresponde a um utilizador existente, a um email de recuperação verificado (em ambos os casos sem criar novo utilizador), ou a um email genuinamente novo (registo automático implícito).
+É então emitido um par de tokens: \textit{access token} JWT (15 minutos) e \textit{refresh token} opaco (7 dias).
+
+\subsection{Ciclo de Vida dos Tokens JWT e Rotação de Refresh Tokens} \label{sec:token-lifecycle}
+
+O \textit{access token} é um JWT assinado com HMAC-SHA-256, com a estrutura de \textit{claims} \texttt{\{sub, email, role, iat, exp\}}.
+A chave de assinatura é validada em arranque pelo \texttt{JwtSecretStartupGuard}: em perfil \texttt{prod}, o arranque falha (\texttt{IllegalStateException}) se a chave tiver menos de 64 caracteres ou for igual ao valor de desenvolvimento por omissão; fora de \texttt{prod}, o uso desse valor por omissão gera apenas um aviso em log, sem impedir o arranque.
+A sessão Spring é \texttt{STATELESS} (\texttt{SessionCreationPolicy.STATELESS}) --- cada pedido é autenticado independentemente pelo \texttt{JwtAuthFilter}.
+
+O mecanismo de rotação de \textit{refresh tokens} segue o padrão \textit{token rotation} com deteção de reutilização, conforme ilustrado na Figura~\ref{fig:seq-token-rotation}.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-token-rotation.png}}
+    \caption{Diagrama de sequência --- rotação de \textit{refresh token} com deteção de reutilização}
+    \label{fig:seq-token-rotation}
+\end{figure}
+
+Quando o cliente faz \texttt{POST /auth/refresh}, o \texttt{TokenService} localiza o \textit{refresh token} pelo hash.
+Se o token já foi marcado como \texttt{used}, é detetado um possível roubo de sessão: todos os tokens da mesma \texttt{family\_id} são imediatamente revogados, forçando o utilizador a re-autenticar.
+Em caso de token válido, o token atual é marcado como usado e é emitido um novo par, mantendo o mesmo \texttt{family\_id} --- o que garante que o \textit{logout} revoga toda a cadeia de rotação da sessão.
+
+\subsection{Autorização e Controlo de Acesso} \label{sec:authz}
+
+A \texttt{SecurityConfig} define quatro zonas de acesso com regras distintas, descritas na Tabela~\ref{tab:access-zones}.
+
+\begin{table}[h!]
+\centering
+\caption{Zonas de controlo de acesso configuradas no Spring Security}
+\label{tab:access-zones}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lp{7cm}l}
+\hline
+\textbf{Zona} & \textbf{Paths} & \textbf{Requisito} \\
+\hline
+Pública
+  & \texttt{/auth/**}, \texttt{/api/stats/public}, \texttt{/error}, \texttt{/actuator/health}, \texttt{/actuator/prometheus}
+  & Sem autenticação \\
+Swagger
+  & \texttt{/swagger-ui/**}, \texttt{/v3/api-docs/**}
+  & \texttt{ROLE\_ADMIN} em \textit{prod}; público em dev \\
+Administração
+  & \texttt{/admin/**}
+  & \texttt{ROLE\_ADMIN} obrigatório \\
+Utilizador
+  & Todos os restantes \textit{paths}
+  & JWT válido (qualquer \textit{role}) \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+A separação da zona de administração é particularmente relevante: um Learner com JWT válido que tente aceder a \texttt{/admin/**} recebe \texttt{403 Forbidden} sem que o pedido atinja qualquer \textit{controller}.
+O Swagger é restrito a administradores em produção para evitar exposição do contrato de API a utilizadores não autorizados.
+
+% -----------------------------------------------------------
+\section{Ingestão e Extração de Conteúdo} \label{sec:ingestao}
+% -----------------------------------------------------------
+
+A ingestão de conteúdo é a primeira fase do pipeline de criação de tópicos.
+Um Administrador fornece uma fonte --- um URL público ou um ficheiro PDF --- a partir da qual o sistema extrai texto simples que servirá de base à geração automática de tarefas educativas.
+
+A camada de extração segue o padrão \textit{Port \& Adapter}: a interface \texttt{ContentExtractorPort} é definida na camada de aplicação com dois métodos, \texttt{extractFromUrl(url: String): String} e \texttt{extractFromPdf(pdfBytes: ByteArray): String}, e é implementada na infraestrutura pelo \texttt{ContentExtractorAdapter}.
+O domínio nunca referencia nenhuma tecnologia de extração diretamente.
+
+Independentemente da fonte, o fluxo sincrónico partilha o mesmo padrão: o \texttt{TopicManagementService} extrai o texto, valida que não está vazio, persiste o conteúdo original no MinIO (como ficheiro de auditoria e para eventual regeneração), cria o tópico em estado \texttt{PENDING} e lança o pipeline assíncrono de geração --- devolvendo \texttt{201 Created} imediatamente sem aguardar a conclusão da IA.
+
+\subsection{Extração de Texto de PDF} \label{sec:pdf}
+
+A extração de texto de documentos PDF é delegada à \textbf{Unstructured API}~\cite{unstructured2023}, executada localmente em contentor Docker na porta~9500.
+Esta escolha justifica-se pela necessidade de suportar documentos digitalizados (PDFs que contêm imagens em vez de texto nativo), para os quais é necessário reconhecimento ótico de caracteres (\textit{Optical Character Recognition}, OCR) --- funcionalidade que a Unstructured integra nativamente com estratégia \texttt{auto}, que seleciona automaticamente entre extração de texto nativo e OCR consoante o conteúdo de cada página.
+
+O ponto de entrada HTTP é \texttt{POST /admin/topics/pdf}, com os campos descritos na Tabela~\ref{tab:pdf-fields}.
+
+\begin{table}[h!]
+\centering
+\caption{Campos do pedido \texttt{POST /admin/topics/pdf} (multipart/form-data)}
+\label{tab:pdf-fields}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llll}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obrigatório} & \textbf{Restrições} \\
+\hline
+\texttt{file}        & binary PDF  & Sim & máx.\ 25\,MB \\
+\texttt{title}       & String      & Sim & máx.\ 200 caracteres \\
+\texttt{description} & String      & Sim & máx.\ 1\,000 caracteres \\
+\texttt{category}    & String      & Não & máx.\ 100 caracteres \\
+\texttt{difficulty}  & Enum        & Não & \texttt{BEGINNER | INTERMEDIATE | ADVANCED} (omissão: \texttt{BEGINNER}) \\
+\texttt{language}    & String      & Não & código ISO 639-1 (omissão: \texttt{en}), máx.\ 10 caracteres \\
+\texttt{taskCount}   & Int         & Não & omissão: 10 \\
+\texttt{expiresAt}   & ISO 8601    & Não & omissão: agora + 90 dias \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+A Figura~\ref{fig:seq-ingest-pdf} detalha o fluxo interno de extração de PDF.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ingest-pdf.png}}
+    \caption{Diagrama de sequência --- extração de texto de PDF via Unstructured.io}
+    \label{fig:seq-ingest-pdf}
+\end{figure}
+
+O \texttt{ContentExtractorAdapter} submete o PDF como \texttt{multipart/form-data} para o \textit{endpoint} \texttt{/general/v0/general} com o campo \texttt{strategy=auto}.
+A resposta é uma lista de elementos JSON com campo \texttt{text}; o adaptador filtra elementos em branco, une-os com separador \texttt{\textbackslash n\textbackslash n} (preservando a estrutura de parágrafos), e remove bytes nulos (\texttt{\textbackslash u0000}) que são artefactos comuns de OCR.
+O \textit{timeout} de leitura é de 120 segundos, justificado pela possibilidade de documentos extensos ou totalmente digitalizados requererem processamento OCR prolongado.
+
+O texto extraído é persistido no MinIO em \texttt{topics/\{id\}/content.pdf}, eliminando a necessidade de re-extração em caso de regeneração de tarefas pelo Administrador.
+
+\subsection{Extração de Texto de URL} \label{sec:url}
+
+A extração de texto a partir de URLs é delegada a um microserviço de \textit{scraping} baseado em \textbf{Playwright}~\cite{playwright2023}, implementado em Node.js e executado em contentor Docker na porta~3000.
+A escolha de Playwright em detrimento de um simples cliente HTTP é deliberada: muitas páginas educativas são \textit{Single Page Applications} (SPA) que requerem execução de JavaScript para renderizar o seu conteúdo --- conteúdo esse que seria invisível a uma chamada HTTP convencional.
+
+O ponto de entrada HTTP é \texttt{POST /admin/topics}, com corpo JSON.
+Os campos de metadados são equivalentes ao fluxo PDF (Tabela~\ref{tab:pdf-fields}), substituindo \texttt{file} pelo campo \texttt{url} (String, obrigatório, sujeito a validação SSRF).
+
+A Figura~\ref{fig:seq-ingest-url} detalha o fluxo interno, incluindo a validação de segurança de URL.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ingest-url.png}}
+    \caption{Diagrama de sequência --- extração de texto de URL com validação SSRF e Playwright}
+    \label{fig:seq-ingest-url}
+\end{figure}
+
+\subsubsection*{Prevenção de SSRF}
+
+Antes de qualquer pedido de rede, o \texttt{UrlSsrfValidator} executa uma validação sequencial que termina na primeira violação detetada:
+
+\begin{enumerate}
+    \item \textbf{Esquema obrigatório \texttt{https}} --- rejeita URLs com esquema \texttt{http} ou outros protocolos.
+    \item \textbf{Host não nulo} --- rejeita URLs malformadas sem componente de \textit{host}.
+    \item \textbf{Resolução DNS e filtragem de endereços privados} --- invoca \texttt{InetAddress.getAllByName(host)} e rejeita qualquer endereço resolvido que pertença a: \textit{loopback} (127.0.0.0/8, ::1), redes privadas RFC~1918 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), \textit{link-local} (169.254.0.0/16, fe80::/10) ou \textit{multicast}.
+\end{enumerate}
+
+Qualquer violação lança uma \texttt{UrlSsrfViolationException} que o \texttt{TopicManagementService} converte em \texttt{BadRequest.InvalidField("url", detalhe)} devolvido como \texttt{400 Bad Request}.
+Esta validação mitigua o ataque OWASP A10:2021 (SSRF), impedindo que o sistema seja usado como \textit{proxy} para alcançar serviços internos da rede Docker.
+
+\subsubsection*{Comportamento do \textit{scraper} Playwright}
+
+O serviço opera com um browser Chromium persistente, reutilizado entre pedidos para evitar o custo de inicialização.
+Para cada pedido, abre uma nova página e aguarda o evento \texttt{domcontentloaded} (timeout: 25\,s); de seguida, tenta \texttt{networkidle} (timeout: 5\,s, ignorando falhas) para capturar conteúdo carregado assincronamente sem bloquear em páginas com \textit{polling} contínuo.
+Remove elementos de navegação e metadados (\texttt{nav}, \texttt{footer}, \texttt{header}, \texttt{aside}, \texttt{script}, \texttt{style}, \texttt{noscript}, \texttt{iframe}) e extrai \texttt{document.body.innerText}, normalizando espaços múltiplos e quebras de linha consecutivas.
+
+O \texttt{RestTemplate} dedicado ao \textit{scraper} no lado do servidor tem \textit{timeout} de leitura de 45\,s --- superior ao timeout interno do scraper (35\,s) para absorver latência de rede.
+O texto extraído é persistido no MinIO em \texttt{topics/\{id\}/content.txt}.
+
+\subsection{Limites e Validações} \label{sec:limites-ingestao}
+
+A ingestão de conteúdo envolve quatro camadas de validação independentes, cada uma responsável por uma classe distinta de erros.
+A Figura~\ref{fig:seq-ingest-validation} apresenta o fluxo de validação completo para ambas as fontes de conteúdo.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ingest-validation.png}}
+    \caption{Diagrama de sequência --- camadas de validação na ingestão de conteúdo}
+    \label{fig:seq-ingest-validation}
+\end{figure}
+
+\subsubsection*{Camada 1 — Rate Limiting (por IP, antes da autenticação)}
+
+O \texttt{RateLimitFilter} é o componente de maior prioridade na cadeia de filtros Spring (\texttt{@Order(HIGHEST\_PRECEDENCE)}), usando Bucket4j com \textit{cache} Caffeine (expiração: 15\,min, capacidade: 50\,000 entradas).
+Os limites para os \textit{endpoints} de ingestão, apresentados na Tabela~\ref{tab:ingest-ratelimits}, são intencionalmente conservadores: a geração de conteúdo por IA é a operação de maior custo computacional e financeiro do sistema.
+
+\begin{table}[h!]
+\centering
+\caption{Limites de \textit{rate limiting} para \textit{endpoints} de ingestão (janela de 10 minutos por IP)}
+\label{tab:ingest-ratelimits}
+\begin{tabular}{lll}
+\hline
+\textbf{Endpoint} & \textbf{Limite} & \textbf{Resposta ao exceder} \\
+\hline
+\texttt{POST /admin/topics} (URL)           & 3 pedidos & \texttt{429} + \texttt{Retry-After} \\
+\texttt{POST /admin/topics/pdf} (PDF)       & 2 pedidos & \texttt{429} + \texttt{Retry-After} \\
+\texttt{POST /admin/topics/\{id\}/regenerate} & 2 pedidos & \texttt{429} + \texttt{Retry-After} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection*{Camada 2 — Validação HTTP (tamanho e campos obrigatórios)}
+
+O \texttt{TopicController} verifica o tamanho do ficheiro PDF antes de qualquer processamento: ficheiros superiores a 25\,MB são rejeitados com \texttt{413 Payload Too Large}.
+Este limite é reforçado pela configuração Spring (\texttt{spring.servlet.multipart.max-file-size:\,25MB}; \texttt{max-request-size:\,26MB}).
+A validação dos campos de metadados é declarativa via anotações \texttt{@Valid} do Jakarta Validation API, que geram automaticamente \texttt{400 Bad Request} com o nome do campo e a restrição violada.
+
+\subsubsection*{Camada 3 — Validação de Domínio (no serviço de aplicação)}
+
+O \texttt{TopicManagementService} aplica invariantes de negócio que não são expressáveis por anotações: conteúdo binário não pode estar vazio (\texttt{pdfBytes.isNotEmpty()}), e \texttt{taskCount} tem de ser positivo.
+Em caso de violação SSRF (URL), a exceção propagada do \texttt{UrlSsrfValidator} é convertida em \texttt{BadRequest.InvalidField("url", detalhe)}.
+
+\subsubsection*{Camada 4 — Validação do Conteúdo Extraído}
+
+Independentemente da fonte, o texto extraído é validado após a chamada ao adaptador.
+A Tabela~\ref{tab:ingest-errors} resume os cenários de falha e as respostas correspondentes.
+
+\begin{table}[h!]
+\centering
+\caption{Cenários de falha na extração de conteúdo e respostas HTTP}
+\label{tab:ingest-errors}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+\textbf{Cenário} & \textbf{Resposta} & \textbf{Campo em erro} \\
+\hline
+PDF com apenas imagens sem OCR bem-sucedida   & \texttt{400} ``PDF contains no extractable text''     & \texttt{file} \\
+Página com conteúdo exclusivamente em canvas  & \texttt{400} ``page returned no extractable text''    & \texttt{url}  \\
+Timeout ou indisponibilidade do Unstructured  & \texttt{400} com mensagem de erro propagada           & \texttt{file} \\
+Timeout ou indisponibilidade do scraper       & \texttt{400} com mensagem de erro propagada           & \texttt{url}  \\
+Violação SSRF                                 & \texttt{400} com detalhe da violação                  & \texttt{url}  \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection*{Limites de Contexto para Geração (ContentChunker)}
+
+Após extração bem-sucedida, o texto é particionado pelo \texttt{ContentChunker} antes de ser enviado ao LLM.
+Os parâmetros são definidos em \texttt{AiContextLimits}: tamanho máximo de cada \textit{chunk} de 32\,000 caracteres, com sobreposição (\textit{overlap}) de 2\,000 caracteres entre \textit{chunks} consecutivos para preservar contexto nas fronteiras.
+O algoritmo prefere divisões em limites de parágrafo (\texttt{\textbackslash n\textbackslash n}) dentro dos últimos 500 caracteres de cada \textit{chunk}, recorrendo ao corte rígido por posição apenas quando não encontra parágrafo --- garantindo que o contexto enviado ao modelo preserva a coerência semântica do texto original.
+
+% -----------------------------------------------------------
+\section{Modelo de IA e Estratégia de Prompting} \label{sec:ia-prompting}
+% -----------------------------------------------------------
+
+O módulo de IA do Play4Change serve três finalidades distintas: geração de tarefas educativas a partir de conteúdo ingerido, síntese de ramos adaptativos para estudantes com dificuldades, e condução de sessões de explicação interactiva.
+Cada finalidade tem o seu próprio prompt, com preocupações de segurança e limites de contexto especificamente calibrados.
+
+\subsection{Modelo Escolhido e Justificação} \label{sec:modelo}
+
+O sistema utiliza \textbf{Mistral AI} como fornecedor de LLM, integrado através da biblioteca LangChain4j v0.36.2.
+O modelo configurado por omissão é \texttt{mistral-small-latest}, com temperatura $T=0.7$ e \textit{timeout} de 60 segundos por chamada.
+
+São instanciados dois clientes distintos, ambos configurados na classe \texttt{LangChain4jConfig} e ativados condicionalmente via \texttt{@ConditionalOnExpression} apenas quando a variável de ambiente \texttt{MISTRAL\_API\_KEY} está definida:
+
+\begin{table}[h!]
+\centering
+\caption{Clientes LangChain4j instanciados e respetivas finalidades}
+\label{tab:langchain-clients}
+\begin{tabular}{lll}
+\hline
+\textbf{Bean} & \textbf{Implementação} & \textbf{Finalidade} \\
+\hline
+\texttt{ChatLanguageModel}  & \texttt{MistralAiChatModel}      & Geração de texto e JSON estruturado \\
+\texttt{EmbeddingModel}     & \texttt{MistralAiEmbeddingModel} & Vectores de 1024 dimensões para pgvector \\
+\hline
+\end{tabular}
+\end{table}
+
+A escolha de Mistral Small justifica-se por quatro razões concretas.
+Primeiro, a capacidade multilingue: os prompts incluem um parâmetro \texttt{language} obrigatório (e.g., \texttt{pt}, \texttt{en}, \texttt{es}), e o modelo gera conteúdo educativo com qualidade adequada em múltiplas línguas.
+Segundo, a relação custo/desempenho: a geração de questões de escolha múltipla e explicações requer capacidade de raciocínio moderada, não justificando modelos de maior escala e custo.
+Terceiro, a fiabilidade no output JSON estruturado: o sistema exige que o modelo produza JSON válido com esquema rigoroso (\textit{arrays} com \texttt{title}, \texttt{description}, \texttt{hint}, \texttt{pointsReward}, \texttt{options}, \texttt{correctAnswerIndex}).
+Quarto, a intercambiabilidade: a integração via LangChain4j e a interface \texttt{TaskGenerationPort} permitem substituir o modelo sem qualquer alteração ao domínio ou à aplicação --- basta criar uma nova implementação de \texttt{TaskGenerationPort} e anotá-la com \texttt{@Primary}.
+
+Quando a chave de API não está definida, o \texttt{NoOpTaskGenerationAdapter} é ativado automaticamente, respondendo com \texttt{503 Service Unavailable} em todos os \textit{endpoints} de IA --- garantindo que o sistema falha de forma explícita em vez de silenciosa.
+
+\subsection{Estratégia de Prompting} \label{sec:prompting}
+
+O sistema define três famílias de prompts, cada uma com \textit{system prompt} fixo e \textit{user prompt} parametrizado com dados do contexto de domínio.
+Em nenhuma das três famílias é injetado diretamente input do utilizador final --- essa separação é a principal defesa contra \textit{prompt injection}, conforme descrito na Secção~\ref{sec:protecao-ia}.
+
+\subsubsection*{A — Geração de Tarefas (TaskGenerationPrompt)}
+
+O \textit{system prompt} estabelece a \textit{persona} de designer de conteúdo educativo, as regras de formato (4 opções por questão, resposta correta sempre no índice~0 para o sistema a misturar aleatoriamente), o idioma obrigatório, e o esquema JSON esperado.
+O \textit{user prompt} injeta exclusivamente dados do domínio: título do tópico, objectivo do módulo, nível de audiência (\texttt{BEGINNER}/\texttt{INTERMEDIATE}/\texttt{ADVANCED}), idioma e número de tarefas pretendidas.
+
+A Figura~\ref{fig:seq-ai-task-gen} descreve o pipeline completo de geração, incluindo o mecanismo de \textit{retry} com \textit{schema reminder} e a deduplicação por similaridade semântica.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ai-task-gen.png}}
+    \caption{Pipeline de geração de tarefas: chunking, LLM, deduplicação pgvector e sanitização}
+    \label{fig:seq-ai-task-gen}
+\end{figure}
+
+O mecanismo de \textit{retry} com \textit{schema reminder} funciona assim: se o JSON de resposta do modelo não contiver o número mínimo de tarefas válidas, o adaptador reenvia o mesmo \textit{user prompt} acrescido de uma mensagem de correção de esquema, consumindo até duas chamadas à API por \textit{chunk}.
+A deduplicação semântica usa \textit{embeddings} de 1024 dimensões armazenados em pgvector: uma tarefa gerada é descartada se a sua similaridade coseno com qualquer \textit{template} existente no mesmo módulo exceder o limiar de 0.90, evitando redundância no catálogo de tarefas.
+
+\subsubsection*{B — Ramo Adaptativo (StruggleAnalysisPrompt)}
+
+Quando um estudante esgota as tentativas de uma tarefa, o sistema gera um ramo de sub-tarefas mais simples centradas no padrão de erro detetado (\texttt{ErrorPattern}: \texttt{CONCEPTUAL\_MISUNDERSTANDING}, \texttt{PROCEDURAL\_ERROR}, \texttt{KNOWLEDGE\_GAP}, \texttt{UNCLEAR\_INSTRUCTIONS}, \texttt{TIME\_PRESSURE}).
+Este \texttt{ErrorPattern} pertence ao modelo do módulo \texttt{ai-agent} e é distinto do \texttt{ErrorPattern} do domínio do \texttt{server} (\texttt{WRONG\_CONCEPT}, \texttt{PARTIAL\_UNDERSTANDING}, \texttt{READING\_ERROR}, \texttt{TIME\_PRESSURE}), produzido de forma determinística pelo \texttt{ErrorPatternClassifier} (Secção~\ref{sec:consolidation}); os dois são ligados por uma função de tradução (\texttt{mapErrorPattern()}) que mapeia \texttt{WRONG\_CONCEPT~$\rightarrow$~CONCEPTUAL\_MISUNDERSTANDING}, \texttt{PARTIAL\_UNDERSTANDING~$\rightarrow$~PROCEDURAL\_ERROR}, \texttt{READING\_ERROR~$\rightarrow$~UNCLEAR\_INSTRUCTIONS} e \texttt{TIME\_PRESSURE~$\rightarrow$~TIME\_PRESSURE}.
+Como o \texttt{ErrorPatternClassifier} nunca produz \texttt{PARTIAL\_UNDERSTANDING} na sua implementação actual, apenas três dos cinco valores do \texttt{ErrorPattern} do \texttt{ai-agent} são de facto alcançáveis hoje (\texttt{CONCEPTUAL\_MISUNDERSTANDING}, \texttt{UNCLEAR\_INSTRUCTIONS}, \texttt{TIME\_PRESSURE}); \texttt{PROCEDURAL\_ERROR} e \texttt{KNOWLEDGE\_GAP} estão modelados no contrato para uma classificação mais granular ainda não implementada no classificador determinístico.
+
+Antes de invocar o LLM, o sistema verifica a similaridade do contexto de dificuldade actual com contextos anteriores armazenados em pgvector, aplicando uma estratégia de reutilização com três limiares.
+O vetor de entrada é construído como a concatenação de \texttt{errorPattern}, \texttt{taskDescription} e \texttt{subjectDomain}, embebido em 1024 dimensões pelo \texttt{MistralAiEmbeddingModel}.
+
+A Figura~\ref{fig:struggle-reuse} apresenta três casos ilustrativos sobre o domínio ``Python para Principiantes'' --- construídos para explicar o critério de decisão, não extraídos de uma sessão real registada em produção --- mostrando como a estratégia muda consoante a proximidade semântica entre o contexto de dificuldade actual e os ramos já armazenados.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/fig-struggle-reuse.png}}
+    \caption{Estratégia de reutilização adaptativa --- três casos concretos por limiar de similaridade pgvector}
+    \label{fig:struggle-reuse}
+\end{figure}
+
+No caso \textbf{FULL\_REUSE} (similaridade~$> 0.90$, ex.: $0.93$), dois estudantes diferentes bloqueiam na mesma tarefa sobre ciclos \texttt{for} com o mesmo padrão de erro (\texttt{CONCEPTUAL\_MISUNDERSTANDING}): o ramo previamente gerado é devolvido diretamente, sem qualquer chamada à API Mistral.
+
+No caso \textbf{PARTIAL\_REUSE} (similaridade $\in [0.65,\,0.90]$, ex.: $0.78$), o contexto é semanticamente próximo mas não idêntico --- neste exemplo, o estudante bloqueia em ciclos \texttt{while} em vez de \texttt{for}, o mesmo erro mas conceito adjacente.
+A proporção de reutilização é calculada por interpolação linear:
+\[
+n_{\text{reuse}} = \left\lfloor n_{\text{total}} \times \frac{sim - 0.65}{0.90 - 0.65} \right\rfloor
+\]
+Com $sim = 0.78$ e $n_{\text{total}} = 3$: $n_{\text{reuse}} = \lfloor 3 \times 0.52 \rfloor = 1$, $n_{\text{generate}} = 2$.
+A subtarefa mais genérica do ramo existente é reutilizada; o Mistral gera apenas as 2 subtarefas específicas ao contexto \texttt{while}.
+
+No caso \textbf{FRESH\_GENERATION} (similaridade~$< 0.65$, ex.: $0.32$), o conceito é completamente diferente (dicionários Python) e o padrão de erro ilustrado é \texttt{KNOWLEDGE\_GAP} em vez de \texttt{CONCEPTUAL\_MISUNDERSTANDING}: o Mistral gera um ramo completamente novo de 3 subtarefas, que é persistido em pgvector para reutilização futura.
+Note-se que \texttt{KNOWLEDGE\_GAP} é, tal como discutido acima, um valor do contrato ainda não alcançável pelo \texttt{ErrorPatternClassifier} actual; este caso serve para ilustrar o comportamento pretendido do sistema para um classificador mais granular, não um trace observado.
+
+A Figura~\ref{fig:seq-ai-adaptive} detalha o fluxo de sequência da decisão de reutilização.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ai-adaptive.png}}
+    \caption{Diagrama de sequência --- decisão de reutilização no ramo adaptativo}
+    \label{fig:seq-ai-adaptive}
+\end{figure}
+
+\subsubsection*{C — Sessão de Explicação (ExplanationPrompt)}
+
+A explicação opera em dois modos sequenciais.
+Na \textbf{fase holística} (assíncrona), após esgotamento das tentativas, o sistema gera uma explicação detalhada baseada no historial completo de erros do estudante; o \textit{system prompt} instrui o modelo a adoptar a persona de tutor empático e a explicar a causa raiz da dificuldade.
+Na \textbf{fase conversacional} (síncrona), o estudante pode fazer perguntas de seguimento, recebendo respostas geradas em tempo real.
+
+A Figura~\ref{fig:seq-ai-explanation} apresenta o diagrama de sequência completo das duas fases, incluindo os pontos de aplicação do \texttt{AiOutputSanitiser}.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ai-explanation.png}}
+    \caption{Sessão de explicação: fase holística assíncrona e fase conversacional síncrona}
+    \label{fig:seq-ai-explanation}
+\end{figure}
+
+\subsubsection*{Limites de Contexto}
+
+Os limites de contexto aplicados em todos os prompts estão centralizados na classe \texttt{AiContextLimits}, descritos na Tabela~\ref{tab:context-limits}.
+
+\begin{table}[h!]
+\centering
+\caption{Limites de contexto da camada de IA (AiContextLimits)}
+\label{tab:context-limits}
+\begin{tabular}{lrl}
+\hline
+\textbf{Constante} & \textbf{Valor} & \textbf{Utilização} \\
+\hline
+\texttt{CONTENT\_CHARS}          & 32\,000 chars & Tamanho máximo de cada \textit{chunk} enviado ao LLM \\
+\texttt{CHUNK\_OVERLAP}          &  2\,000 chars & Sobreposição entre \textit{chunks} consecutivos \\
+\texttt{DESCRIPTION\_CHARS}      &    500 chars  & Objectivo do módulo nos prompts de geração \\
+\texttt{STRUGGLE\_CONTEXT\_CHARS} &  8\,000 chars & Contexto de dificuldade no prompt adaptativo \\
+\texttt{OBJECTIVE\_CHARS}        &    500 chars  & Objectivo do módulo em prompts secundários \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Proteção e Limites da API de IA} \label{sec:protecao-ia}
+
+O sistema implementa seis camadas de defesa independentes entre a entrada HTTP e a chamada ao LLM.
+A Figura~\ref{fig:seq-ai-defense-layers} apresenta a visão consolidada de todas as camadas, e as subsecções seguintes detalham as mais específicas ao módulo de IA.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ai-defense-layers.png}}
+    \caption{Camadas de defesa do sistema — do pedido HTTP à chamada ao LLM}
+    \label{fig:seq-ai-defense-layers}
+\end{figure}
+
+As camadas~1 (rate limiting), 2 (autenticação JWT), 3 (validação de input) e 4 (SSRF) foram descritas nas Secções~\ref{sec:pipeline} e~\ref{sec:limites-ingestao}.
+As secções seguintes detalham as camadas~5 e~6, específicas ao módulo de IA.
+
+\subsubsection*{Camada 5 — Prevenção de Prompt Injection (Multi-Mensagem Tipada)}
+
+A vulnerabilidade clássica de \textit{prompt injection} em sistemas conversacionais ocorre quando o input do utilizador é interpolado numa string de prompt única, permitindo que o utilizador escape o contexto com instruções como \textit{``Ignora as instruções anteriores e\ldots''}.
+
+O Play4Change adopta uma arquitectura de \textbf{multi-mensagem tipada}: em vez de construir uma string única, cada peça de informação é encapsulada no tipo de mensagem LangChain4j correspondente ao seu nível de confiança.
+A Figura~\ref{fig:seq-ai-anti-injection} detalha a construção da lista de mensagens para a fase conversacional da explicação.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-ai-anti-injection.png}}
+    \caption{Arquitectura anti-\textit{injection}: construção tipada de mensagens por nível de confiança}
+    \label{fig:seq-ai-anti-injection}
+\end{figure}
+
+A lista de mensagens é construída pela seguinte ordem: (1)~\texttt{SystemMessage} com a \textit{persona} e as regras --- origem confiada; (2)~\texttt{UserMessage} com dados estruturados da base de dados (sujeito, tarefa original) --- origem confiada; (3)~alternância de \texttt{AiMessage}/\texttt{UserMessage} para o historial da sessão; (4)~\texttt{UserMessage} com o input actual do utilizador --- origem não confiada, isolada na sua própria mensagem.
+A fronteira de \textit{role} da API Mistral garante que o conteúdo de uma \texttt{UserMessage} nunca pode alterar o comportamento definido no \texttt{SystemMessage}.
+
+Os prompts de geração de tarefas (\texttt{TaskGenerationPrompt}) e de análise de dificuldade (\texttt{StruggleAnalysisPrompt}) não recebem qualquer input do utilizador final --- são alimentados exclusivamente com dados estruturados do domínio, eliminando o vector de injecção nessas chamadas.
+
+\subsubsection*{Camada 6 — Sanitização de Output (AiOutputSanitiser)}
+
+Todo o texto gerado pelo LLM passa pela classe \texttt{AiOutputSanitiser} antes de ser persistido ou devolvido ao cliente.
+A implementação usa \textbf{JSoup} para remover todas as \textit{tags} HTML (incluindo \texttt{<script>}, \texttt{<style>}, \texttt{<iframe>}), descodificar entidades HTML e excluir o conteúdo de elementos de \textit{script}.
+Este passo previne ataques XSS caso o output da IA seja renderizado num cliente web ou móvel sem \textit{escape} adicional.
+
+A sanitização é aplicada em três pontos distintos do pipeline: (1)~nos campos \texttt{title}, \texttt{description}, \texttt{hint} e cada opção de cada \texttt{TaskTemplate} gerado; (2)~no texto da explicação holística antes de ativar a sessão; (3)~na resposta conversacional antes de persistir a \texttt{AiMessage}.
+O input do utilizador também é sanitizado antes de ser enviado ao modelo, eliminando HTML que poderia ser interpretado como instrução.
+
+\subsubsection*{Resiliência e Observabilidade}
+
+A integração com a API Mistral é protegida por Resilience4j com \textit{circuit breaker} configurado numa janela deslizante de 10 chamadas (abre ao atingir 50\% de falhas, aguarda 30\,s antes de meio-abrir), \textit{retry} de 3 tentativas com \textit{backoff} exponencial de 2\,s, e \textit{timeout} de 60\,s por geração via \texttt{withTimeoutOrNull}.
+Se a geração de uma explicação exceder o \textit{timeout} ou falhar irrecuperavelmente, o \textit{assignment} original é reposto para estado \texttt{PENDING} --- garantindo que o estudante nunca fica bloqueado sem poder continuar.
+
+As métricas de observabilidade instrumentadas manualmente incluem: \texttt{task.generation.duration} (histograma por status \textit{success}/\textit{failed}/\textit{timeout}), \texttt{ai.generation.duration} (por fase do pipeline), \texttt{ai.generation.failures} (por tipo de falha), e \texttt{ai.adaptive.reuse} (por estratégia: \textit{full}/\textit{partial}/\textit{fresh}), todas expostas via Prometheus e visualizadas no \textit{dashboard} de latência de IA do Grafana.
+
+% -----------------------------------------------------------
+\section{RAG --- Retrieval-Augmented Generation} \label{sec:rag}
+% -----------------------------------------------------------
+
+O Play4Change implementa um padrão RAG que difere do RAG documental clássico: em vez de recuperar fragmentos de texto para enriquecer um \textit{prompt} a cada resposta, recupera vectores semânticos previamente computados para tomar decisões de reutilização e injeta contexto pedagógico estruturado nos prompts enviados ao LLM.
+O sistema mantém duas colecções vectoriais independentes em pgvector, executando pesquisa por similaridade cosseno em dois contextos distintos: deduplicação durante a geração de tarefas e branching adaptativo durante a sessão de dificuldade.
+
+\subsection{Armazenamento de Conhecimento} \label{sec:armazenamento}
+
+\subsubsection*{Base de Dados Vectorial}
+
+O armazenamento persistente de conhecimento assenta em PostgreSQL com a extensão \texttt{pgvector}, activada na migração \texttt{V3}.
+São mantidas duas colecções vectoriais independentes, cada uma com um índice \texttt{IVFFLAT} para pesquisa aproximada por similaridade cosseno:
+
+\begin{itemize}
+    \item \textbf{\texttt{task\_templates.embedding vector(1024)}} --- representa semanticamente o par título+descrição de cada tarefa gerada.
+    O índice é criado com predicado \texttt{WHERE embedding IS NOT NULL}, garantindo que apenas templates com vector calculado entram no plano de pesquisa:
+    \begin{verbatim}
+CREATE INDEX idx_task_embedding ON task_templates
+    USING ivfflat (embedding vector_cosine_ops)
+    WHERE embedding IS NOT NULL;
+    \end{verbatim}
+
+    \item \textbf{\texttt{struggle\_events.embedding vector(1024)}} --- representa semanticamente o contexto de dificuldade de um aprendente (padrão de erro + descrição da tarefa + domínio), associado à tabela \texttt{adaptive\_branches} que regista os ramos gerados para reutilização futura (migração \texttt{V21}):
+    \begin{verbatim}
+CREATE TABLE struggle_events (
+    id        VARCHAR(36) PRIMARY KEY,
+    embedding vector(1024)
+);
+CREATE INDEX idx_struggle_events_embedding ON struggle_events
+    USING ivfflat (embedding vector_cosine_ops)
+    WHERE embedding IS NOT NULL;
+    \end{verbatim}
+\end{itemize}
+
+O operador de distância cosseno do pgvector é \texttt{<=>}; a similaridade é derivada como $1 - (\texttt{embedding} \Leftrightarrow \texttt{?::vector})$, com valores no intervalo $[0,\,1]$.
+O modelo de \textit{embedding} é o \texttt{MistralAiEmbeddingModel}, que produz vectores de 1024 dimensões.
+
+\subsubsection*{Pipeline de Ingestão}
+
+O conhecimento é ingerido em quatro fases executadas de forma assíncrona pelo \texttt{TaskGenerationOrchestrator}, com o estado rastreado na coluna \texttt{current\_phase} da tabela \texttt{topics}:
+\[
+\texttt{INGESTION} \;\to\; \texttt{ANALYSIS} \;\to\; \texttt{GENERATION} \;\to\; \texttt{INDEXING} \;\to\; \texttt{ACTIVE}
+\]
+
+Antes da fase GENERATION, o \texttt{ContentChunker} segmenta o texto extraído em janelas com sobreposição, respeitando fronteiras de parágrafo (\texttt{\textbackslash n\textbackslash n}) dentro dos últimos 500 caracteres de cada janela:
+
+\begin{verbatim}
+object ContentChunker {
+    fun chunk(
+        text: String,
+        chunkSize: Int = AiContextLimits.CONTENT_CHARS,   // 32 000 chars
+        overlap:   Int = AiContextLimits.CHUNK_OVERLAP    //  2 000 chars
+    ): List<String>
+}
+\end{verbatim}
+
+Por cada tarefa gerada pelo LLM num chunk, o pipeline calcula o embedding do par título+descrição e consulta o índice \texttt{IVFFLAT} antes de persistir: se a similaridade máxima face aos templates existentes no módulo for superior a $0.90$, a tarefa é descartada como duplicado semântico.
+A Figura~\ref{fig:seq-rag-ingest} detalha o fluxo completo desde a criação do tópico até à activação.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-rag-ingest.png}}
+    \caption{Pipeline de ingestão de conhecimento RAG --- da criação do tópico ao armazenamento dos vectores}
+    \label{fig:seq-rag-ingest}
+\end{figure}
+
+\subsection{Recuperação e Reinjeção de Contexto} \label{sec:recuperacao}
+
+O sistema executa recuperação vectorial em dois contextos distintos: geração de ramos adaptativos (via similaridade entre vectores de dificuldade) e geração de explicações (via joins relacionais, sem pesquisa vectorial).
+
+\subsubsection*{Recuperação de Ramo Adaptativo}
+
+Quando um aprendente falha uma tarefa, o \texttt{HandleStruggleService} lança assincronamente a geração de um ramo adaptativo.
+O vector de entrada é construído concatenando \texttt{errorPattern}, \texttt{taskDescription} e \texttt{subjectDomain} (truncado a 8\,000 chars), e embebido em 1024 dimensões.
+A pesquisa vectorial no \texttt{PgVectorDeduplicationService.findSimilarStruggle()} usa:
+
+\begin{verbatim}
+SELECT ab.id as branch_id,
+       1 - (se.embedding <=> ?::vector) as similarity
+FROM struggle_events se
+JOIN adaptive_branches ab ON ab.struggle_event_id = se.id
+WHERE ab.status = 'COMPLETED'
+  AND ab.id NOT IN (...)    -- exclui branches já vistos pelo aprendente
+ORDER BY se.embedding <=> ?::vector
+LIMIT 1
+\end{verbatim}
+
+A estratégia de reutilização é determinada por dois limiares configuráveis em \texttt{application.yml}:
+
+\begin{table}[h!]
+\centering
+\caption{Estratégias de reutilização adaptativa por limiar de similaridade}
+\label{tab:rag-reuse}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llp{9cm}}
+\hline
+\textbf{Similaridade} & \textbf{Estratégia} & \textbf{Comportamento} \\
+\hline
+$> 0.90$         & \texttt{FULL\_REUSE}       & Devolver ramo existente sem chamada ao LLM \\
+$[0.65,\,0.90]$  & \texttt{PARTIAL\_REUSE}    & Reutilizar $\lfloor n \times \text{normSim} \rfloor$ tarefas; gerar o complemento via Mistral; persistir novo ramo \\
+$< 0.65$         & \texttt{FRESH\_GENERATION} & Gerar ramo completo via Mistral; persistir embedding para reutilização futura \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Para \texttt{PARTIAL\_REUSE}, a normalização é idêntica à descrita na Secção~\ref{sec:ia-prompting}: $n_{\text{reuse}} = \lfloor n_{\text{total}} \times \frac{sim - 0.65}{0.90 - 0.65} \rfloor$.
+A Figura~\ref{fig:seq-rag-branch} apresenta o diagrama de sequência das três estratégias.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-rag-branch.png}}
+    \caption{Recuperação de ramo adaptativo --- decisão FULL/PARTIAL/FRESH\_REUSE por similaridade pgvector}
+    \label{fig:seq-rag-branch}
+\end{figure}
+
+\subsubsection*{Assemblagem e Reinjeção de Contexto para Explicações}
+
+Quando o aprendente esgota o nível máximo de dificuldade (\texttt{MAX\_STRUGGLE\_DEPTH = 1}), é criada uma sessão de explicação.
+O \texttt{ExplanationService.buildContext()} recupera e assembleia contexto exclusivamente por joins relacionais --- sem pesquisa vectorial --- construindo o \texttt{ExplanationContext}:
+
+\begin{verbatim}
+ExplanationContext(
+    taskDescription = template.description.take(500),
+    moduleObjective = module.objective.take(500),
+    subjectDomain   = template.description.take(2000),
+    audienceLevel   = topic.audienceLevel,
+    language        = topic.language,
+    errorPattern    = mapErrorPattern(errorPattern),
+    struggleHistory = allSessions
+        .mapIndexed { idx, session ->
+            StruggleSummary(depth = idx + 1,
+                            errorPattern = mapErrorPattern(session.errorPattern.name),
+                            taskTitles   = session.adaptiveTasks.map { it.title })
+        }
+)
+\end{verbatim}
+
+Este contexto é injectado no \textit{prompt} de utilizador de \texttt{ExplanationPrompt.userExplanation()}, que inclui o historial completo de sessões de dificuldade do aprendente nessa tarefa.
+Para as respostas conversacionais, a lista tipada de \texttt{ChatMessage} (descrita na Secção~\ref{sec:protecao-ia}) isola dados de controlo de conteúdo do utilizador.
+A Figura~\ref{fig:seq-rag-expl-context} detalha a assemblagem e o ciclo de explicação.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-rag-expl-context.png}}
+    \caption{Assemblagem de contexto relacional e ciclo de explicação holística e conversacional}
+    \label{fig:seq-rag-expl-context}
+\end{figure}
+
+\subsection{Edição de Conteúdo e Invalidação} \label{sec:invalidacao}
+
+A base de conhecimento vectorial pode tornar-se incoerente quando o conteúdo pedagógico é alterado por um administrador.
+O sistema trata dois tipos de invalidação com estratégias distintas.
+
+\subsubsection*{Edição Pontual de Tarefa}
+
+Quando um administrador edita uma \texttt{TaskTemplate} (título, descrição, opções, resposta correcta), o \texttt{AdminTaskService.updateTask()} executa os seguintes passos:
+
+\begin{enumerate}
+    \item \textbf{Incremento de versão}: \texttt{version = template.version + 1} --- o registo é actualizado \textit{in place}.
+    \item \textbf{Embedding não recalculado}: o campo \texttt{embedding} mantém o vector da versão anterior.
+    Esta é uma inconsistência deliberadamente aceite --- o vector desactualizado apenas afecta a deduplicação em futuras gerações, não a entrega de tarefas ao aprendente.
+    \item \textbf{Invalidação de instâncias}: \texttt{taskInstanceRepository.deleteByTaskTemplateId(templateId)} elimina todas as instâncias da versão anterior.
+    \item \textbf{Recriação de instâncias}: \texttt{batchInstanceGenerationService.generateAndSave([updated])} recria as instâncias com o novo conteúdo.
+\end{enumerate}
+
+A Figura~\ref{fig:seq-rag-edit} apresenta o diagrama de sequência desta operação.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-rag-edit.png}}
+    \caption{Edição pontual de tarefa: invalidação e recriação de instâncias (embedding mantido)}
+    \label{fig:seq-rag-edit}
+\end{figure}
+
+\subsubsection*{Regeneração Completa de Tópico}
+
+A regeneração completa, desencadeada por \texttt{POST /admin/topics/\{id\}/regenerate}, executa uma invalidação total e reinicia o pipeline de ingestão:
+
+\begin{verbatim}
+override fun regenerate(topicId: String, adminId: String): Either<AppError, Topic> = either {
+    val topic = ensureNotNull(topicRepository.findById(topicId)) { ... }
+    ensure(topic.status != TopicStatus.GENERATING) { Conflict.ConcurrentModification }
+    phaseTransitionService.transitionTo(topicId, GenerationPhase.INGESTION)
+    orchestrator.generateAsync(topicId)   // reinicia pipeline completo
+    topicRepository.findById(topicId) ?: topic
+}
+\end{verbatim}
+
+Na fase \texttt{ANALYSIS}, antes de criar os novos módulos, o orquestrador executa a invalidação em dois passos: (1)~\texttt{markAllSuperseded(module.id)} desactiva logicamente todos os templates do módulo (\texttt{is\_current = FALSE}), preservando o historial para auditoria; (2)~\texttt{deleteByTopicId(topicId)} elimina o módulo em si, activando uma cascata de deleções físicas sobre \texttt{task\_templates}, \texttt{task\_instances}, \texttt{struggle\_events} e \texttt{adaptive\_branches}, purgando todos os vectores obsoletos do índice \texttt{IVFFLAT}.
+
+A Figura~\ref{fig:seq-rag-regen} apresenta o diagrama de sequência completo da regeneração.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-rag-regen.png}}
+    \caption{Regeneração completa de tópico --- invalidação em cascata e recálculo de embeddings}
+    \label{fig:seq-rag-regen}
+\end{figure}
+
+A Tabela~\ref{tab:invalidacao} resume os mecanismos de invalidação por tipo de operação.
+
+\begin{table}[h!]
+\centering
+\caption{Mecanismos de invalidação da base de conhecimento vectorial}
+\label{tab:invalidacao}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllll}
+\hline
+\textbf{Operação} & \textbf{Templates} & \textbf{Embeddings} & \textbf{Instâncias} & \textbf{Índice IVFFLAT} \\
+\hline
+Edição pontual    & \texttt{version+1}, mesmo ID & Não recalculado (desactualizado) & Eliminadas e recriadas & Vector antigo permanece \\
+Regeneração completa & \texttt{is\_current=FALSE} + novos inseridos & Recalculados de raiz & Eliminadas em CASCADE; recriadas & Limpo após CASCADE; populado com novos vectores \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+% -----------------------------------------------------------
+\section{Geração e Atribuição de Desafios} \label{sec:desafios}
+% -----------------------------------------------------------
+
+Esta secção descreve o ciclo de vida completo dos desafios no Play4Change --- desde a geração por IA até à entrega ao utilizador, passando pelo percurso adaptativo de remediação (\textit{struggle path}) e pelo modo de tutoria conversacional com IA.
+Na nomenclatura interna do sistema, os desafios são denominados \textit{tasks} e cada conceito de negócio tem correspondência directa a entidades de domínio bem delimitadas.
+
+\subsection{Geração de Desafios} \label{sec:geracao-desafios}
+
+\subsubsection*{Modelo de Dados}
+
+Cada desafio existe em dois níveis de abstracção complementares:
+
+\begin{itemize}
+    \item \textbf{\texttt{TaskTemplate}} --- definição canónica gerada pelo LLM: \texttt{title}, \texttt{description}, \texttt{hint}, \texttt{taskType} (\texttt{MULTIPLE\_CHOICE}, único valor suportado), \texttt{options[4]}, \texttt{correctAnswer} (sempre índice~0), \texttt{embedding} (vector de 1024 dimensões para deduplicação), \texttt{dayIndex}, \texttt{poolIndex}, \texttt{version}, \texttt{isCurrent}.
+    \item \textbf{\texttt{TaskInstance}} --- variante com distratores alternativos: partilha o \texttt{correctAnswer} do template mas oferece \texttt{options} diferentes, permitindo que utilizadores distintos recebam a mesma questão conceptual com opções erradas variadas. A relação é 1:N, até \texttt{instancesPerTask = 5} instâncias por template.
+\end{itemize}
+
+O facto de o \texttt{correctAnswer} ser sempre o índice~0 no template e na instância é uma invariante da geração: o \textit{system prompt} do \texttt{TaskGenerationPrompt} instrui explicitamente o LLM a colocar a resposta correcta sempre na primeira posição, o que simplifica a lógica de validação e elimina ambiguidade na persistência.
+
+\subsubsection*{Pipeline de Geração em Quatro Fases}
+
+A geração é um processo \textit{batch} assíncrono, orquestrado pelo \texttt{TaskGenerationOrchestrator}, com estado rastreado na coluna \texttt{current\_phase}:
+\[
+\texttt{INGESTION} \;\to\; \texttt{ANALYSIS} \;\to\; \texttt{GENERATION} \;\to\; \texttt{INDEXING} \;\to\; \texttt{ACTIVE}
+\]
+
+A fase \texttt{ANALYSIS} marca todos os templates existentes como \texttt{is\_current = FALSE} e cria o novo módulo.
+Na fase \texttt{GENERATION}, por cada \textit{chunk} (32\,000 chars, sobreposição 2\,000), o \texttt{TaskGenerationPrompt} instrui o LLM a gerar tarefas com quatro opções, resposta correcta no índice~0, sem sobreposição semântica com tarefas já geradas (verificada via pgvector com limiar~$>0.90$).
+Na fase \texttt{INDEXING}, o \texttt{BatchInstanceGenerationService} processa os templates em lotes de~10 e gera até 5 instâncias por template via chamadas LLM adicionais.
+
+A Figura~\ref{fig:seq-ai-task-gen} (Secção~\ref{sec:ia-prompting}) detalha o pipeline completo de geração com os actores internos.
+
+\subsubsection*{Resiliência e Deduplicação}
+
+A falha no primeiro \textit{chunk} aborta a geração e o tópico transita para \texttt{FAILED}; falhas em \textit{chunks} subsequentes são toleradas --- o sistema continua com as tarefas já persistidas, evitando perda total do trabalho acumulado.
+
+A deduplicação por pgvector (descrita em detalhe na Secção~\ref{sec:armazenamento}) garante que tarefas com similaridade semântica superior a~$0.90$ face a templates existentes no mesmo módulo são descartadas (\texttt{GenerationStatus.DUPLICATE}), assegurando diversidade ao longo do curso.
+
+\subsection{Atribuição aos Utilizadores} \label{sec:atribuicao}
+
+\subsubsection*{Entidades de Atribuição}
+
+Dois agregados gerem o estado da aprendizagem por utilizador:
+
+\begin{itemize}
+    \item \textbf{\texttt{Enrollment}} --- inscrição activa num módulo: \texttt{currentDayIndex}, \texttt{status} (\texttt{ACTIVE} | \texttt{COMPLETED} | \texttt{EXPIRED} | \texttt{PAUSED}), \texttt{totalPointsEarned}, \texttt{streakDays}.
+    \item \textbf{\texttt{TaskAssignment}} --- atribuição concreta: \texttt{enrollmentId}, \texttt{taskTemplateId}, \texttt{taskInstanceId} (variante seleccionada), \texttt{optionOrder} (permutação aleatória das opções), \texttt{correctAnswerIndex}, \texttt{dueAt} (24~horas após \texttt{assignedAt}), \texttt{status} (\texttt{PENDING} | \texttt{SUBMITTED} | \texttt{LATE}), \texttt{wrongAttemptCount}.
+\end{itemize}
+
+\subsubsection*{Fluxo Pull-based}
+
+A atribuição de desafios é \textit{pull-based}: o utilizador solicita a tarefa do dia via \texttt{GET /tasks/today}, e o sistema determina qual a resposta correcta para aquele momento com base no \texttt{currentDayIndex} da inscrição activa.
+O serviço resolve quatro casos mutuamente exclusivos, por esta ordem de precedência: (1)~sessão de \textit{struggle} aberta; (2)~sessão de explicação activa; (3)~assignment já existente para o \texttt{dayIndex} actual; (4)~criação de novo assignment.
+
+No caso~(4), o sistema selecciona aleatoriamente uma das \texttt{TaskInstance} disponíveis (variedade de distratores), gera uma permutação aleatória das quatro opções (\texttt{optionOrder}), e define \texttt{dueAt = now() + 24h}.
+A Figura~\ref{fig:seq-task-assign} ilustra os quatro casos.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-task-assign.png}}
+    \caption{Atribuição de desafio (GET /tasks/today) --- quatro casos de precedência}
+    \label{fig:seq-task-assign}
+\end{figure}
+
+\subsubsection*{Permutação das Opções e Penalizações por Atraso}
+
+A \texttt{optionOrder} é uma lista de índices (ex.: \texttt{[2,0,3,1]}) que define a ordem de apresentação no ecrã.
+A resposta correcta, sempre no índice~0 da instância, aparece numa posição aleatória para o utilizador.
+A resposta submetida é um índice de posição de ecrã; o sistema resolve o índice canónico antes de validar, via \texttt{optionOrder[selectedOption]}.
+
+A submissão após \texttt{dueAt} é aceite mas penalizada, conforme a Tabela~\ref{tab:late-penalty}.
+Note-se que a fracção de pontos depende do atraso \textit{face ao próprio \texttt{dueAt}}, e não do tempo total desde a atribuição.
+
+\begin{table}[h!]
+\centering
+\caption{Penalizações de pontuação por atraso na submissão}
+\label{tab:late-penalty}
+\begin{tabular}{ll}
+\hline
+\textbf{Atraso face a \texttt{dueAt}} & \textbf{Pontos atribuídos} \\
+\hline
+Sem atraso ($now \le dueAt$) & 100\% \\
+$\le 24$\,h de atraso        & 75\% \\
+$\le 72$\,h de atraso        & 50\% \\
+$> 72$\,h de atraso          & 25\% (mínimo 1) \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Consolidation Path (Struggle Path)} \label{sec:consolidation}
+
+Quando um utilizador responde incorrectamente, o sistema não termina a interacção --- desencadeia automaticamente uma sessão de remediação adaptativa (\textit{struggle session}).
+O objectivo é diagnosticar a causa do erro e apresentar três sub-tarefas \textit{scaffolded} que devolvam o utilizador ao nível da tarefa original.
+
+\subsubsection*{Classificação do Padrão de Erro}
+
+Antes de invocar a IA, o \texttt{ErrorPatternClassifier} classifica a falha de forma determinística em três categorias, com base no contexto da submissão:
+
+\begin{table}[h!]
+\centering
+\caption{Padrões de erro classificados pelo ErrorPatternClassifier}
+\label{tab:error-patterns}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+\textbf{Padrão} & \textbf{Condição} & \textbf{Estratégia de remediação} \\
+\hline
+\texttt{TIME\_PRESSURE} & Submissão após \texttt{dueAt} & Tarefas paceadas, passo a passo \\
+\texttt{READING\_ERROR} & Opção seleccionada adjacente à correcta (\texttt{|pos\_sel - pos\_corr| == 1}) & Instruções mais explícitas e claras \\
+\texttt{WRONG\_CONCEPT} & Qualquer outro caso & Re-explicação do conceito de raiz \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection*{Geração Assíncrona da Sessão}
+
+Após classificar o erro, o \texttt{TaskService} persiste o resultado e delega ao \texttt{HandleStruggleService} via \texttt{triggerAsync} --- a resposta HTTP é devolvida imediatamente ao utilizador, sem esperar pela geração do ramo adaptativo pelo LLM.
+Em caso de falha ou \textit{timeout} do LLM, a sessão é marcada como \texttt{ABANDONED} e o assignment original é reposto em \texttt{PENDING} --- o utilizador nunca fica bloqueado.
+A Figura~\ref{fig:seq-task-submit} detalha este fluxo.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-task-submit.png}}
+    \caption{Submissão de resposta errada --- classificação de erro e \textit{trigger} assíncrono de struggle}
+    \label{fig:seq-task-submit}
+\end{figure}
+
+\subsubsection*{Submissão e Resolução das Tarefas Adaptativas}
+
+O utilizador acede às três sub-tarefas via \texttt{GET /struggle/enrollment/\{enrollmentId\}}.
+Cada submissão pode resultar em quatro desfechos, avaliados após a conclusão de todas as tarefas: (1)~\textbf{ainda não concluídas} --- devolver resultado parcial; (2)~\textbf{todas correctas} --- marcar sessão como \texttt{RESOLVED} e repor assignment em \texttt{PENDING}; (3)~\textbf{falha, depth $<$ \texttt{MAX\_STRUGGLE\_DEPTH}} --- gerar nova sessão de \textit{struggle} encadeada; (4)~\textbf{falha, depth $\geq$ \texttt{MAX\_STRUGGLE\_DEPTH} (= 1)} --- criar sessão de explicação por IA.
+
+As tarefas adaptativas atribuem zero pontos e não afectam o \textit{streak} --- são modo de aprendizagem puro.
+A Figura~\ref{fig:seq-struggle-resolve} apresenta os quatro caminhos de resolução.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-struggle-resolve.png}}
+    \caption{Sessão de struggle --- submissão das tarefas adaptativas e caminhos de resolução}
+    \label{fig:seq-struggle-resolve}
+\end{figure}
+
+\subsection{Tutoria com IA} \label{sec:explicacao-ia}
+
+Quando o utilizador esgota toda a profundidade de remediação sem sucesso, o sistema activa o modo de tutoria conversacional com IA.
+Esta sessão sintetiza o historial completo de erros e oferece uma explicação holística em prosa, seguida de um diálogo de esclarecimento sem limite de turnos.
+
+\subsubsection*{Estados da Sessão de Explicação}
+
+A sessão de explicação percorre três estados:
+\[
+\texttt{GENERATING} \;\to\; \texttt{ACTIVE} \;\to\; \texttt{RESOLVED}
+\]
+
+A transição \texttt{GENERATING} $\to$ \texttt{ACTIVE} ocorre quando a geração pelo LLM termina com sucesso.
+Se a geração falhar ou esgotar o \textit{timeout} (60\,s via \texttt{withTimeoutOrNull}), a sessão transita directamente para \texttt{RESOLVED} e o assignment é reposto em \texttt{PENDING} (\textit{fail-safe} --- o utilizador nunca fica bloqueado).
+A transição para \texttt{RESOLVED} pelo utilizador, via \texttt{POST /explanation/\{sessionId\}/resolve}, também repõe o assignment em \texttt{PENDING}, devolvendo-o ao fluxo diário normal.
+
+\subsubsection*{Geração Holística e Diálogo Conversacional}
+
+A geração holística é assíncrona (lançada no \texttt{generationExecutor}), permitindo que o utilizador navegue para o ecrã de explicação enquanto a geração ocorre em \textit{background}; o cliente faz \textit{polling} via \texttt{GET /explanation/\{sessionId\}} até o estado ser \texttt{ACTIVE}.
+O contexto injectado no \texttt{ExplanationPrompt} inclui o historial completo de sessões de dificuldade (\texttt{struggleHistory}) e é assemblado por joins relacionais, sem pesquisa vectorial (descrita na Secção~\ref{sec:recuperacao}).
+
+Para o diálogo conversacional, cada mensagem é processada com o historial completo da conversa para manter coerência contextual.
+A mensagem enviada ao LLM é composta por: (1)~\texttt{SystemMessage} com persona de tutor e restrições de resposta; (2)~\texttt{UserMessage} com cabeçalho de contexto (\texttt{Subject} + \texttt{Original task}) injectado pelo servidor --- âncora anti-injecção; (3)~alternância de \texttt{AiMessage}/\texttt{UserMessage} para o historial; (4)~\texttt{UserMessage} com o input actual, isolado.
+A Figura~\ref{fig:seq-explanation-conv} detalha o fluxo completo desde a criação assíncrona até à resolução.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-explanation-conv.png}}
+    \caption{Tutoria com IA --- geração assíncrona, diálogo conversacional e resolução}
+    \label{fig:seq-explanation-conv}
+\end{figure}
+
+% -----------------------------------------------------------
+\section{Segurança da Aplicação} \label{sec:seguranca}
+% -----------------------------------------------------------
+
+A segurança do Play4Change foi implementada em profundidade (\textit{defense in depth}), com controlos independentes em cada camada da arquitectura: proxy reverso (Nginx), servidor de aplicação (Spring Boot), agente de IA (LangChain4j) e cliente web (React/Vite).
+As ameaças foram mapeadas com base no OWASP Top 10 (2021), conforme a Tabela~\ref{tab:owasp-map}.
+
+\begin{table}[h!]
+\centering
+\caption{Mapeamento das ameaças OWASP Top 10 para controlos implementados}
+\label{tab:owasp-map}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+\textbf{OWASP} & \textbf{Ameaça} & \textbf{Controlo Implementado} \\
+\hline
+A01 Broken Access Control  & Escalada de privilégios            & RBAC no \texttt{SecurityConfig} + validação de papel no JWT \\
+A03 Injection              & XSS via conteúdo IA                & \texttt{AiOutputSanitiser} (JSoup) + CSP + React JSX escaping \\
+A03 Injection              & Prompt Injection                   & Multi-mensagem tipada + \texttt{AiContextLimits} \\
+A03 Injection              & SQL Injection                      & JPA/Hibernate com parâmetros tipados \\
+A04 Insecure Design        & Ausência de rate limiting          & \texttt{RateLimitFilter} + Bucket4j por IP \\
+A05 Misconfiguration       & Credenciais padrão em produção     & \texttt{JwtSecretStartupGuard}, \texttt{CredentialStartupGuard} \\
+A05 Misconfiguration       & CORS wildcard                      & Verificação ao arranque; wildcard causa excepção \\
+A07 Auth Failures          & Roubo de \textit{refresh token}    & Rotação de família com revogação total \\
+A07 Auth Failures          & Força bruta em \textit{magic-link} & Rate limiting 5 req/10\,min por IP \\
+A10 SSRF                   & Fetch de URLs internas             & \texttt{UrlSsrfValidator} \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Proteção Contra XSS} \label{sec:xss}
+
+A protecção contra \textit{Cross-Site Scripting} opera em três camadas complementares e independentes.
+
+\subsubsection*{Camada 1 --- Sanitização de Output de IA}
+
+O \texttt{AiOutputSanitiser} sanitiza todo o conteúdo gerado pelo modelo Mistral antes de ser persistido na base de dados.
+A implementação usa \texttt{Jsoup.parse(input).text()}, que remove todos os elementos HTML, descodifica entidades HTML e descarta o conteúdo de elementos \texttt{<script>} e \texttt{<style>}.
+O sanitizador é aplicado a cada campo \texttt{String} do \texttt{TaskTemplate} gerado (título, descrição, \textit{hint}, cada opção) e às respostas conversacionais de explicação.
+
+\begin{verbatim}
+object AiOutputSanitiser {
+    fun sanitise(input: String): String = Jsoup.parse(input).text()
+}
+\end{verbatim}
+
+O vetor mitigado é a injecção de HTML malicioso via páginas raspadas (\textit{scraped}): sem esta sanitização, uma página que contenha \texttt{<script>alert(1)</script>} no seu texto poderia ser reproduzida literalmente pelo modelo e persistida na base de dados.
+
+\subsubsection*{Camada 2 --- Content Security Policy via Nginx}
+
+O Nginx aplica uma \textit{Content Security Policy} restritiva em todas as respostas HTTP, conforme a Tabela~\ref{tab:csp}.
+
+\begin{table}[h!]
+\centering
+\caption{Diretivas CSP configuradas no Nginx}
+\label{tab:csp}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+\textbf{Diretiva} & \textbf{Valor} & \textbf{Justificação} \\
+\hline
+\texttt{default-src}     & \texttt{'self'}                 & \textit{Fallback}: apenas origem própria \\
+\texttt{script-src}      & \texttt{'self'}                 & Sem \texttt{unsafe-eval}; sem CDNs externos \\
+\texttt{style-src}       & \texttt{'self' 'unsafe-inline'} & Necessário para \textit{inline styles} gerados pelo Vite/React no \textit{build} \\
+\texttt{img-src}         & \texttt{'self' data:}           & Permite \textit{data URIs} para imagens \textit{inline} \\
+\texttt{connect-src}     & \texttt{'self'}                 & \textit{Fetch}/XHR apenas para a API própria \\
+\texttt{frame-ancestors} & \texttt{'none'}                 & Equivalente a \texttt{X-Frame-Options: DENY} --- previne \textit{clickjacking} \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection*{Camada 3 --- React JSX Auto-escaping}
+
+O React aplica \textit{escaping} automático de todas as expressões \texttt{\{expression\}} ao renderizar no DOM.
+Mesmo que a base de dados contivesse HTML residual (falha nas camadas anteriores), o React converteria \texttt{<} e \texttt{>} em entidades HTML antes da inserção no DOM, eliminando XSS reflexo em componentes bem formados.
+
+A Figura~\ref{fig:seq-xss-sanitizer} ilustra o fluxo das três camadas.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-xss-sanitizer.png}}
+    \caption{Protecção XSS em três camadas: AiOutputSanitiser, CSP Nginx, React JSX escaping}
+    \label{fig:seq-xss-sanitizer}
+\end{figure}
+
+\subsection{Rate Limiting por IP} \label{sec:ratelimiting}
+
+O \textit{rate limiting} é implementado no filtro \texttt{RateLimitFilter}, com ordem \texttt{HIGHEST\_PRECEDENCE} na cadeia de filtros Spring, garantindo que a verificação ocorre antes de qualquer autenticação ou lógica de negócio.
+O algoritmo utilizado é \textit{token bucket} via Bucket4j, com janela de \textit{refill} de 10~minutos.
+Os \textit{buckets} são mantidos em cache Caffeine com TTL de 15~minutos e capacidade máxima de 50\,000 entradas.
+Cada \textit{bucket} é identificado pela chave composta \texttt{"<ip>:<path\_normalizado>"}, isolando os limites por recurso e por origem.
+
+A Tabela~\ref{tab:rate-limits} resume os limites por \textit{endpoint}.
+
+\begin{table}[h!]
+\centering
+\caption{Limites de \textit{rate limiting} por \textit{endpoint} (janela de 10 minutos por IP)}
+\label{tab:rate-limits}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrl}
+\hline
+\textbf{Endpoint} & \textbf{Limite} & \textbf{Justificação} \\
+\hline
+\texttt{POST /auth/magic-link}            &  5 req & Previne enumeração de emails e abuso de envio \\
+\texttt{POST /auth/magic-link/verify}     & 10 req & Previne \textit{brute-force} de tokens mágicos \\
+\texttt{POST /auth/refresh}               & 20 req & \textit{Headroom} para clientes com múltiplas abas \\
+\texttt{POST /explanation/*/message}      & 10 req & Chamada a Mistral: custo computacional e financeiro \\
+\texttt{POST /admin/topics} (URL)         &  3 req & Scraping + embedding + geração de tarefas \\
+\texttt{POST /admin/topics} (PDF)         &  2 req & Idem, com custo adicional de OCR via Unstructured \\
+\texttt{POST /admin/topics/*/regenerate}  &  2 req & Regeneração total de tarefas para um tópico \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+O \texttt{IpExtractor} extrai o IP do header \texttt{X-Forwarded-For} definido pelo Nginx, mas rejeita endereços privados para prevenir \textit{spoofing} por injecção de header: se o endereço no XFF for privado (\texttt{isPrivateAddress()}), o sistema cai para \texttt{remoteAddr}.
+A Figura~\ref{fig:seq-rate-limit} detalha o fluxo completo.
+
+Para além dos limites da Tabela~\ref{tab:rate-limits}, o \texttt{RateLimitService.capacityFor()} define ainda regras para \texttt{/topics/\{id\}/task-assignments/\{id\}/submit} (30), \texttt{/topics/\{id\}/task-assignments/\{id\}/photo} (20), \texttt{/enrollments/\{id\}/struggle/\{id\}/submit} (30) e \texttt{/reviews/\{id\}/verdict} (20).
+Nenhum destes quatro padrões de rota corresponde a um \textit{endpoint} real do sistema actual: os dois últimos são resíduos da funcionalidade de \textit{Peer Review}, entretanto removida, e os dois primeiros não coincidem com as rotas efectivas de submissão (\texttt{POST /tasks/\{assignmentId\}/submit} e \texttt{POST /struggle/\{sessionId\}/tasks/\{taskId\}/submit} respectivamente).
+Na prática, estas quatro regras nunca são accionadas, e os dois \textit{endpoints} de submissão mais utilizados da aplicação --- responder à tarefa diária e submeter uma sub-tarefa de \textit{struggle} --- não têm hoje qualquer limite de taxa aplicado, apesar da intenção documentada em comentário no próprio código-fonte.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-rate-limit.png}}
+    \caption{\textit{Rate limiting} por IP --- token bucket Bucket4j com extracção segura de IP via XFF}
+    \label{fig:seq-rate-limit}
+\end{figure}
+
+\subsection{Validação e Sanitização de Inputs} \label{sec:validacao}
+
+A validação de \textit{inputs} é realizada em quatro níveis independentes.
+
+\textbf{Nível 1 --- Cliente (TypeScript).}
+O módulo \texttt{play4change-web/src/lib/validators.ts} define validadores para email (\textit{regex} \texttt{/\^{}[\^{}\textbackslash{}s@]+@[\^{}\textbackslash{}s@]+\.[\^{}\textbackslash{}s@]+\$/}), ficheiros PDF (tipo \texttt{application/pdf}, tamanho máximo) e URLs (formato e contagem máxima).
+A validação no cliente é uma optimização de UX --- não um controlo de segurança.
+
+\textbf{Nível 2 --- Servidor (Jakarta Bean Validation).}
+Os DTOs de entrada usam anotações Jakarta para validação declarativa: \texttt{@NotBlank}, \texttt{@Email}, \texttt{@Size}, \texttt{@Valid}.
+Uma string vazia ou email malformado retorna \texttt{400 Bad Request} com lista de erros JSON sem chegar à camada de serviço.
+
+\textbf{Nível 3 --- Prevenção de SSRF.}
+Antes de qualquer \textit{fetch} de URL externa, o \texttt{UrlSsrfValidator} aplica três verificações em sequência: (1)~esquema obrigatoriamente HTTPS; (2)~resolução DNS do host; (3)~rejeição de IPs resolvidos em intervalos privados/\textit{loopback}/\textit{link-local}/\textit{multicast} (RFC 1918, \texttt{127.0.0.0/8}, \texttt{169.254.0.0/16}, \texttt{224.0.0.0/4}).
+O diagrama detalhado encontra-se na Figura~\ref{fig:seq-ingest-url} (Secção~\ref{sec:url}).
+
+\textbf{Nível 4 --- Limites de Contexto para IA.}
+O \texttt{AiContextLimits} define limites rígidos de caracteres para todos os \textit{inputs} enviados ao modelo (descritos na Tabela~\ref{tab:context-limits}, Secção~\ref{sec:ia-prompting}), aplicados nos serviços antes de construir os prompts, independentemente do tamanho do \textit{input} original.
+
+\subsection{Outros Controlos de Segurança} \label{sec:outros-seguranca}
+
+\subsubsection*{Autenticação JWT com Validação de Arranque}
+
+O \texttt{JwtSecretStartupGuard} valida o segredo JWT no arranque da aplicação, falhando com \texttt{IllegalStateException} se o segredo tiver menos de 64 caracteres ou se for igual ao valor de desenvolvimento por omissão --- validação aplicada apenas em perfil \texttt{prod} (ver Secção~\ref{sec:token-lifecycle}).
+O \texttt{CredentialStartupGuard} verifica analogamente as credenciais de serviços externos (MinIO, base de dados).
+Estes guardas impedem a promoção de configurações de desenvolvimento para produção.
+
+\subsubsection*{Rotação de Refresh Token com Detecção de Reutilização}
+
+O mecanismo de rotação com família (descrito em detalhe na Secção~\ref{sec:autenticacao}) detecta roubo de token: se um token já marcado como \texttt{used = true} for apresentado, toda a família é revogada e um evento \texttt{SECURITY} é emitido com \texttt{userId} e \texttt{familyId}.
+O access token tem TTL de 15~minutos; o refresh token tem TTL de 7~dias.
+
+\subsubsection*{RBAC com Validação de Papel no JWT}
+
+O \texttt{SecurityConfig} define rotas protegidas com granularidade de papel: \texttt{/admin/**} exige \texttt{ROLE\_ADMIN}; Swagger UI é restrito a \texttt{ROLE\_ADMIN} em produção e público em desenvolvimento; todos os outros endpoints autenticados aceitam qualquer papel válido.
+O papel é extraído do JWT no \texttt{JwtAuthFilter} e validado contra a lista \texttt{VALID\_ROLES = ["USER", "ADMIN"]} --- valores fora desta lista são descartados.
+
+\subsubsection*{CORS Restritivo}
+
+O \texttt{WebMvcConfig} configura CORS com lista de origens explícita, verificada ao arranque:
+
+\begin{verbatim}
+require(origins.none { it == "*" || it.isBlank() }) {
+    "CORS allowed-origins must not contain wildcards or blank entries"
+}
+\end{verbatim}
+
+Em produção, as origens permitidas são definidas via variável de ambiente \texttt{APP\_CORS\_ALLOWED\_ORIGINS}.
+
+\subsubsection*{Headers HTTP de Segurança (Nginx)}
+
+\begin{table}[h!]
+\centering
+\caption{Headers HTTP de segurança configurados no Nginx}
+\label{tab:security-headers}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+\textbf{Header} & \textbf{Valor} & \textbf{Protecção} \\
+\hline
+\texttt{Strict-Transport-Security} & \texttt{max-age=63072000; includeSubDomains} & Força HTTPS por 2 anos, inclui subdomínios \\
+\texttt{X-Content-Type-Options}    & \texttt{nosniff}                             & Impede MIME-type \textit{sniffing} \\
+\texttt{X-Frame-Options}           & \texttt{DENY}                                & Previne \textit{clickjacking} \\
+\texttt{Referrer-Policy}           & \texttt{strict-origin-when-cross-origin}     & Limita informação de \textit{referrer cross-origin} \\
+\texttt{Content-Security-Policy}   & ver Secção~\ref{sec:xss}                    & Previne XSS via política de \textit{browser} \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsubsection*{Segurança do Scraper}
+
+O scraper Playwright opera com \textit{timeout} de navegação de 25~s, \textit{timeout} total de 35~s, e remoção activa de \texttt{<script>}, \texttt{<style>}, \texttt{<iframe>}, \texttt{<nav>}, \texttt{<footer>} antes de extrair texto --- em complemento ao \texttt{UrlSsrfValidator} que valida a URL antes de qualquer pedido ao scraper.
+
+\subsection{Análise de Riscos} \label{sec:riscos}
+
+A análise de riscos foi conduzida segundo a metodologia OWASP Risk Rating: $\text{Risco} = \text{Probabilidade} \times \text{Impacto}$, com escala 1--9 em cada dimensão.
+A Tabela~\ref{tab:riscos} apresenta os dez riscos identificados com o risco residual após aplicação dos controlos.
+
+\begin{table}[h!]
+\centering
+\caption{Análise de riscos OWASP --- probabilidade e impacto residuais (escala 1--9)}
+\label{tab:riscos}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllrrl}
+\hline
+\textbf{ID} & \textbf{OWASP} & \textbf{Ameaça} & \textbf{Controlo} & \textbf{Prob.} & \textbf{Imp.} & \textbf{Classif.} \\
+\hline
+R01 & A03 & XSS via conteúdo IA                  & AiOutputSanitiser + CSP + React      & 1 & 7 & Baixo \\
+R02 & A03 & Prompt Injection                      & Multi-mensagem tipada + AiContextLimits & 2 & 5 & Médio \\
+R03 & A04 & DoS económico via API de IA           & Rate limiting 10 req/10\,min /explanation & 2 & 6 & Médio \\
+R04 & A07 & Roubo de \textit{refresh token}        & Rotação com família + revogação total & 2 & 8 & Médio \\
+R05 & A05 & Segredo JWT padrão em produção        & \texttt{JwtSecretStartupGuard}        & 1 & 9 & Baixo \\
+R06 & A10 & SSRF via URL de ingestão              & \texttt{UrlSsrfValidator}             & 1 & 8 & Baixo \\
+R07 & A07 & Força bruta em \textit{magic-link}    & Rate limiting 5 req/10\,min           & 1 & 6 & Baixo \\
+R08 & A05 & \textit{Spoofing} de IP no RL          & \texttt{IpExtractor} rejeita privados & 2 & 5 & Médio \\
+R09 & A01 & Escalada de privilégios               & RBAC + validação de papel no JWT      & 1 & 9 & Baixo \\
+R10 & A05 & CORS wildcard                         & Verificação ao arranque               & 1 & 6 & Baixo \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Os três riscos classificados como \textbf{Médio} merecem atenção particular:
+
+\textbf{R02 --- Prompt Injection (Médio):} O modelo Mistral não garante resistência total a \textit{adversarial inputs} sofisticados.
+O controlo actual (separação de mensagens + truncagem) mitiga ataques simples mas não ataques adversariais avançados.
+Mitigação adicional: \textit{fine-tuning} de \textit{guardrails} ou uso de um modelo com sistema de moderação integrado.
+
+\textbf{R03 --- DoS Económico (Médio):} O custo por chamada ao Mistral é não nulo.
+O \textit{rate limiting} por IP mitiga abuso de um único atacante mas não ataques distribuídos.
+Mitigação adicional: \textit{throttling} global por \textit{endpoint} (não só por IP) e alertas de custo na API Mistral.
+
+\textbf{R04 --- Roubo de Refresh Token (Médio):} A janela de 7~dias representa risco se um token for exfiltrado via XSS (R01, já mitigado) ou comprometimento de armazenamento local.
+O impacto é limitado pela TTL de 15~minutos do \textit{access token} e pela detecção por família.
+A Figura~\ref{fig:seq-token-theft} detalha os dois cenários de detecção.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-token-theft.png}}
+    \caption{Detecção de roubo de \textit{refresh token} (R04) --- revogação de família em dois cenários}
+    \label{fig:seq-token-theft}
+\end{figure}

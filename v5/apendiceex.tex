@@ -1,0 +1,416 @@
+% !TEX root = relatorio.tex
+%
+% Apêndice A — Exemplos de Prompts Completos
+%
+\chapter{Exemplos de Prompts Completos} \label{ap:prompts}
+
+Este apêndice reproduz, na íntegra e sem alterações, os \textit{templates} de \textit{prompt} definidos no módulo \texttt{ai-agent} (pacote \texttt{com.ureka.play4change.prompt}) e efectivamente enviados ao modelo \texttt{mistral-small-latest} através do LangChain4j. Os campos entre \texttt{\$} são interpolados em \textit{runtime} a partir do contexto de domínio (tópico, módulo, sessão de dificuldade, etc.). Todos os \textit{prompts} de geração de conteúdo obrigam o modelo a responder exclusivamente em JSON, sem texto envolvente, para permitir \textit{parsing} determinístico pelo \texttt{OptionsJsonParser}.
+
+\section{Prompt de Geração de Tópicos e Desafios} \label{ap:prompt-task-generation}
+
+Utilizado pelo \texttt{LangChain4jTaskGenerationAdapter} sempre que é necessário gerar tarefas de escolha múltipla — quer na ingestão inicial de um tópico (\texttt{TaskGenerationOrchestrator}), quer na geração de variantes por idioma (\texttt{LanguageGenerationAdapter}), quer na geração de instâncias distratoras em lote (\texttt{BatchInstanceAdapter}).
+
+\subsection*{System Message}
+
+\begin{verbatim}
+You are an expert educational content designer specialising in gamified
+learning experiences. You create engaging daily multiple-choice tasks that
+teach real skills through practice, not memorisation.
+
+LANGUAGE: You MUST generate ALL text content in $language.
+This is mandatory. Do not mix languages. Do not respond in English
+unless $language is English.
+
+RULES:
+- Each task must be completable in 5-15 minutes
+- Tasks must be practical and actionable, not theoretical
+- Difficulty must match the audience level exactly
+- Hints must guide without giving away the answer
+- Every task must directly advance the module objective
+- Tasks must be distinct — no semantic overlap with existing content
+- Always generate exactly 4 options per task
+- The correct answer must always be at index 0 in the options array
+  (the system will shuffle before showing to the user)
+- Wrong options must be plausible — not obviously incorrect
+
+OUTPUT FORMAT: Respond with a valid JSON array only. No preamble. No explanation.
+Schema:
+[
+  {
+    "title": "string (max 60 chars)",
+    "description": "string (max 300 chars — frame it as a question or scenario)",
+    "hint": "string (max 150 chars)",
+    "pointsReward": number (10-100, higher for harder tasks),
+    "options": ["correct answer", "wrong option 1", "wrong option 2", "wrong option 3"],
+    "correctAnswerIndex": 0
+  }
+]
+\end{verbatim}
+
+\subsection*{User Message}
+
+\begin{verbatim}
+Generate ${request.taskCount} multiple-choice learning tasks for the following context:
+
+Subject Domain: ${request.subjectDomain}
+Module Objective: ${request.moduleObjective}
+Audience Level: ${request.audienceLevel.toPromptDescription()}
+Language: ${request.language}
+
+The tasks must progress logically — earlier tasks build foundations,
+later tasks apply concepts in more complex scenarios.
+
+Important: N tasks already exist for this module. Generate semantically
+distinct tasks that complement the existing content.
+[linha condicional, omitida quando não existem tarefas prévias no módulo]
+
+Remember: always put the correct answer at index 0 in the options array.
+Generate the JSON array now:
+\end{verbatim}
+
+O nível de audiência (\texttt{AudienceLevel}) é traduzido para uma descrição textual antes de ser injectado no \textit{prompt}:
+
+\begin{verbatim}
+BEGINNER     -> "Beginner — assumes no prior knowledge, uses simple
+                 language, concrete examples"
+INTERMEDIATE -> "Intermediate — assumes basic familiarity, introduces
+                 complexity, some abstraction"
+ADVANCED     -> "Advanced — assumes solid foundation, focuses on nuance,
+                 edge cases, and depth"
+\end{verbatim}
+
+\subsection*{Reforço de Esquema (retry)}
+
+Quando a resposta do modelo é incompleta ou não corresponde ao número de tarefas pedido, o \texttt{Resilience4j retry} reenvia o pedido com um reforço adicional do esquema:
+
+\begin{verbatim}
+Your previous response was incomplete or malformed.
+Please respond with EXACTLY $taskCount tasks in the JSON array schema above.
+Every task must have: title, description, hint, pointsReward, options (4 items),
+and correctAnswerIndex set to 0. No extra fields. Valid JSON only.
+\end{verbatim}
+
+\section{Prompt de Análise de Dificuldade e Geração de Subtarefas Adaptativas} \label{ap:prompt-struggle}
+
+Utilizado pelo \texttt{HandleStruggleService} quando um aprendente falha repetidamente uma tarefa. Ao contrário do \textit{prompt} de geração base, este inclui o padrão de erro diagnosticado (\texttt{ErrorPattern}), permitindo que o modelo gere um percurso de recuperação escalonado em vez de tarefas genéricas sobre o mesmo tópico.
+
+\subsection*{System Message}
+
+\begin{verbatim}
+You are an expert adaptive learning coach. A student is struggling with
+a specific task in their learning journey. Your job is to create a short
+sequence of simpler subtasks that scaffold the student back to success.
+
+PRINCIPLES:
+- Diagnose the root cause of the struggle from the error pattern
+- Start with the simplest possible related concept
+- Each subtask builds on the previous one
+- The final subtask should bring the student back to the original task level
+- Be encouraging — frame tasks as achievable steps, not remediation
+- Keep each subtask completable in 3-10 minutes
+
+OUTPUT FORMAT: Respond with a valid JSON array only. No preamble. No explanation.
+Schema:
+[
+  {
+    "title": "string (max 60 chars)",
+    "description": "string (max 300 chars)",
+    "hint": "string (max 150 chars)",
+    "pointsReward": number (5-50, lower than main tasks to reflect smaller scope),
+    "options": ["string", "string", "string", "string"],
+    "correctAnswerIndex": number (0-based index into options array)
+  }
+]
+\end{verbatim}
+
+\subsection*{User Message}
+
+\begin{verbatim}
+A student is struggling with the following task after ${context.attemptCount} attempts:
+
+Task: ${context.taskDescription}
+Subject Domain: ${context.subjectDomain}
+Module Objective: ${context.moduleObjective}
+Student Level: ${context.audienceLevel.toPromptDescription()}
+Language: ${context.language}
+
+Diagnosed Struggle Type: ${context.errorPattern.toPromptDescription()}
+
+Generate $subtaskCount adaptive subtasks that:
+1. Address the specific struggle type diagnosed above
+2. Start simpler than the original task
+3. Progressively build back toward the original task level
+4. Are encouraging and reframe the struggle as a learning opportunity
+
+Generate the JSON array now:
+\end{verbatim}
+
+Cada \texttt{ErrorPattern} é traduzido numa instrução específica de diagnóstico antes de ser injectado no \textit{prompt}:
+
+\begin{verbatim}
+CONCEPTUAL_MISUNDERSTANDING -> "The student misunderstands the core concept.
+                                 Start by re-explaining it differently."
+PROCEDURAL_ERROR            -> "The student understands the concept but
+                                 applies the wrong steps. Focus on procedure."
+KNOWLEDGE_GAP                -> "The student is missing prerequisite
+                                 knowledge. Fill the gap before returning
+                                 to the task."
+UNCLEAR_INSTRUCTIONS         -> "The task instructions were unclear.
+                                 Provide clearer, more explicit guidance."
+TIME_PRESSURE                -> "The student rushed and made errors under
+                                 time pressure. Use paced, step-by-step
+                                 practice tasks."
+UNKNOWN                      -> "The struggle cause is unclear. Provide
+                                 general scaffolding from basic to
+                                 intermediate."
+\end{verbatim}
+
+\section{Prompt de Explicação Holística e Conversação} \label{ap:prompt-explanation}
+
+Utilizado pelo \texttt{ExplanationService} quando um aprendente esgota todos os níveis de profundidade do percurso adaptativo sem resolver a dificuldade. Divide-se em dois modos: a explicação inicial (síntese de todas as tentativas) e as respostas conversacionais subsequentes, caso o aprendente continue confuso.
+
+\subsection*{System Message --- Explicação Inicial}
+
+\begin{verbatim}
+You are a patient and empathetic learning coach helping a student who has
+struggled repeatedly with the same concept. They have now exhausted all
+their practice attempts and need a clear, holistic explanation.
+
+YOUR GOAL:
+- Synthesise what went wrong across all their attempts
+- Explain the underlying concept clearly and simply
+- Use concrete examples relevant to the subject domain
+- Be encouraging — frame struggles as a normal part of learning
+- Keep the explanation concise: 3-5 paragraphs maximum
+- Write in plain prose — no JSON, no bullet lists, no headers
+- Match the learner's language exactly
+\end{verbatim}
+
+\subsection*{User Message --- Explicação Inicial}
+
+\begin{verbatim}
+A student in a ${context.audienceLevel.toLabel()} course on "${context.subjectDomain}"
+has struggled with the following task after exhausting their practice attempts:
+
+Task: ${context.taskDescription}
+Module objective: ${context.moduleObjective}
+Struggle type: ${context.errorPattern.toLabel()}
+Language: ${context.language}
+
+Here is their struggle history:
+  Session ${depth} (${errorPattern.toLabel()}): ${taskTitles joined by ", "}
+  [uma linha por sessão de dificuldade anterior]
+
+Write a clear, encouraging explanation that helps them finally understand
+this concept.
+Respond in ${context.language}. Plain prose only.
+\end{verbatim}
+
+\subsection*{System Message --- Réplica Conversacional}
+
+\begin{verbatim}
+You are a patient learning coach in an ongoing conversation with a confused student.
+They have already received an initial explanation of a concept they struggled with.
+Your role now is to answer their specific questions and clear up remaining confusion.
+
+PRINCIPLES:
+- Address their exact question directly
+- Use simple language and concrete examples
+- Keep replies focused: 2-4 sentences unless the question demands more
+- Be warm and encouraging
+- Write in the same language as the student
+- Plain prose only — no JSON, no bullet lists
+\end{verbatim}
+
+O primeiro turno da conversa é sempre um bloco de contexto gerado a partir de dados confiáveis (provenientes da base de dados), nunca de conteúdo fornecido pelo utilizador — separação deliberada que impede que uma futura mensagem maliciosa do aprendente altere o enquadramento da conversa (ver secção sobre defesas contra \textit{prompt injection}, Figura~\ref{fig:seq-ai-anti-injection}):
+
+\begin{verbatim}
+Subject: ${context.subjectDomain}
+Original task: ${context.taskDescription}
+\end{verbatim}
+
+%
+% Apêndice B — Diagramas Complementares
+%
+\chapter{Diagramas Complementares} \label{ap:diagramas}
+
+Os diagramas apresentados no corpo do relatório (Capítulo~\ref{cap:desenvolvimento}) focam-se em subfluxos isolados, de forma a manter cada figura legível junto do texto que a acompanha. Este apêndice reúne três vistas de conjunto, pensadas para consulta integral: o fluxo de autenticação ponta-a-ponta, o \textit{pipeline} completo de criação de um tópico (ingestão, geração via IA e indexação vectorial), e o diagrama entidade-relação do esquema relacional na íntegra.
+
+\section{Diagrama de Sequência --- Autenticação Completa (\textit{Magic Link})}
+
+A Figura~\ref{fig:ap-auth-full} mostra o fluxo integral de autenticação sem password, desde a submissão do e-mail até à emissão do par de tokens (\textit{access} + \textit{refresh}), incluindo a normalização do e-mail, o \textit{rate limiting} por IP, o hash SHA-256 do token, a operação atómica de consumo do \textit{magic link} (que previne condições de corrida TOCTOU) e a criação automática de conta para utilizadores novos.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-demo-auth.png}}
+    \caption{Diagrama de sequência completo --- autenticação passwordless por magic link}
+    \label{fig:ap-auth-full}
+\end{figure}
+
+\section{Diagrama de Sequência --- Pipeline Completo de Ingestão e Geração RAG}
+
+A Figura~\ref{fig:ap-rag-full} mostra o \textit{pipeline} completo accionado pela submissão de um novo tópico: extracção de conteúdo (\textit{Playwright}/\textit{Unstructured}), transição de fases (\texttt{INGESTION} $\to$ \texttt{ANALYSIS} $\to$ \texttt{GENERATION} $\to$ \texttt{INDEXING} $\to$ \texttt{ACTIVE}), segmentação em \textit{chunks}, chamada ao LLM por \textit{chunk}, geração de \textit{embeddings}, deduplicação semântica via pgvector e notificação de progresso em tempo real por \textit{Server-Sent Events}.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-demo-pipeline.png}}
+    \caption{Diagrama de sequência completo --- pipeline de ingestão, geração e indexação RAG}
+    \label{fig:ap-rag-full}
+\end{figure}
+
+\section{Diagrama Entidade-Relação}
+
+A Figura~\ref{fig:ap-der} apresenta o esquema relacional completo, tal como definido pelas \textit{migrations} Flyway (\texttt{V1} a \texttt{V32}) em \texttt{server/src/main/resources/db/migration}. As entidades estão agrupadas por domínio: identidade e autenticação (azul), conteúdo e conhecimento (verde), progresso de aprendizagem (amarelo), suporte adaptativo e explicações (vermelho), e governança/moderação (roxo). Tabelas puramente internas ao serviço de deduplicação do \texttt{ai-agent} (\texttt{struggle\_events}, \texttt{adaptive\_branches}) foram omitidas por não pertencerem ao domínio aplicacional principal.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{\textwidth}{!}{\includegraphics{./figures/der.png}}
+    \caption{Diagrama entidade-relação do esquema relacional da base de dados}
+    \label{fig:ap-der}
+\end{figure}
+
+%
+% Apêndice C — Variáveis de Ambiente
+%
+\chapter{Variáveis de Ambiente} \label{ap:env}
+
+Este apêndice lista todas as variáveis de ambiente configuráveis no sistema, tal como definidas em \texttt{application.yml} (servidor), \texttt{docker-compose.yml} (orquestração de contentores) e nos ficheiros \texttt{.env.example} das aplicações cliente. Os valores reais (segredos, chaves de API, credenciais) não são reproduzidos; apenas os nomes das variáveis e o respectivo propósito.
+
+\subsection*{Base de Dados}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis de ligação à base de dados}
+\label{tab:env-db}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{SPRING\_DATASOURCE\_URL}      & URL JDBC de ligação ao PostgreSQL (por omissão aponta para o contentor \texttt{play4change-postgres}) \\
+\texttt{DB\_USER} / \texttt{DB\_PASS} & Credenciais da base de dados usadas pelo \texttt{docker-compose} \\
+\hline
+\end{tabular}
+\end{table}
+
+Não existe camada de \textit{cache} distribuída no sistema: o \textit{rate limiting} usa \textit{buckets} em memória por processo (Bucket4j + Caffeine), sem necessidade de um \textit{backing store} partilhado.
+
+\subsection*{Inteligência Artificial e Geração}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis de configuração do modelo de IA}
+\label{tab:env-ai}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{MISTRAL\_API\_KEY}  & Chave de acesso à API da Mistral AI; se omitida ou igual a \texttt{not-set-yet}, os \textit{beans} do LangChain4j não são carregados e os endpoints de IA respondem 503 \\
+\hline
+\end{tabular}
+\end{table}
+
+Os restantes parâmetros do modelo de IA (\texttt{ai.mistral.model}, \texttt{ai.mistral.temperature}, \texttt{ai.mistral.timeout-seconds}, tamanho da \textit{pool} de geração, limiares de deduplicação) são definidos directamente em \texttt{application.yml} e não variam por ambiente — apenas a chave de API é externalizada como segredo.
+
+\subsection*{Armazenamento de Objectos (MinIO)}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis de armazenamento de ficheiros}
+\label{tab:env-storage}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{MINIO\_ENDPOINT}     & URL do serviço MinIO (S3-compatível) \\
+\texttt{MINIO\_ROOT\_USER} / \texttt{MINIO\_ACCESS\_KEY}    & Utilizador/chave de acesso ao MinIO \\
+\texttt{MINIO\_ROOT\_PASSWORD} / \texttt{MINIO\_SECRET\_KEY} & Password/chave secreta do MinIO \\
+\texttt{MINIO\_BUCKET}       & Nome do \textit{bucket} usado para PDFs submetidos \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Ingestão de Conteúdo}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis dos serviços auxiliares de extracção de conteúdo}
+\label{tab:env-ingest}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{SCRAPER\_URL}        & URL do sidecar Playwright usado para extracção de conteúdo de páginas web \\
+\texttt{UNSTRUCTURED\_URL}   & URL da API Unstructured.io usada para extracção de texto de PDF \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Autenticação, Segurança e CORS}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis de segurança e autenticação}
+\label{tab:env-security}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{JWT\_SECRET}            & Segredo usado para assinar (HS256) os \textit{access tokens} JWT; mínimo de 64 caracteres em produção (\texttt{JwtSecretStartupGuard}) \\
+\texttt{APP\_BASE\_URL}         & URL base da aplicação, usada na construção de \textit{deep links} de autenticação \\
+\texttt{FRONTEND\_ORIGIN}       & Origem do \textit{frontend}, propagada para \texttt{APP\_BASE\_URL} no \texttt{docker-compose} \\
+\texttt{CORS\_ALLOWED\_ORIGINS} & Lista de origens autorizadas pela política CORS do servidor \\
+\hline
+\end{tabular}
+\end{table}
+
+Os parâmetros de duração dos tokens (\texttt{jwt.access-ttl-minutes = 15}, \texttt{jwt.refresh-ttl-days = 7}) e os limites de \textit{rate limiting} por IP são fixados em \texttt{application.yml} e não são externalizados como variáveis de ambiente.
+
+\subsection*{Envio de E-mail}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis do serviço de e-mail (Resend)}
+\label{tab:env-mail}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{RESEND\_API\_KEY} & Chave de acesso à API de envio de e-mail Resend \\
+\texttt{RESEND\_FROM}     & Endereço de origem usado no envio dos \textit{magic links} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Observabilidade e Infra-estrutura}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis de monitorização e exposição pública}
+\label{tab:env-infra}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{GRAFANA\_ADMIN\_PASSWORD}      & Password do utilizador administrador do Grafana \\
+\texttt{SPRING\_PROFILES\_ACTIVE}      & Perfil Spring activo (ex.\ \texttt{prod}, \texttt{dev}) \\
+\hline
+\end{tabular}
+\end{table}
+
+A exposição pública do serviço em produção (\texttt{https://radesh-govind.com/play4change-server}, referenciada em \texttt{play4change-web/.env.production}) não é orquestrada por nenhum serviço definido no \texttt{docker-compose.yml} deste repositório --- não existe um contentor \textit{tunnel} nem variáveis de ambiente associadas no código-fonte; a exposição é gerida externamente ao repositório.
+
+\subsection*{Aplicação Cliente (Web)}
+
+\begin{table}[h!]
+\centering
+\caption{Variáveis de ambiente do cliente web (Vite)}
+\label{tab:env-web}
+\begin{tabular}{p{5.5cm}p{7.5cm}}
+\hline
+\textbf{Variável} & \textbf{Descrição} \\
+\hline
+\texttt{VITE\_API\_BASE\_URL} & URL base da API do servidor a que o cliente web se liga (URL de produção, \textit{tunnel} ngrok, ou \texttt{localhost}) \\
+\texttt{VITE\_USE\_MOCK}      & Quando \texttt{true}, o cliente usa adaptadores \textit{mock} em vez de chamadas reais à API --- usado em desenvolvimento isolado do \textit{frontend} \\
+\hline
+\end{tabular}
+\end{table}

@@ -1,0 +1,233 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 6 — Resultados
+%
+\chapter{Resultados} \label{cap:resultados}
+
+Este capítulo apresenta os resultados concretos do projecto Play4Change em três dimensões complementares: a demonstração dos fluxos funcionais do sistema; as métricas de desempenho e a infraestrutura de observabilidade instrumentada; e os mecanismos que garantem a qualidade pedagógica e a segurança das questões geradas por inteligência artificial.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Demonstração do Sistema} \label{sec:demonstracao}
+
+O Play4Change é composto por três interfaces: a aplicação móvel (Kotlin Multiplatform + Compose Multiplatform para Android e iOS), o painel de administração web (React~18 + Vite + TypeScript) e o servidor REST (Spring Boot 3.2, Kotlin, JVM~21). A infraestrutura é orquestrada por Docker Compose com oito serviços: PostgreSQL~16 com pgvector, MinIO, Playwright Scraper, Unstructured.io, Spring Boot, Nginx, Prometheus e Grafana; o módulo de IA (LangChain4j + Mistral) é invocado como API externa, sem contentor próprio.
+
+\subsection{Autenticação por Ligação Mágica} \label{sec:demo-auth}
+
+O sistema implementa autenticação sem senha (\textit{passwordless}) baseada em ligações mágicas. O token em claro (256 bits de entropia) nunca é armazenado — apenas o seu SHA-256. A verificação é uma operação \texttt{UPDATE ... WHERE used=false RETURNING email} atómica ao nível da base de dados, prevenindo condições de corrida TOCTOU.
+
+Após verificação bem-sucedida, o servidor emite um par JWT: token de acesso (HS256, 15 minutos) e token de atualização opaco (7 dias), com \texttt{familyId} para deteção de reutilização em caso de roubo (§\ref{sec:autenticacao}). Na primeira verificação, a conta do utilizador é criada automaticamente.
+
+\subsection{Pipeline de Criação de Tópico} \label{sec:demo-pipeline}
+
+O fluxo de criação de tópico é assíncrono e multi-fásico. O administrador submete um URL ou PDF; o servidor devolve imediatamente o identificador do tópico (201 Created) e o progresso é transmitido em tempo real por \textit{Server-Sent Events} (SSE). A geração ocorre em corrotinas Kotlin num thread pool dedicado (\texttt{generationExecutor}, 3 threads, fila de 25 tarefas), sem bloquear os threads HTTP. O pipeline completo segue as fases: submissão do URL, \textit{ingestion} por Playwright, \textit{chunking} (32k/2k de sobreposição), geração LLM por bloco, \textit{embedding} e deduplicação pgvector, indexação e activação do tópico.
+
+As fases de geração seguem a máquina de estados \texttt{GenerationPhase}: \texttt{INGESTION} $\to$ \texttt{ANALYSIS} $\to$ \texttt{GENERATION} $\to$ \texttt{INDEXING} $\to$ \texttt{ACTIVE}. Em caso de falha de IA, a transição \texttt{GENERATION} $\to$ \texttt{FAILED} activa o mecanismo de regeneração (§\ref{sec:rag}).
+
+\subsection{Entrega e Submissão de Tarefas} \label{sec:demo-task-submit}
+
+Em modo produção, as tarefas são desbloqueadas por calendário: uma por dia, calculada pelo \texttt{DayIndexCalculator} com base no \texttt{enrolledAt} e no fuso horário do utilizador. As opções são baralhadas com semente determinística (\texttt{TaskShuffleSeed}) baseada em \texttt{userId + templateId + enrollmentId}, garantindo que cada utilizador veja uma ordem diferente mas reprodutível (§\ref{sec:atribuicao}). O endpoint \texttt{GET /tasks/today} verifica quatro condições por precedência, conforme documentado na Figura~\ref{fig:seq-task-assign}.
+
+Quando o utilizador submete uma resposta errada, o \texttt{ErrorPatternClassifier} classifica o padrão de erro em \texttt{TIME\_PRESSURE}, \texttt{READING\_ERROR} ou \texttt{WRONG\_CONCEPT}, e a criação do ramo adaptativo é despoletada de forma assíncrona (Figura~\ref{fig:seq-task-submit}).
+
+\subsection{Sessão de Dificuldade Adaptativa} \label{sec:demo-struggle-path}
+
+Após falha numa tarefa, o sistema gera automaticamente um ramo de recuperação com três subtarefas progressivas. O mecanismo de reutilização semântica (§\ref{sec:recuperacao}) evita geração redundante quando o contexto de dificuldade é similar a ramos anteriores. Se o utilizador falhar todas as subtarefas e a profundidade máxima (\texttt{MAX\_STRUGGLE\_DEPTH = 1}) for atingida, é criada uma sessão de explicação IA (Figura~\ref{fig:seq-struggle-resolve}).
+
+\subsection{Sessão de Explicação e Tutoria com IA} \label{sec:demo-explanation}
+
+O percurso completo do aprendente decorre desde a obtenção da tarefa diária até à resolução da sessão de explicação e regresso ao fluxo principal: tarefa diária, resposta errada, classificação de padrão, geração assíncrona de ramo adaptativo, sessão de dificuldade, escalamento, geração de explicação IA, diálogo conversacional, resolução e retentativa. A sessão de explicação inicia no estado \texttt{GENERATING} e transita para \texttt{ACTIVE} após geração assíncrona da explicação em prosa (3–5 parágrafos). O utilizador pode depois continuar em diálogo conversacional com a IA; cada mensagem de resposta é gerada com injeção de cabeçalho de contexto antes do input do utilizador, prevenindo injeção de prompt (§\ref{sec:explicacao-ia}).
+
+\subsection{Painel de Administração Web} \label{sec:demo-web}
+
+O painel web de administração (módulo \texttt{play4change-web}, React~18 + Vite + TypeScript) permite aos administradores criar tópicos por URL ou PDF, monitorizar o progresso de geração por SSE, visualizar as tarefas geradas e respectivas estatísticas de dificuldade, gerir utilizadores (promoção de papel) e resolver relatórios submetidos pelos aprendentes. A autenticação é partilhada com a aplicação móvel (mesmo JWT), e as operações administrativas de alto custo computacional (criação de tópico, regeneração) são protegidas por limites de taxa agressivos (3 criações URL / 10~min, 2 por PDF / 10~min).
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Métricas de Desempenho} \label{sec:metricas}
+
+\subsection{Arquitetura de Observabilidade} \label{sec:observabilidade}
+
+O sistema implementa uma pilha de observabilidade alinhada com os três pilares — métricas, logs estruturados e alertas. As métricas são expostas pelo Spring Boot Actuator em \texttt{/actuator/prometheus} e recolhidas de 5 em 5 segundos pelo Prometheus (retenção de 7 dias), com avaliação das regras de alerta a cada 15 segundos (quatro grupos com oito alertas) e consulta via PromQL no Grafana, que fornece dashboards provisionados automaticamente para visualização em tempo real.
+
+\subsection{Métricas Instrumentadas} \label{sec:metricas-app}
+
+O sistema instrumenta dezoito métricas com Micrometer, cobrindo camadas HTTP, IA, aprendizagem e segurança. A Tabela~\ref{tab:metricas-app} apresenta o catálogo completo.
+
+\begin{table}[htb]
+\centering
+\caption{Catálogo de métricas instrumentadas com Micrometer.}
+\label{tab:metricas-app}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Métrica} & \textbf{Tipo} & \textbf{Tags} & \textbf{Descrição} \\
+\midrule
+\texttt{http\_server\_requests\_seconds}        & Timer   & uri, method, status                                 & Latência e throughput HTTP (Spring MVC auto) \\
+\texttt{task.generation.duration}               & Timer   & status (success/failed/timeout)                     & Duração total da pipeline de geração por tópico \\
+\texttt{ai.generation.duration}                 & Timer   & generation\_phase (GENERATION/ANALYSIS)             & Tempo de chamada ao Mistral por fase \\
+\texttt{ai.generation.failures}                 & Counter & type (unexpected\_error/schema\_validation/fixed\_path/adaptive/explanation/explanation\_reply/adaptive\_schema\_retry) & Falhas de geração por categoria \\
+\texttt{ai.adaptive.reuse}                      & Counter & strategy (full/partial/fresh)                       & Distribuição de estratégias de reutilização \\
+\texttt{ai.dedup.duplicates\_skipped}           & Counter & module\_id                                          & Tarefas descartadas por deduplicação semântica \\
+\texttt{ai.struggle.reuse\_strategy}            & Counter & strategy                                            & Estratégia de reuso no pgvector por ocorrência \\
+\texttt{struggle\_sessions\_total}              & Counter & error\_pattern                                      & Sessões de dificuldade por padrão de erro \\
+\texttt{struggle\_sessions\_created\_total}     & Counter & topic\_id                                           & Sessões criadas por tópico \\
+\texttt{explanation\_sessions\_created\_total}  & Counter & —                                                   & Total de sessões de explicação criadas \\
+\texttt{explanation\_sessions\_resolved\_total} & Counter & outcome (success/generation\_failed/error)          & Resultado das sessões de explicação \\
+\texttt{task\_submissions\_total}               & Counter & outcome (correct/incorrect/late), task\_type        & Submissões por resultado e tipo de tarefa \\
+\texttt{tasks\_submitted\_total}                & Counter & result, topic\_id                                   & Submissões por resultado e por tópico \\
+\texttt{enrollments\_completed\_total}          & Counter & topic\_id                                           & Inscrições concluídas por tópico \\
+\texttt{rate\_limit\_exceeded\_total}           & Counter & path                                                & Bloqueios por limite de taxa por caminho de API \\
+\texttt{executor\_queued\_tasks}                & Gauge   & name=generationExecutor                             & Tarefas na fila do thread pool de geração \\
+\texttt{jvm\_memory\_used\_bytes}               & Gauge   & area=heap/nonheap                                   & Utilização de memória JVM \\
+\texttt{resilience4j\_circuitbreaker\_state}    & Gauge   & name=aiAgent, state                                 & Estado do circuit breaker de IA (aiAgent) \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Limitação de Taxa por Caminho} \label{sec:rate-limit-metrics}
+
+O limitador de taxa (§\ref{sec:ratelimiting}) usa o algoritmo token bucket (Bucket4j) com cache Caffeine (expiração por acesso de 15~min, capacidade máxima de 50.000 entradas), com granularidade por IP e caminho normalizado. A Tabela~\ref{tab:rate-limits-full} apresenta a configuração efectivamente activa; a Tabela~\ref{tab:rate-limits-broken} documenta um problema encontrado durante a auditoria deste capítulo: duas regras destinadas a caminhos de alta frequência estão configuradas contra padrões de rota que não correspondem a nenhum \textit{endpoint} real, pelo que nunca são accionadas.
+
+\begin{table}[htb]
+\centering
+\caption{Limites de taxa efectivamente activos por caminho de API (janela de 10 minutos por IP).}
+\label{tab:rate-limits-full}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Caminho} & \textbf{Limite} & \textbf{Justificação} \\
+\midrule
+POST /auth/magic-link              & 5  & Previne enumeração de e-mails e spam de tokens \\
+POST /auth/magic-link/verify       & 10 & Previne força bruta sobre tokens de 15 minutos \\
+POST /auth/refresh                 & 20 & Rotação de tokens em sessões activas \\
+POST /explanation/\{id\}/message   & 10 & Cada mensagem invoca a API Mistral (custo económico) \\
+POST /admin/topics                 & 3  & Criação de tópico desencadeia pipeline de IA completa \\
+POST /admin/topics/pdf             & 2  & Upload de PDF + pipeline + Unstructured.io \\
+POST /admin/topics/\{id\}/regenerate & 2 & Regeneração consome créditos Mistral API \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htb]
+\centering
+\caption{Regras de \textit{rate limiting} configuradas mas nunca accionadas --- o padrão de rota não corresponde a nenhum \textit{endpoint} real.}
+\label{tab:rate-limits-broken}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Padrão configurado} & \textbf{Limite} & \textbf{Endpoint real (sem limite)} \\
+\midrule
+\texttt{/topics/\{id\}/task-assignments/\{id\}/submit} & 30 & \texttt{POST /tasks/\{assignmentId\}/submit} \\
+\texttt{/enrollments/\{id\}/struggle/\{id\}/submit}    & 30 & \texttt{POST /struggle/\{sessionId\}/tasks/\{taskId\}/submit} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Os dois \textit{endpoints} atingidos são, precisamente, os de maior frequência de utilização em toda a aplicação: a submissão da resposta à tarefa diária e a submissão de uma sub-tarefa de \textit{struggle}. Ambos são hoje acedidos sem qualquer limite de taxa, apesar do comentário no próprio \texttt{RateLimitService.kt} indicar a intenção contrária (\textit{"prevents brute-force answer submission... struggle path replay attacks"}). Adicionalmente, as regras para \texttt{/topics/\{id\}/task-assignments/\{id\}/photo} e \texttt{/reviews/\{id\}/verdict} são resíduos da funcionalidade de \textit{Peer Review}, entretanto removida do sistema: não correspondem a nenhum \textit{endpoint} existente e devem ser eliminadas do \texttt{RateLimitService.kt} juntamente com a correcção dos dois padrões acima.
+
+\subsection{Pool de Threads de Geração e Circuit Breaker} \label{sec:thread-pool-cb}
+
+O thread pool dedicado à geração de IA (\texttt{generationExecutor}) é configurado com 3 threads núcleo (sem expansão) e fila de 25 tarefas. O circuit breaker Resilience4j (\texttt{aiAgent}) usa uma janela deslizante de 10 chamadas; quando a taxa de falhas ultrapassa 50\%, o CB transita para \texttt{OPEN} e aguarda 30 segundos antes de permitir chamadas de teste (\texttt{HALF-OPEN}). Os quatro percursos possíveis são: fila saturada, CB aberto, sucesso e timeout, com transição automática para \texttt{OPEN} e alerta crítico.
+
+O uso de corrotinas Kotlin (em vez de \texttt{runBlocking}) permite suspensão real durante chamadas à API externa, sem bloquear os threads do executor. O \texttt{withTimeoutOrNull(60s)} define o limite de espera por chamada; um resultado nulo é tratado como falha de geração e registado no circuit breaker e no contador Micrometer.
+
+\subsection{Regras de Alerta Prometheus} \label{sec:alertas-prometheus}
+
+O sistema define oito alertas configurados no Prometheus com avaliação a cada 15 segundos, organizados em quatro grupos temáticos (\texttt{play4change.server}, \texttt{play4change.ai}, \texttt{play4change.jvm}, \texttt{play4change.generation\_pool}) e duas severidades (crítico/aviso), conforme a Tabela~\ref{tab:alertas}.
+
+\begin{table}[htb]
+\centering
+\caption{Regras de alerta Prometheus configuradas (\textit{evaluation\_interval}: 15s).}
+\label{tab:alertas}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Alerta} & \textbf{Expressão PromQL (simplificada)} & \textbf{Limiar} & \textbf{Duração} & \textbf{Sev.} \\
+\midrule
+ServerDown                         & \texttt{up\{job="spring-boot"\} == 0}                               & —      & 1~min  & Crítico \\
+AiCircuitBreakerOpen               & \texttt{resilience4j\_circuitbreaker\_state\{state="open"\} == 1}   & —      & Imediato & Crítico \\
+JvmHeapUsageCritical               & \texttt{jvm\_memory\_used / jvm\_memory\_max}                        & > 95\% & 2~min  & Crítico \\
+HighHttpErrorRate                  & \texttt{rate(http\_5xx[5m]) / rate(http\_all[5m])}                  & > 5\%  & 2~min  & Aviso \\
+HighAiGenerationFailureRate        & \texttt{rate(ai\_generation\_failures\_total[10m])}                  & > 0,1/s & 5~min & Aviso \\
+AiGenerationP95High                & \texttt{histogram\_quantile(0.95, task.generation[10m])}             & > 90~s & 5~min  & Aviso \\
+JvmHeapUsageHigh                   & \texttt{jvm\_memory\_used / jvm\_memory\_max}                        & > 85\% & 5~min  & Aviso \\
+GenerationThreadPoolQueueSaturated & \texttt{executor\_queued\_tasks\{name="generationExecutor"\}}        & $\geq$ 20 & 2~min & Aviso \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Qualidade das Questões Geradas} \label{sec:qualidade}
+
+A qualidade das questões geradas pelo sistema é garantida por seis mecanismos complementares que actuam em camadas successivas, assegurando que apenas questões válidas, distintas e seguras chegam ao utilizador.
+
+\subsection{Engenharia de Prompts e Reutilização Adaptativa} \label{sec:prompt-engineering}
+
+O sistema implementa três templates de prompt com propósitos distintos. Em todos eles, a separação entre \texttt{SystemMessage} (instrução) e \texttt{UserMessage} (dados) é explícita e tipada, cumprindo o princípio de prevenção de injeção de prompt: o input do utilizador nunca é interpolado em strings de instrução (§\ref{sec:xss}).
+
+O mecanismo de reutilização de ramos adaptativos é o contributo mais original do sistema do ponto de vista da eficiência de custos de API. Em vez de gerar um novo ramo de remediação para cada utilizador que falha, o sistema pesquisa a base de dados vectorial por contextos de dificuldade semanticamente semelhantes, através de pesquisa pgvector por similaridade coseno IVFFlat, decidindo entre três estratégias com base no limiar de similaridade, conforme a Tabela~\ref{tab:reuse-thresholds}.
+
+\begin{table}[htb]
+\centering
+\caption{Limiares de similaridade coseno para reutilização de ramos adaptativos.}
+\label{tab:reuse-thresholds}
+\begin{tabular}{@{}lllp{6cm}@{}}
+\toprule
+\textbf{Limiar} & \textbf{Estratégia} & \textbf{Chamadas Mistral} & \textbf{Composição do ramo} \\
+\midrule
+$> 0{,}90$ & FULL\_REUSE    & 0 & 100\% tarefas reutilizadas do ramo existente \\
+$0{,}65$–$0{,}90$ & PARTIAL\_REUSE & 1 (subtarefas complementares) & $\lfloor 3 \times \text{sim\_norm} \rfloor$ reutilizadas + geradas \\
+$< 0{,}65$ & FRESH\_GENERATION & 1 (+ 1 retry se inválido) & 100\% novas, persistidas para reutilização futura \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+O prompt de geração de tarefas do percurso principal instrui o modelo a produzir exactamente 4 opções com a resposta correcta sempre no índice 0 (o sistema baralha antes de exibir), a limitar cada tarefa a 5–15 minutos de resolução, e a garantir progressão lógica entre tarefas. Quando o número de tarefas válidas é inferior ao pedido, um \textit{schema reminder} é injectado e o modelo é invocado uma segunda vez.
+
+\subsection{Deduplicação Semântica com pgvector} \label{sec:dedup-semantica}
+
+A deduplicação semântica (§\ref{sec:armazenamento}) previne que o mesmo conceito seja ensinado duas vezes no mesmo módulo, mesmo que formulado com palavras diferentes. Implementa-se com o operador de distância coseno \texttt{<=>} do pgvector, com índice IVFFlat para eficiência em leituras de alta frequência. Para cada tarefa gerada, o sistema calcula o embedding com \textit{mistral-embed} (1024 dimensões) e executa \texttt{SELECT 1 WHERE 1-(embedding<=>?::vector) > 0.90 LIMIT 1}; se existir uma tarefa com similaridade superior ao limiar, a nova tarefa é descartada e o contador \texttt{ai.dedup.duplicates\_skipped} é incrementado (Figura~\ref{fig:seq-rag-ingest}).
+
+\subsection{Classificação de Padrões de Erro} \label{sec:error-pattern-results}
+
+A qualidade das questões adaptativas depende de um diagnóstico preciso do tipo de erro cometido. O \texttt{ErrorPatternClassifier} (§\ref{sec:consolidation}) aplica três regras com prioridade estrita: \texttt{TIME\_PRESSURE} (submissão após \texttt{dueAt}), \texttt{READING\_ERROR} ($|\text{diff}| \leq 1$ na posição de exibição) e \texttt{WRONG\_CONCEPT} (padrão por omissão).
+Estes três valores pertencem ao \texttt{ErrorPattern} do domínio do \texttt{server}; antes de alimentar o prompt de geração do ramo adaptativo, são traduzidos para o \texttt{ErrorPattern} do módulo \texttt{ai-agent} --- um \textit{enum} maior e distinto, com seis valores, usado exclusivamente do lado da IA (Secção~\ref{sec:prompting} do Capítulo~\ref{cap:desenvolvimento}).
+Cada padrão do lado da IA é mapeado para uma instrução pedagógica específica no prompt, conforme a Tabela~\ref{tab:error-pattern-pedagogico}; note-se que, como o classificador determinístico nunca produz \texttt{PARTIAL\_UNDERSTANDING}, os valores correspondentes do lado da IA (\texttt{PROCEDURAL\_ERROR}, e por extensão \texttt{KNOWLEDGE\_GAP} e \texttt{UNKNOWN}) não são hoje alcançados por este fluxo --- estão reservados para uma classificação mais granular ainda não implementada.
+
+\begin{table}[htb]
+\centering
+\caption{Mapeamento de padrões de erro para estratégias pedagógicas de geração.}
+\label{tab:error-pattern-pedagogico}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Padrão detetado} & \textbf{Diagnóstico pedagógico} & \textbf{Instrução ao modelo} \\
+\midrule
+CONCEPTUAL\_MISUNDERSTANDING & Não compreende o conceito base        & Re-explicar o conceito de forma diferente \\
+PROCEDURAL\_ERROR            & Aplica passos errados                 & Focar no procedimento e nos passos corretos \\
+KNOWLEDGE\_GAP               & Falta conhecimento pré-requisito      & Preencher a lacuna antes de regressar \\
+UNCLEAR\_INSTRUCTIONS        & Instrução da tarefa confusa           & Fornecer orientação mais clara e explícita \\
+TIME\_PRESSURE               & Erros por precipitação                & Subtarefas de prática com ritmo passo-a-passo \\
+UNKNOWN                      & Causa indeterminada                   & Scaffolding geral de básico a intermédio \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Chunking de Conteúdo para Documentos Extensos} \label{sec:chunking}
+
+Para tópicos cujo conteúdo excede 32.000 caracteres, o \texttt{ContentChunker} divide o texto em blocos com sobreposição de 2.000 caracteres, preservando fronteiras semânticas em parágrafos (\texttt{lastIndexOf("\textbackslash n\textbackslash n")} nos últimos 500 caracteres de cada bloco). A geração é executada chunk a chunk; se um chunk intermédio falhar, o sistema degrada graciosamente — preserva as tarefas acumuladas dos chunks anteriores e regista o aviso. O chunk 0 é o único crítico: a sua falha produz \texttt{FAILED} sem recuperação. A deduplicação pgvector opera transversalmente entre chunks, porque cada tarefa é indexada antes de o chunk seguinte ser processado.
+
+\subsection{Sanitização de Saída da IA} \label{sec:sanitizacao-output}
+
+Toda a saída de texto gerada pela IA é sanitizada com \texttt{Jsoup.parse(input).text()} antes de ser persistida ou devolvida ao cliente. A operação remove todas as tags HTML, descodifica entidades e normaliza espaços (§\ref{sec:xss}). Os campos cobertos incluem \texttt{title}, \texttt{description}, \texttt{hint} e cada opção do array \texttt{options[]} das tarefas, bem como \texttt{explanationText} e cada resposta conversacional do modo de tutoria. Esta defesa actua na camada de serviço, não apenas na camada de apresentação, em conformidade com OWASP A03:2021, e é complementada pelo CSP Nginx e pelo auto-escaping do React JSX (Figura~\ref{fig:seq-xss-sanitizer}).
+
+\subsection{Garantias de Qualidade das Questões} \label{sec:garantias-qualidade}
+
+O sistema fornece seis garantias estruturais para cada questão gerada:
+
+\begin{enumerate}
+    \item \textbf{Unicidade semântica:} similaridade coseno $< 0{,}90$ com qualquer tarefa existente no mesmo módulo (pgvector IVFFlat sobre \texttt{task\_templates.embedding}).
+    \item \textbf{Formato válido:} exactamente 4 opções, resposta correcta persistida no índice~0 (o \texttt{TaskShuffleSeed} baralha antes de exibir), \texttt{correctAnswerIndex=0} em persistência.
+    \item \textbf{Língua correcta:} o prompt instrui o modelo a gerar exclusivamente na língua configurada; o gating de idioma ao nível do \texttt{DayIndexCalculator} impede a entrega de tarefas na língua errada.
+    \item \textbf{Adequação ao nível:} o prompt inclui descrição expandida do nível de audiência (\textit{Beginner} — sem conhecimento prévio, exemplos concretos; \textit{Intermediate} — alguma abstracção; \textit{Advanced} — nuance e casos extremos).
+    \item \textbf{Segurança:} sanitização Jsoup em todos os campos de texto antes de persistência; input do utilizador nunca interpolado em strings de prompt (mensagens tipadas separadas).
+    \item \textbf{Resiliência a falhas do modelo:} reforço automático com \textit{schema reminder} se o número de tarefas válidas for inferior ao pedido; abandono gracioso se o resultado final for zero tarefas válidas; circuit breaker previne cascata de falhas em caso de indisponibilidade da API Mistral.
+\end{enumerate}

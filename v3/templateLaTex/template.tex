@@ -41,8 +41,7 @@
 	a4paper,	% the paper size/format
 	utf8,		% (*)utf8, latin1 - Text encoding: Linux, Mac or Windows
 	onscreen, 	% (*)onscreen, onpaper - Page layout: screen versus paper print
-	hyperref = true,  % (*)true, false - Hyperlinks in citations
-	listof = totoc
+	hyperref = true  % (*)true, false - Hyperlinks in citations
 	]{reportisel} 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  BEGINING OF USER COSTUMIZATION
@@ -61,8 +60,8 @@
 \usepackage{float}
 
 % To register TODO notes in the text
+\setlength{\marginparwidth}{2cm}
 \usepackage[textsize=footnotesize]{todonotes}
-\setlength{\marginparwidth}{1.5cm}
 %%%%%% Indexing %%%%%%
 
 % The contents of both files (acronyms and glossary) will be merged
@@ -98,6 +97,8 @@
 
 % Force word hyphenation
 \hyphenation{e-xem-plo}
+% Allow LaTeX to stretch inter-word spacing slightly to avoid minor overfull hboxes
+\emergencystretch=2pt
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Some default values that you may whish to override
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,19 +131,15 @@
 \thispagestyle{empty}
 \newgeometry{tmargin=0.5cm,bmargin=0.5cm,lmargin=2cm,rmargin=2cm}
 
-% Row with the three logos
+% Row with the two logos (ISEL and UREKA)
 \noindent
-\begin{minipage}{0.32\textwidth}
+\begin{minipage}{0.50\textwidth}
 	\centering
-	\includegraphics[width=3.2cm]{\@universitylogo}
+	\includegraphics[height=2cm]{\@universitylogo}
 \end{minipage}%
-\begin{minipage}{0.32\textwidth}
+\begin{minipage}{0.50\textwidth}
 	\centering
-	\includegraphics[width=2.6cm]{IPL}
-\end{minipage}%
-\begin{minipage}{0.32\textwidth}
-	\centering
-	\includegraphics[width=2.6cm]{UREKA}
+	\includegraphics[height=2cm]{UREKA}
 \end{minipage}
 
 \begin{center}
@@ -170,7 +167,7 @@
 		cap=,
 		caption=,
 		label=,
-		pos=h,
+		pos=ht,
 		maxwidth=1\linewidth,
 		doinside=\hspace*{-0.1cm},
 	]{rX}{}{
@@ -191,7 +188,7 @@
 		cap=,
 		caption=,
 		label=,
-		pos=h,
+		pos=ht,
 		maxwidth=1\linewidth,
 		doinside=\hspace*{-0.1cm},
 	]{rX}{}{
@@ -215,7 +212,7 @@
 \makeatother
 %% Title of Report + author(s) + professor + date
 % Title of Report + author(s) + professor + date
-\hypersetup{ a4paper=true,
+\hypersetup{
              pdftitle={ \thetitle},
              pdfauthor={ \theauthor},
              pdfsubject={ 
@@ -242,8 +239,8 @@
 \addlisttofrontmatter{\conditionalLoT} 	% The List of Tables. 
 \addlisttofrontmatter{\conditionalLoL} 	% The List of Code Listings. 
 
-\addlisttofrontmatter{\printnoidxglossary[type=acronym]} % The List of Abreviations 
-\addlisttofrontmatter{\printnoidxglossary} %  default: type=main,  Glossary. Comment to omit.						
+%\addlisttofrontmatter{\printnoidxglossary[type=acronym]} % The List of Abreviations
+%\addlisttofrontmatter{\printnoidxglossary} %  default: type=main,  Glossary. Comment to omit.
 %\printnoidxglossary[type=symbols] % only glossaries 
 %======================================================
 % Text chapters
@@ -332,7 +329,9 @@
 \addtocontents{toc}{\protect\setcounter{tocdepth}{3}}
 %
 %% Print other lists of contents according to instructions given above
-\printotherlists 
+\makeatletter\@openrightfalse\makeatother
+\printotherlists
+\makeatletter\@openrighttrue\makeatother
 %% The List of Symbols (Nomenclature). Comment to omit.
 %\printnomenclature
 %

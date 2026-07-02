@@ -1,0 +1,62 @@
+%
+% conclusao.tex
+% Capítulo 6 — Conclusão
+%
+\chapter{Conclusão}
+\label{cha:conclusao}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Síntese do trabalho realizado}
+\label{sec:sintese-trabalho}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Este trabalho partiu de uma questão simples mas exigente: \emph{como pode uma plataforma de educação digital, informal e gamificada, apoiada por inteligência artificial, ajudar os cidadãos a desenvolver as competências de que precisam para participar na transição para cidades sustentáveis --- e, ao mesmo tempo, conseguir que continuem a usá-la ao longo do tempo?} Para responder a esta questão, foi concebido e implementado o \emph{Play4Change}: um protótipo funcional organizado à volta de três pilares complementares --- reconhecimento, envolvimento e personalização.
+
+Olhando para os objectivos definidos na Secção~\ref{sec:objetivos-pilares}, o balanço é positivo. O \textbf{sistema de distintivos} foi implementado e usado em condições reais: 16 distintivos foram emitidos a 9 utilizadores, cumprindo o limiar de mestria $\alpha = 0{,}60$ definido --- ainda que, como discutido no Capítulo~\ref{cha:avaliacao}, a taxa de emissão seja de 100\% por construção (um distintivo só é criado depois de o critério já estar cumprido) e não constitua, por si, evidência da eficácia do limiar. Os \textbf{mecanismos de envolvimento} foram implementados e geraram indícios de hábito real no Grupo~A: sequências de até 13 dias consecutivos de utilização em utilizadores que completaram múltiplos tópicos sugerem que os mecanismos de gamificação tiveram um papel relevante, embora a ausência de grupo de controlo e a reduzida dimensão da amostra não permitam excluir outras explicações (efeito de novidade, desejabilidade social). A \textbf{personalização adaptativa} foi o pilar com resultados mais consistentes: 99\% de acerto final nas tarefas e 98\% de resolução das sessões adaptativas são consistentes com um ciclo detecção--remediação--resolução que funciona na prática --- embora, como notado no Capítulo~\ref{cha:avaliacao}, a taxa de resolução meça sobretudo a conclusão do percurso, não a superação efectiva da dificuldade --- e o exemplo de sessão apresentado nesse capítulo ilustra concretamente como a IA consegue conduzir um utilizador de uma confusão conceptual genuína a uma compreensão clara em menos de 3 minutos.
+
+A contribuição mais original deste trabalho é a combinação, num único produto, de \textbf{tema} (educação cívica para a transição sustentável) e de \textbf{personalização gerativa} (uso de um LLM para gerar percursos adaptativos em tempo real, com base no perfil de dificuldade de cada utilizador). Tanto quanto foi possível apurar na análise do estado da arte, esta combinação não está presente em nenhuma das plataformas existentes analisadas.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Limitações}
+\label{sec:limitacoes}
+% ─────────────────────────────────────────────────────────────────────────────
+
+As limitações foram analisadas em detalhe no Capítulo~\ref{cha:avaliacao} e agrupam-se em três ordens: restrições da avaliação ($n=12$, amostragem por conveniência, sem grupo de controlo); limitações do protótipo (conteúdos pedagógicos não revistos por especialistas, cobertura de testes incompleta); e o paradoxo de acessibilidade estrutural, em que a plataforma beneficia mais quem já tem literacia digital de base, afastando potencialmente quem mais dela necessitaria. São estas três ordens de limitações que definem as prioridades da secção seguinte.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Trabalho futuro}
+\label{sec:trabalho-futuro}
+% ─────────────────────────────────────────────────────────────────────────────
+
+As cinco direcções prioritárias de evolução decorrem directamente das limitações identificadas e do feedback recolhido junto dos participantes. Para além dos três pilares originais (Reconhecimento, Envolvimento, Personalização), a avaliação revelou duas dimensões adicionais que não se encaixam directamente em nenhum deles e que, por isso, são tratadas como categorias próprias na tabela seguinte: \textbf{Acessibilidade} (a barreira de entrada identificada no Grupo~B) e \textbf{Qualidade} (a ausência de validação pedagógica do conteúdo gerado). A Tabela~\ref{tab:trabalho-futuro} organiza cada direcção em função do pilar ou dimensão afectada e da evidência que a motiva.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{p{2.8cm}p{5.0cm}p{4.8cm}}
+\toprule
+\textbf{Pilar} & \textbf{Evidência da avaliação} & \textbf{Direcção futura} \\
+\midrule
+Envolvimento     & P01, P09, P11 pediram comparação de progresso e desafios entre pares & Integração social e comunitária \\[2pt]
+Reconhecimento   & Distintivos percebidos como simbólicos, sem valor externo à plataforma & \emph{Open Badges} (credencial verificável) \\[2pt]
+Personalização   & Múltiplos participantes sugeriram perguntas adaptadas à cidade do utilizador & Personalização geográfica \\[2pt]
+Acessibilidade   & Grupo~B ($n=4$): abandono precoce, \emph{streak} máx.\ 1--3 dias, SUS médio 47,5 & \emph{Onboarding} adaptado ao Grupo~B \\[2pt]
+Qualidade        & Nenhum tópico revisto por especialista em educação cívica & Validação pedagógica dos conteúdos \\
+\bottomrule
+\end{tabular}
+\caption{Prioridades de trabalho futuro, organizadas por pilar e evidência da avaliação.}
+\label{tab:trabalho-futuro}
+\end{table}
+
+\textbf{Integração social e comunitária.} Comparação de progresso, desafios colectivos e partilha de conquistas, directamente alinhados com a dimensão de \emph{relação} da Teoria da Autodeterminação~\cite{deci1985intrinsic} e com a evidência de que a componente social é um dos motores de retenção mais eficazes em contextos de gamificação~\cite{ott2019gamification}.
+
+\textbf{Onboarding adaptado ao Grupo~B.} Tutoriais interativos guiados ou versão simplificada da interface com navegação mais linear, que reduzam efetivamente a barreira de entrada sem infantilizar a experiência para o Grupo~A.
+
+\textbf{Validação pedagógica dos conteúdos.} Revisão editorial por especialistas em educação cívica, complementada por \emph{feedback} dos utilizadores e mecanismo de marcação de conteúdos suspeitos. É o pré-requisito mais crítico antes de qualquer escalonamento.
+
+\textbf{Personalização geográfica.} Adaptar questões à cidade ou região do utilizador usando dados públicos disponíveis --- alinhada com os centros de competência da U!REKA~\citep{ureka2026alliance} e com elevado potencial para aumentar a relevância percebida dos conteúdos.
+
+\textbf{Distintivos com valor no mundo real.} Adopção do padrão \emph{Open Badges} (IMS Global) para credenciais digitais verificáveis e partilháveis em perfis profissionais, transformando o reconhecimento simbólico em valor tangível fora da plataforma.
+
+\enlargethispage{2\baselineskip}
+Em síntese, o \emph{Play4Change} demonstra que a proposta tem fundamento: há utilizadores que a adoptam com entusiasmo genuíno, completam percursos, resolvem dificuldades com a ajuda da IA e regressam dias seguidos. O caminho até uma plataforma madura, acessível a todos os perfis de cidadão e com conteúdos validados é longo, mas este protótipo fornece uma base técnica, pedagógica e conceptual sólida sobre a qual construí-lo.

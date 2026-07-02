@@ -1,0 +1,73 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 1 — Introdução
+%
+\chapter{Introdução} \label{cap:intro}
+
+A transformação digital acelerada das últimas décadas alterou profundamente a forma como os cidadãos trabalham, aprendem e participam na sociedade.
+Neste contexto, a capacidade de utilizar as tecnologias digitais de forma confiante, crítica e responsável tornou-se uma competência fundamental para a vida moderna.
+A União Europeia reconheceu esta necessidade e estabeleceu, através do \textit{Digital Competence Framework for Citizens} (DigComp), um quadro de referência comum para definir, desenvolver e avaliar as competências digitais dos cidadãos~\cite{digcomp22}.
+Na sua versão mais recente, o DigComp~2.2 organiza 21 competências em cinco áreas --- literacia de informação e dados; comunicação e colaboração; criação de conteúdo digital; segurança; e resolução de problemas --- e constitui hoje a base de políticas de educação digital em toda a Europa.
+
+Paralelamente, a aliança universitária europeia U!REKA (\textit{Urban Research and Education Knowledge Alliance}), da qual o Instituto Superior de Engenharia de Lisboa (ISEL) é membro ativo, tem vindo a promover iniciativas de inovação educativa que respondam aos desafios das cidades do futuro.
+É neste enquadramento que surge o presente projeto, desenvolvido no âmbito da Licenciatura em Engenharia Informática e de Computadores (LEIC) do ISEL, em colaboração com a Amsterdam University of Applied Sciences (HvA), parceira da rede U!REKA.
+
+\section{Contextualização} \label{sec:contexto}
+
+A promoção das competências digitais é uma prioridade estratégica da União Europeia.
+O \textit{Digital Compass} para 2030 e o subsequente \textit{Digital Decade Policy Programme}, que o transpõe para um quadro legal vinculativo, fixam o objetivo de dotar pelo menos 80\% da população europeia de competências digitais básicas até 2030~\cite{digitaldecade2022}.
+O DigComp~2.2 surge como o instrumento de referência para operacionalizar este objetivo, fornecendo um vocabulário comum e um modelo estruturado que pode ser utilizado tanto na formulação de políticas como no desenvolvimento de programas de formação~\cite{digcomp22}.
+
+Contudo, apesar da existência deste quadro de referência, verifica-se uma escassez de plataformas de aprendizagem que o integrem de forma nativa, que tirem partido das capacidades da Inteligência Artificial (IA) para personalizar a experiência de aprendizagem, e que permitam a gestão autónoma de conteúdos adaptados ao perfil e progresso de cada utilizador.
+
+\section{Motivação} \label{sec:motivacao}
+
+Em 1984, Benjamin Bloom demonstrou que um aluno com tutoria individual supera em dois desvios padrão (\textit{2 sigma}) o desempenho médio de uma sala de aula tradicional~\cite{bloom1984}.
+Durante décadas, este resultado ficou conhecido como o ``problema dos 2 sigma'': como proporcionar a cada aluno a qualidade de uma tutoria personalizada a uma escala economicamente viável?
+A emergência dos modelos de linguagem de grande escala (\textit{Large Language Models}, LLM) reacendeu este debate, ao tornar possível, pela primeira vez, aproximar esse ideal a custo marginal~\cite{kasneci2023}.
+
+Paralelamente, a investigação em eficácia do ensino demonstra que o \textit{feedback} imediato e formativo é um dos fatores que mais acelera a aprendizagem~\cite{hattie2009}.
+As plataformas de \textit{e-learning} tradicionais falham precisamente neste ponto: os conteúdos são estáticos, a avaliação é uniforme e não adaptativa, e a criação de novo material formativo exige um esforço manual considerável.
+No domínio específico das competências digitais definidas pelo DigComp~2.2, esta lacuna é ainda mais evidente --- não existe, até ao momento, uma plataforma de aprendizagem adaptativa que integre nativamente este referencial europeu e que recorra à IA para personalizar o percurso de cada utilizador.
+
+A disponibilização de técnicas como o \textit{Retrieval-Augmented Generation} (RAG) permite ir além da geração genérica de conteúdo, ancorando as respostas do modelo em conhecimento específico e verificável~\cite{lewis2020}.
+A conjugação destas tecnologias com o quadro estruturado do DigComp~2.2 cria a oportunidade de desenvolver uma plataforma que atua na interseção entre a aprendizagem formal --- estruturada, orientada por objetivos claros --- e a aprendizagem informal --- autodirigida, contextualizada e motivada pela necessidade real do utilizador~\cite{cross2007}.
+
+\section{Objetivos} \label{sec:objetivos}
+
+O presente projeto tem como objetivo geral conceber, desenvolver e validar o \textbf{Play4Change}, uma plataforma de aprendizagem adaptativa centrada no desenvolvimento de competências digitais segundo o referencial DigComp~2.2, com recurso a Inteligência Artificial para a geração automática de conteúdos e personalização dos percursos de aprendizagem.
+
+A plataforma assenta numa arquitetura multi-cliente que serve dois perfis distintos: os \textbf{Administradores}, que gerem e criam conteúdos através de um painel web, e os \textbf{Learners}, que desenvolvem as suas competências através de uma aplicação móvel nativa, assente no modelo de um desafio diário --- tirando partido do dispositivo que toda a gente transporta consigo e consulta regularmente.
+
+De forma mais específica, pretende-se:
+
+\begin{itemize}
+    \item Desenvolver um \textbf{cliente web} composto por um painel de administração para gestão de conteúdos e utilizadores, e por uma \textit{landing page} que permite aos Learners descarregar a aplicação móvel;
+    \item Desenvolver um \textbf{cliente móvel} para Learners, centrado numa experiência de aprendizagem contínua e diária --- um desafio por dia ---, tirando partido da ubiquidade do telemóvel para integrar o desenvolvimento de competências digitais na rotina do utilizador;
+    \item Integrar um pipeline de extração e processamento de conteúdo a partir de documentos PDF e páginas web, como base para a geração automática de tópicos e desafios via IA;
+    \item Implementar um sistema de \textit{Retrieval-Augmented Generation} (RAG) que permita ao modelo de IA gerar conteúdo ancorado em conhecimento específico e persistido;
+    \item Conceber um mecanismo de progressão de desafios (\textit{consolidation path}) que adapte o percurso de aprendizagem ao desempenho individual do Learner ao longo do tempo;
+    \item Garantir a segurança da plataforma através de autenticação \textit{passwordless}, proteção contra vulnerabilidades web comuns e controlo de utilização da API de IA.
+\end{itemize}
+
+Estes entregáveis concretizam-se, do ponto de vista funcional, em cinco objetivos operacionais: (1)~uma plataforma de aprendizagem adaptativa alinhada com o DigComp~2.2; (2)~um \textit{pipeline} de geração de conteúdo por IA a partir de fontes arbitrárias; (3)~remediação adaptativa personalizada por padrão de erro; (4)~tutoria conversacional com IA como escalamento da remediação; e (5)~segurança e qualidade do conteúdo gerado numa aplicação web multi-utilizador. A concretização de cada um destes objetivos é analisada em detalhe no Capítulo~\ref{cap:discussao} (§\ref{sec:analise-objetivos}).
+
+\section{Âmbito e Limitações} \label{sec:ambito}
+
+O Play4Change foi desenvolvido no âmbito do projeto \textit{U!REKA SHIFT}, uma iniciativa da aliança europeia U!REKA que visa criar soluções educativas inovadoras para as cidades do futuro, com especial foco na literacia digital dos seus cidadãos.
+A colaboração entre o ISEL e a HvA enquadra-se precisamente neste objetivo: desenvolver uma ferramenta que possa ser adotada transversalmente pelas instituições parceiras da rede, em diferentes países e contextos culturais, contribuindo para as metas europeias de competências digitais definidas no \textit{Digital Compass} para 2030~\cite{digitaldecade2022}.
+
+Em termos técnicos, o âmbito do projeto cobre o \textit{backend} da plataforma, o cliente web (painel de administração e \textit{landing page}) e o cliente móvel para Learners.
+
+As principais limitações deste trabalho são: a avaliação pedagógica da eficácia da plataforma a larga escala não foi realizada, sendo o foco do projeto a conceção e implementação técnica do sistema; a integração com sistemas de gestão de aprendizagem externos (LMS) fica reservada para trabalho futuro; e, apesar de a arquitetura Kotlin Multiplatform permitir a compilação nativa para iOS a partir do mesmo código partilhado, o projeto entrega apenas o alvo Android.
+
+\section{Organização do Documento} \label{sec:organizacao}
+
+O restante relatório encontra-se organizado da seguinte forma:
+o Capítulo~\ref{cap:estadodaarte} apresenta o estado da arte em plataformas de aprendizagem adaptativa, modelos de linguagem aplicados à educação, RAG e autenticação \textit{passwordless};
+o Capítulo~\ref{cap:requisitos} descreve a análise de utilizadores, requisitos funcionais e não funcionais e os principais casos de uso;
+o Capítulo~\ref{cap:desenvolvimento} detalha a arquitetura e implementação de todos os componentes do sistema;
+o Capítulo~\ref{cap:testes} apresenta a estratégia e os resultados dos testes realizados;
+o Capítulo~\ref{cap:resultados} expõe os resultados e demonstra o sistema em funcionamento;
+o Capítulo~\ref{cap:discussao} discute os resultados face aos objetivos e ao estado da arte;
+e o Capítulo~\ref{cap:conclusao} apresenta as conclusões e perspetivas de trabalho futuro.

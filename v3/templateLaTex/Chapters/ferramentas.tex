@@ -14,7 +14,7 @@ Este capítulo descreve o conjunto de tecnologias que constituem o ecossistema t
 
 O \emph{Play4Change} é composto por quatro camadas tecnológicas distintas: o servidor de aplicação, a aplicação móvel, o painel de administração web e a infraestrutura de suporte. A Tabela~\ref{tab:tecnologias} resume as tecnologias principais em cada camada.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{2.8cm} p{3.8cm} p{6.2cm}}
@@ -25,12 +25,12 @@ O \emph{Play4Change} é composto por quatro camadas tecnológicas distintas: o s
 		                & PostgreSQL 16 + pgvector    & Base de dados relacional e vectorial \\
 		                & Redis 7                     & Cache de sessões e controlo de ritmo (\emph{rate limiting}) \\
 		                & MinIO                       & Armazenamento de objectos (imagens, assets) \\
-		                & Mistral 7B / LangChain4j    & Geração de conteúdo adaptativo e explicações \\
+		                & mistral-small-latest / LangChain4j & Geração de conteúdo adaptativo e explicações (API Mistral AI) \\
 		                & Resend                      & Envio transacional de correio electrónico \\
 		\addlinespace
 		Móvel           & Kotlin Multiplatform 2.3    & Base de código partilhada Android/iOS \\
 		                & Compose Multiplatform 1.10  & Interface declarativa nativa \\
-		                & Decompose 3.3               & Navegação e gestão de estado \\
+		                & Decompose 3.3.0-alpha01               & Navegação e gestão de estado \\
 		                & Koin                        & Injecção de dependências \\
 		\addlinespace
 		Web (admin)     & React 18 + TypeScript       & Painel de administração de conteúdos \\
@@ -50,11 +50,11 @@ O \emph{Play4Change} é composto por quatro camadas tecnológicas distintas: o s
 
 O servidor foi implementado em \textbf{Kotlin} com o \emph{framework} \textbf{Spring Boot 3.2}, seguindo uma arquitectura hexagonal (\emph{Ports \& Adapters})~\cite{cockburn2005hexagonal} que separa a lógica de negócio das suas dependências externas. A escolha do Kotlin em vez do Java tradicional permitiu aproveitar a expressividade da linguagem --- em particular as \emph{coroutines} para operações assíncronas, os tipos não-anuláveis para redução de erros de \emph{null pointer}, e o estilo funcional para as transformações de dados. O Spring Boot forneceu a base REST, a gestão de transações e o suporte à autenticação com JWT~\cite{rfc7519}.
 
-A base de dados \textbf{PostgreSQL 16} foi estendida com a extensão \textbf{pgvector}, que adiciona suporte a vectores de \emph{embeddings} directamente no mesmo motor relacional. Esta co-localização elimina a necessidade de um sistema vectorial separado e mantém todas as garantias ACID para a camada de personalização. O \textbf{Redis} é utilizado para a cache de resultados de consultas frequentes e para controlo de ritmo das chamadas à API de IA. A integração com o modelo de linguagem \textbf{Mistral 7B} é feita através do \textbf{LangChain4j 0.36.2}~\cite{langchain4j}, implementando o padrão RAG~\cite{lewis2020rag} descrito no Capítulo~\ref{cha:enquadramento}.
+A base de dados \textbf{PostgreSQL 16} foi estendida com a extensão \textbf{pgvector}, que adiciona suporte a vectores de \emph{embeddings} directamente no mesmo motor relacional. Esta co-localização elimina a necessidade de um sistema vectorial separado e mantém todas as garantias ACID para a camada de personalização. O \textbf{Redis} é utilizado para a cache de resultados de consultas frequentes e para controlo de ritmo das chamadas à API de IA. A integração com o modelo de linguagem \textbf{mistral-small-latest} (API Mistral AI, acedida remotamente) é feita através do \textbf{LangChain4j 0.36.2}~\cite{langchain4j}, implementando o padrão RAG~\cite{lewis2020rag} descrito no Capítulo~\ref{cha:enquadramento}.
 
 \subsection*{Aplicação móvel}
 
-A aplicação móvel foi desenvolvida com \textbf{Kotlin Multiplatform (KMP) 2.3} e \textbf{Compose Multiplatform 1.10}, o que permite partilhar a maior parte da lógica de negócio e da interface entre Android e iOS a partir de um único código-base. A navegação e a gestão de estado são tratadas pelo \textbf{Decompose 3.3}, que oferece uma abstracção de \emph{stack} de componentes compatível com ambas as plataformas e com testes unitários.
+A aplicação móvel foi desenvolvida com \textbf{Kotlin Multiplatform (KMP) 2.3} e \textbf{Compose Multiplatform 1.10}, o que permite partilhar a maior parte da lógica de negócio e da interface entre Android e iOS a partir de um único código-base. A navegação e a gestão de estado são tratadas pelo \textbf{Decompose 3.3.0-alpha01}, que oferece uma abstracção de \emph{stack} de componentes compatível com ambas as plataformas e com testes unitários.
 
 \subsection*{Painel de administração}
 
@@ -66,7 +66,7 @@ O painel web de administração é uma aplicação \textbf{React 18} em \textbf{
 
 Todo o ambiente de produção é definido num único ficheiro \texttt{docker-compose.yml} com sete serviços: servidor Spring Boot, PostgreSQL, Redis, MinIO, nginx, Prometheus e Grafana. O \textbf{nginx} actua como \emph{reverse proxy} --- recebe os pedidos externos na porta 80, encaminha as chamadas à API (prefixadas em \texttt{/play4change-server/}) para o servidor na porta 8080, e serve o cliente React como conteúdo estático. O \textbf{Prometheus} recolhe métricas expostas pelo actuador Spring Boot a cada 15 segundos e o \textbf{Grafana} apresenta-as em três \emph{dashboards} pré-configurados: um \emph{dashboard} geral, um centrado na latência da IA e um que mostra o fluxo do aprendente em tempo real. A Figura~\ref{fig:infra} ilustra a topologia de produção.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 	\centering
 	\begin{tikzpicture}[
 		box/.style={draw, rounded corners, align=center, font=\small,
@@ -83,7 +83,7 @@ Todo o ambiente de produção é definido num único ficheiro \texttt{docker-com
 		\node[db]  (pg)      at (6.4,-2.2)  {PostgreSQL\\+pgvector};
 		\node[db]  (redis)   at (9.2,-2.2)  {Redis};
 		\node[db]  (minio)   at (3.6,-2.2)  {MinIO};
-		\node[ext] (mistral) at (9.8,0)     {Mistral 7B\\(LangChain4j)};
+		\node[ext] (mistral) at (9.8,0)     {mistral-small-latest\\(API Mistral AI)};
 		\node[obs] (prom)    at (6.4,2.2)   {Prometheus\\:9090};
 		\node[obs] (grafana) at (9.2,2.2)   {Grafana\\:3000};
 
@@ -107,7 +107,7 @@ Todo o ambiente de produção é definido num único ficheiro \texttt{docker-com
 
 O \emph{Play4Change} adopta uma pipeline de \emph{Continuous Integration / Continuous Delivery} (CI/CD) implementada em \textbf{GitHub Actions}, composta por três \emph{workflows} distintos com responsabilidades bem delimitadas. A Figura~\ref{fig:cicd-pipeline} ilustra como os três \emph{workflows} se articulam com os eventos do repositório.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
 	\centering
 	\resizebox{\textwidth}{!}{%
 	\begin{tikzpicture}[
@@ -176,7 +176,7 @@ O \emph{workflow} de CI é desencadeado em todos os \emph{commits} para a \emph{
 
 Apenas se todos os passos passarem é que um \emph{pull request} pode ser integrado na \emph{branch} principal. A Tabela~\ref{tab:ci-gates} resume os critérios de qualidade verificados em cada passo.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{2.8cm} p{5.0cm} p{5.0cm}}
