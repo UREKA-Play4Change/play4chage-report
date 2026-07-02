@@ -63,7 +63,7 @@
   {Orientadores:} & Nuno Datia \\
                   & Michel Vorenhout \\
 \end{tabular}\\[10mm]
-Relatório do projeto realizado no âmbito de Projecto e Seminário\\
+Relatório do projeto realizado no âmbito de Projeto e Seminário\\
 Licenciatura em Engenharia Informática e de Computadores\\[20mm]
 11 de Junho de 2026}
 
@@ -99,7 +99,7 @@ Licenciatura em Engenharia Informática e de Computadores\\[20mm]
                 & \rule{75mm}{0.5pt}\\
 \end{tabular}\\[10mm]
 
-Relatório do projeto realizado no âmbito de Projecto e Seminário\\
+Relatório do projeto realizado no âmbito de Projeto e Seminário\\
 Licenciatura em Engenharia Informática e de Computadores\\[20mm]
 11 de Junho de 2026\\
 \end{center}
@@ -107,10 +107,26 @@ Licenciatura em Engenharia Informática e de Computadores\\[20mm]
 % Página de resumo em Português
 \cleardoublepage
 \chapter*{Resumo}
-Texto do resumo.
-Breve descrição do projeto, dos resultados importantes e das conclusões: o objetivo é dar ao leitor uma visão global do projeto (não deve exceder uma página).
+O Play4Change é uma plataforma de aprendizagem adaptativa para o desenvolvimento de competências digitais segundo o referencial europeu DigComp~2.2, desenvolvida no âmbito do projeto U!REKA SHIFT em colaboração entre o ISEL e a Amsterdam University of Applied Sciences. O projeto responde à escassez de plataformas que integrem nativamente este referencial e que recorram à Inteligência Artificial para gerar e personalizar conteúdo pedagógico a partir de fontes documentais fornecidas por um formador, em vez de um catálogo estático pré-construído.
 
-%{\bf Palavras-chave:} lista de palavras-chave separadas por ;.
+A plataforma é composta por um painel de administração web, uma aplicação móvel nativa para Android/iOS centrada num desafio diário, e um servidor Spring Boot que orquestra um \textit{pipeline} assíncrono de ingestão de conteúdo (PDF ou URL), geração de tarefas por um modelo de linguagem (Mistral, via LangChain4j) e indexação vetorial em PostgreSQL/pgvector para deduplicação semântica e reutilização adaptativa de conteúdo. Quando um Learner erra um desafio, o sistema classifica o padrão do erro e gera um percurso de remediação adaptado, escalando para tutoria conversacional com IA caso a remediação não seja suficiente. A autenticação é \textit{passwordless} por \textit{magic link}, e a aplicação foi validada por uma análise de risco OWASP e uma suite de 49 ficheiros de teste automatizados.
+
+A avaliação de usabilidade com doze utilizadores reais confirmou uma pontuação média de usabilidade (SUS) de 76,0, na categoria ``Bom'', com a tutoria adaptativa por IA identificada como a funcionalidade mais valorizada. Os resultados confirmam a viabilidade técnica de uma plataforma que gera e adapta autonomamente o seu próprio conteúdo pedagógico, mantendo garantias de segurança e qualidade verificáveis.
+
+\vspace{5mm}
+\noindent{\bf Palavras-chave:} Aprendizagem Adaptativa; Inteligência Artificial Generativa; \textit{Retrieval-Augmented Generation}; Competências Digitais; DigComp~2.2.
+
+% Página de abstract em Inglês
+\cleardoublepage
+\chapter*{Abstract}
+Play4Change is an adaptive learning platform for developing digital competences under the European DigComp~2.2 framework, developed as part of the U!REKA SHIFT project in collaboration between ISEL and the Amsterdam University of Applied Sciences. The project addresses the scarcity of platforms that natively integrate this framework and use Artificial Intelligence to generate and personalise pedagogical content from documentary sources supplied by an instructor, rather than a static, pre-built catalogue.
+
+The platform comprises a web administration panel, a native Android/iOS mobile application centred on a daily challenge, and a Spring Boot server that orchestrates an asynchronous content-ingestion pipeline (PDF or URL), task generation by a large language model (Mistral, via LangChain4j), and vector indexing in PostgreSQL/pgvector for semantic deduplication and adaptive content reuse. When a Learner answers a challenge incorrectly, the system classifies the error pattern and generates a tailored remediation path, escalating to conversational AI tutoring when remediation alone is insufficient. Authentication is passwordless via magic link, and the application was validated through an OWASP risk analysis and a suite of 49 automated test files.
+
+A usability evaluation with twelve real users confirmed an average System Usability Scale (SUS) score of 76.0, in the ``Good'' category, with AI-driven adaptive tutoring identified as the most valued feature. The results confirm the technical feasibility of a platform that autonomously generates and adapts its own pedagogical content while maintaining verifiable security and quality guarantees.
+
+\vspace{5mm}
+\noindent{\bf Keywords:} Adaptive Learning; Generative Artificial Intelligence; Retrieval-Augmented Generation; Digital Competences; DigComp~2.2.
 
 %% Página de agradecimentos
 %\cleardoublepage
@@ -121,17 +137,61 @@ Breve descrição do projeto, dos resultados importantes e das conclusões: o ob
 \cleardoublepage
 \chapter*{Utilização de Inteligência Artificial}
 
-No desenvolvimento deste projecto foram utilizadas as seguintes ferramentas de inteligência artificial generativa:
+No desenvolvimento deste projeto foram utilizadas as seguintes ferramentas de inteligência artificial generativa:
 
 \begin{itemize}
-  \item \textbf{Google Gemini Flash e Gemini Pro} — utilizados principalmente na fase de investigação e enquadramento: pesquisa de conceitos, leitura e síntese de documentação técnica, e exploração de alternativas de design antes de tomar decisões de arquitectura. Foram também utilizados para \textit{debater} e estudar tópicos novos — funcionando como interlocutor para clarificar dúvidas sobre padrões de domínio e comportamento de APIs externas.
+  \item \textbf{Google Gemini Flash e Gemini Pro} — utilizados principalmente na fase de investigação e enquadramento: pesquisa de conceitos, leitura e síntese de documentação técnica, e exploração de alternativas de design antes de tomar decisões de arquitetura. Foram também utilizados para \textit{debater} e estudar tópicos novos — funcionando como interlocutor para clarificar dúvidas sobre padrões de domínio e comportamento de APIs externas.
 
   \item \textbf{Claude Sonnet (Claude Code e Claude Cowork)} — utilizados ao longo de todo o ciclo de desenvolvimento. O Claude Code (interface de linha de comandos) foi o principal auxiliar de programação: geração de esqueletos de código, sugestão e implementação de refactores, diagnóstico e correcção de bugs, e escrita de testes unitários. O Claude Cowork (interface de desktop) foi utilizado na fase de redacção do relatório: análise de saídas do Claude Code, geração de figuras de diagramas de sequência com matplotlib.
 
-  \item \textbf{Prova de conceitos (\textit{proof of concepts})} — em várias ocasiões, as ferramentas de IA foram utilizadas para construir protótipos mínimos que permitiram validar a viabilidade técnica de uma abordagem antes de a integrar no projecto principal.
+  \item \textbf{Prova de conceitos (\textit{proof of concepts})} — em várias ocasiões, as ferramentas de IA foram utilizadas para construir protótipos mínimos que permitiram validar a viabilidade técnica de uma abordagem antes de a integrar no projeto principal.
 \end{itemize}
 
-Em todos os casos, o código e o texto gerados foram revistos, iterados, adaptados e validados pelo autor. 
+Em todos os casos, o código e o texto gerados foram revistos, iterados, adaptados e validados pelo autor.
+
+% Página de lista de acrónimos e siglas
+\cleardoublepage
+\chapter*{Lista de Acrónimos e Siglas}
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Sigla} & \textbf{Significado} \\
+\hline
+API     & \textit{Application Programming Interface} \\
+CORS    & \textit{Cross-Origin Resource Sharing} \\
+CSP     & \textit{Content Security Policy} \\
+DAG     & \textit{Directed Acyclic Graph} (grafo acíclico dirigido) \\
+DDD     & \textit{Domain-Driven Design} \\
+DigComp & \textit{Digital Competence Framework for Citizens} \\
+DNS     & \textit{Domain Name System} \\
+ECTS    & \textit{European Credit Transfer and Accumulation System} \\
+HTTP(S) & \textit{HyperText Transfer Protocol (Secure)} \\
+IA      & Inteligência Artificial \\
+ITS     & \textit{Intelligent Tutoring System} \\
+JPA     & \textit{Jakarta Persistence API} \\
+JSON    & \textit{JavaScript Object Notation} \\
+JVM     & \textit{Java Virtual Machine} \\
+JWT     & \textit{JSON Web Token} \\
+LLM     & \textit{Large Language Model} \\
+MVI     & \textit{Model-View-Intent} \\
+OCR     & \textit{Optical Character Recognition} \\
+OWASP   & \textit{Open Worldwide Application Security Project} \\
+RAG     & \textit{Retrieval-Augmented Generation} \\
+RBAC    & \textit{Role-Based Access Control} \\
+REST    & \textit{Representational State Transfer} \\
+SPA     & \textit{Single Page Application} \\
+SQL     & \textit{Structured Query Language} \\
+SSE     & \textit{Server-Sent Events} \\
+SSRF    & \textit{Server-Side Request Forgery} \\
+SUS     & \textit{System Usability Scale} \\
+TOCTOU  & \textit{Time-Of-Check to Time-Of-Use} \\
+TTL     & \textit{Time To Live} \\
+URL     & \textit{Uniform Resource Locator} \\
+UUID    & \textit{Universally Unique Identifier} \\
+XSS     & \textit{Cross-Site Scripting} \\
+\hline
+\end{tabular}
+\end{center}
 
 % Geração do índice de conteúdos
 \cleardoublepage

@@ -4,7 +4,7 @@
 %
 \chapter{Exemplos de Prompts Completos} \label{ap:prompts}
 
-Este apêndice reproduz, na íntegra e sem alterações, os \textit{templates} de \textit{prompt} definidos no módulo \texttt{ai-agent} (pacote \texttt{com.ureka.play4change.prompt}) e efectivamente enviados ao modelo \texttt{mistral-small-latest} através do LangChain4j. Os campos entre \texttt{\$} são interpolados em \textit{runtime} a partir do contexto de domínio (tópico, módulo, sessão de dificuldade, etc.). Todos os \textit{prompts} de geração de conteúdo obrigam o modelo a responder exclusivamente em JSON, sem texto envolvente, para permitir \textit{parsing} determinístico pelo \texttt{OptionsJsonParser}.
+Este apêndice reproduz, na íntegra e sem alterações, os \textit{templates} de \textit{prompt} definidos no módulo \texttt{ai-agent} (pacote \texttt{com.ureka.play4change.prompt}) e efetivamente enviados ao modelo \texttt{mistral-small-latest} através do LangChain4j. Os campos entre \texttt{\$} são interpolados em \textit{runtime} a partir do contexto de domínio (tópico, módulo, sessão de dificuldade, etc.). Todos os \textit{prompts} de geração de conteúdo obrigam o modelo a responder exclusivamente em JSON, sem texto envolvente, para permitir \textit{parsing} determinístico pelo \texttt{OptionsJsonParser}.
 
 \section{Prompt de Geração de Tópicos e Desafios} \label{ap:prompt-task-generation}
 
@@ -68,7 +68,7 @@ Remember: always put the correct answer at index 0 in the options array.
 Generate the JSON array now:
 \end{verbatim}
 
-O nível de audiência (\texttt{AudienceLevel}) é traduzido para uma descrição textual antes de ser injectado no \textit{prompt}:
+O nível de audiência (\texttt{AudienceLevel}) é traduzido para uma descrição textual antes de ser injetado no \textit{prompt}:
 
 \begin{verbatim}
 BEGINNER     -> "Beginner — assumes no prior knowledge, uses simple
@@ -145,7 +145,7 @@ Generate $subtaskCount adaptive subtasks that:
 Generate the JSON array now:
 \end{verbatim}
 
-Cada \texttt{ErrorPattern} é traduzido numa instrução específica de diagnóstico antes de ser injectado no \textit{prompt}:
+Cada \texttt{ErrorPattern} é traduzido numa instrução específica de diagnóstico antes de ser injetado no \textit{prompt}:
 
 \begin{verbatim}
 CONCEPTUAL_MISUNDERSTANDING -> "The student misunderstands the core concept.
@@ -234,29 +234,7 @@ Original task: ${context.taskDescription}
 %
 \chapter{Diagramas Complementares} \label{ap:diagramas}
 
-Os diagramas apresentados no corpo do relatório (Capítulo~\ref{cap:desenvolvimento}) focam-se em subfluxos isolados, de forma a manter cada figura legível junto do texto que a acompanha. Este apêndice reúne três vistas de conjunto, pensadas para consulta integral: o fluxo de autenticação ponta-a-ponta, o \textit{pipeline} completo de criação de um tópico (ingestão, geração via IA e indexação vectorial), e o diagrama entidade-relação do esquema relacional na íntegra.
-
-\section{Diagrama de Sequência --- Autenticação Completa (\textit{Magic Link})}
-
-A Figura~\ref{fig:ap-auth-full} mostra o fluxo integral de autenticação sem password, desde a submissão do e-mail até à emissão do par de tokens (\textit{access} + \textit{refresh}), incluindo a normalização do e-mail, o \textit{rate limiting} por IP, o hash SHA-256 do token, a operação atómica de consumo do \textit{magic link} (que previne condições de corrida TOCTOU) e a criação automática de conta para utilizadores novos.
-
-\begin{figure}[h!]
-    \centering
-    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-demo-auth.png}}
-    \caption{Diagrama de sequência completo --- autenticação passwordless por magic link}
-    \label{fig:ap-auth-full}
-\end{figure}
-
-\section{Diagrama de Sequência --- Pipeline Completo de Ingestão e Geração RAG}
-
-A Figura~\ref{fig:ap-rag-full} mostra o \textit{pipeline} completo accionado pela submissão de um novo tópico: extracção de conteúdo (\textit{Playwright}/\textit{Unstructured}), transição de fases (\texttt{INGESTION} $\to$ \texttt{ANALYSIS} $\to$ \texttt{GENERATION} $\to$ \texttt{INDEXING} $\to$ \texttt{ACTIVE}), segmentação em \textit{chunks}, chamada ao LLM por \textit{chunk}, geração de \textit{embeddings}, deduplicação semântica via pgvector e notificação de progresso em tempo real por \textit{Server-Sent Events}.
-
-\begin{figure}[h!]
-    \centering
-    \resizebox{\textwidth}{!}{\includegraphics{./figures/seq-demo-pipeline.png}}
-    \caption{Diagrama de sequência completo --- pipeline de ingestão, geração e indexação RAG}
-    \label{fig:ap-rag-full}
-\end{figure}
+Este apêndice reúne o diagrama entidade-relação completo do esquema relacional e a evidência documental bruta dos dois questionários de avaliação aplicados ao Play4Change, cuja análise é apresentada na Secção~\ref{sec:testes-usabilidade} do Capítulo~\ref{cap:testes}.
 
 \section{Diagrama Entidade-Relação}
 
@@ -269,12 +247,74 @@ A Figura~\ref{fig:ap-der} apresenta o esquema relacional completo, tal como defi
     \label{fig:ap-der}
 \end{figure}
 
+\section{Formulário de Avaliação de Experiência de Utilizador} \label{ap:survey-ux}
+
+Reprodução integral dos resultados do formulário \textit{Play4Change --- User Experience Evaluation} (Google Forms, $n=12$), aplicado entre 8 e 12 de junho de 2026 e cuja análise --- pontuações SUS, declarações de envolvimento e síntese qualitativa --- é apresentada na Secção~\ref{sec:testes-usabilidade}. As páginas seguintes são a captura bruta da plataforma, sem qualquer edição.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-01.png}
+    \caption{Formulário UX --- perfil dos participantes e avaliação global de usabilidade}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-02.png}
+    \caption{Formulário UX --- clareza das instruções e envolvimento com os desafios diários}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-03.png}
+    \caption{Formulário UX --- declarações de envolvimento e adaptação dos percursos de IA}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-04.png}
+    \caption{Formulário UX --- problemas técnicos reportados livremente pelos participantes}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-05.png}
+    \caption{Formulário UX --- funcionalidade mais valorizada, na opinião dos participantes}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-06.png}
+    \caption{Formulário UX --- principal área recomendada para melhoria}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-07.png}
+    \caption{Formulário UX --- comentários e sugestões finais}
+\end{figure}
+
+\section{Formulário de Avaliação Técnica} \label{ap:survey-tech}
+
+Reprodução integral dos resultados do formulário complementar \textit{Play4Change: User \& Technical Evaluation} (Google Forms, $n=3$), focado em desempenho percebido e na eficácia do formato de \textit{micro-learning} diário. A amostra é reduzida e não sustenta generalização estatística; é apresentada como evidência qualitativa complementar à avaliação principal da Secção~\ref{sec:testes-usabilidade}, não como uma segunda medição independente.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-tech-01.png}
+    \caption{Formulário técnico --- intuitividade da interface e qualidade das respostas geradas por IA}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{./figures/survey-tech-02.png}
+    \caption{Formulário técnico --- velocidade percebida e eficácia do formato de micro-aprendizagem diária}
+\end{figure}
+
 %
 % Apêndice C — Variáveis de Ambiente
 %
 \chapter{Variáveis de Ambiente} \label{ap:env}
 
-Este apêndice lista todas as variáveis de ambiente configuráveis no sistema, tal como definidas em \texttt{application.yml} (servidor), \texttt{docker-compose.yml} (orquestração de contentores) e nos ficheiros \texttt{.env.example} das aplicações cliente. Os valores reais (segredos, chaves de API, credenciais) não são reproduzidos; apenas os nomes das variáveis e o respectivo propósito.
+Este apêndice lista todas as variáveis de ambiente configuráveis no sistema, tal como definidas em \texttt{application.yml} (servidor), \texttt{docker-compose.yml} (orquestração de contentores) e nos ficheiros \texttt{.env.example} das aplicações cliente. Os valores reais (segredos, chaves de API, credenciais) não são reproduzidos; apenas os nomes das variáveis e o respetivo propósito.
 
 \subsection*{Base de Dados}
 
@@ -309,9 +349,9 @@ Não existe camada de \textit{cache} distribuída no sistema: o \textit{rate lim
 \end{tabular}
 \end{table}
 
-Os restantes parâmetros do modelo de IA (\texttt{ai.mistral.model}, \texttt{ai.mistral.temperature}, \texttt{ai.mistral.timeout-seconds}, tamanho da \textit{pool} de geração, limiares de deduplicação) são definidos directamente em \texttt{application.yml} e não variam por ambiente — apenas a chave de API é externalizada como segredo.
+Os restantes parâmetros do modelo de IA (\texttt{ai.mistral.model}, \texttt{ai.mistral.temperature}, \texttt{ai.mistral.timeout-seconds}, tamanho da \textit{pool} de geração, limiares de deduplicação) são definidos diretamente em \texttt{application.yml} e não variam por ambiente — apenas a chave de API é externalizada como segredo.
 
-\subsection*{Armazenamento de Objectos (MinIO)}
+\subsection*{Armazenamento de Objetos (MinIO)}
 
 \begin{table}[h!]
 \centering
@@ -392,7 +432,7 @@ Os parâmetros de duração dos tokens (\texttt{jwt.access-ttl-minutes = 15}, \t
 \textbf{Variável} & \textbf{Descrição} \\
 \hline
 \texttt{GRAFANA\_ADMIN\_PASSWORD}      & Password do utilizador administrador do Grafana \\
-\texttt{SPRING\_PROFILES\_ACTIVE}      & Perfil Spring activo (ex.\ \texttt{prod}, \texttt{dev}) \\
+\texttt{SPRING\_PROFILES\_ACTIVE}      & Perfil Spring ativo (ex.\ \texttt{prod}, \texttt{dev}) \\
 \hline
 \end{tabular}
 \end{table}

@@ -11,31 +11,17 @@ Este capítulo apresenta a análise dos utilizadores da plataforma Play4Change, 
 \section{Identificação dos Utilizadores} \label{sec:utilizadores}
 % -----------------------------------------------------------
 
-A identificação dos utilizadores é o ponto de partida de qualquer processo de desenvolvimento centrado no utilizador (\textit{User-Centered Design})~\cite{norman1988}.
-No contexto do Play4Change, a análise levou à identificação de dois perfis de utilizador com necessidades, objetivos e contextos de uso distintos.
+A identificação dos utilizadores é o ponto de partida de qualquer processo de desenvolvimento centrado no utilizador (\textit{User-Centered Design})~\cite{norman1988}, e levou, no contexto do Play4Change, à identificação de dois perfis de utilizador com necessidades, objetivos e contextos de uso distintos.
 
 \subsection{Administrador}
 
-O \textbf{Administrador} é o perfil responsável pela criação e gestão de conteúdo pedagógico na plataforma.
-Trata-se tipicamente de um formador, docente ou responsável de uma instituição parceira da rede U!REKA, com competência técnica suficiente para selecionar e carregar materiais de referência, mas que não necessita de expertise em IA ou em engenharia de software para operar o sistema.
-
-O Administrador interage com a plataforma exclusivamente através do \textbf{cliente web}, utilizando o painel de administração para submeter documentos PDF ou endereços URL como fontes de conhecimento, para rever e validar os tópicos e desafios gerados automaticamente pela IA, e para gerir os Learners registados na plataforma.
-
-A separação entre este perfil e o Learner é fundamental: o Administrador opera numa lógica de produção de conteúdo, enquanto o Learner opera numa lógica de consumo e progressão.
-Esta distinção é consistente com os modelos de sistemas de tutoria inteligente (\textit{Intelligent Tutoring Systems}, ITS), nos quais a camada de gestão de conhecimento é mantida separada da camada de interação com o aprendente~\cite{anderson1985}.
+O \textbf{Administrador} é o perfil responsável pela criação e gestão de conteúdo pedagógico --- tipicamente um formador ou responsável de uma instituição parceira da rede U!REKA, sem necessidade de \textit{expertise} em IA ou engenharia de software. Interage com a plataforma exclusivamente através do \textbf{cliente web}: submete PDF ou URLs como fontes de conhecimento, revê os tópicos e desafios gerados pela IA, e gere os Learners registados. Esta separação --- produção de conteúdo versus consumo e progressão --- é consistente com os modelos de \textit{Intelligent Tutoring Systems} (ITS)~\cite{anderson1985}.
 
 \subsection{Learner}
 
-O \textbf{Learner} é o destinatário da experiência de aprendizagem.
-O seu perfil é deliberadamente amplo: qualquer cidadão que pretenda desenvolver as suas competências digitais no referencial DigComp~2.2, independentemente do nível de partida ou do contexto institucional em que se insere.
+O \textbf{Learner} é o destinatário da experiência de aprendizagem. O seu perfil é deliberadamente amplo: qualquer cidadão que pretenda desenvolver as suas competências digitais no referencial DigComp~2.2, independentemente do nível de partida ou do contexto institucional em que se insere.
 
-O Learner interage com a plataforma através do \textbf{cliente móvel}, numa experiência desenhada para ser discreta, consistente e integrada na rotina diária.
-O modelo de um \textbf{desafio por dia} não é uma escolha arbitrária: a investigação em psicologia da aprendizagem demonstra que sessões curtas e regulares são significativamente mais eficazes do que sessões longas e esporádicas --- um fenómeno conhecido como \textit{spaced repetition}~\cite{ebbinghaus1885,cepeda2006}.
-Adicionalmente, a Teoria da Autodeterminação (\textit{Self-Determination Theory}, SDT) de Deci e Ryan demonstra que a motivação intrínseca --- e, consequentemente, a persistência na aprendizagem --- é sustentada quando o utilizador experimenta sentido de \textit{autonomia}, de \textit{competência crescente} e de \textit{ligação} a um propósito maior~\cite{deci2000}.
-O modelo de um desafio diário no telemóvel, entregue no dispositivo que o utilizador já transporta e consulta regularmente, responde diretamente a estes três fatores.
-
-A escolha do telemóvel como plataforma principal para o Learner é também suportada pela investigação em \textit{mobile learning} (m-learning): Traxler (2007) argumenta que a aprendizagem móvel permite que o conhecimento seja adquirido \textit{in situ} e no momento de necessidade, reduzindo a fricção entre a intenção de aprender e a ação de aprender~\cite{traxler2007}.
-Com mais de 5 mil milhões de utilizadores de telemóvel no mundo, o canal móvel é o mais democrático e ubíquo disponível~\cite{itu2023}.
+O Learner interage com a plataforma através do \textbf{cliente móvel}, numa experiência desenhada para ser discreta e integrada na rotina diária. O modelo de um \textbf{desafio por dia} não é arbitrário: sessões curtas e regulares são significativamente mais eficazes do que sessões longas e esporádicas (\textit{spaced repetition})~\cite{ebbinghaus1885,cepeda2006}, e a Teoria da Autodeterminação de Deci e Ryan mostra que a motivação intrínseca é sustentada por \textit{autonomia}, \textit{competência crescente} e \textit{ligação} a um propósito~\cite{deci2000} --- fatores a que este modelo responde diretamente. A escolha do telemóvel é também suportada pela investigação em \textit{mobile learning}~\cite{traxler2007}, com mais de 5 mil milhões de utilizadores no mundo~\cite{itu2023}.
 
 % -----------------------------------------------------------
 \section{Requisitos Funcionais} \label{sec:rf}
@@ -58,10 +44,10 @@ RF03 & Ingestão          & O Administrador deve poder submeter URLs como fonte 
 RF04 & IA                & O sistema deve gerar automaticamente tópicos a partir do conteúdo submetido pelo Administrador. \\
 RF05 & IA                & O sistema deve gerar automaticamente desafios (questões) a partir dos tópicos identificados. \\
 RF06 & RAG               & O sistema deve armazenar o conhecimento extraído em forma de \textit{embeddings} e recuperá-lo para contextualizar a geração de conteúdo pela IA. \\
-RF07 & RAG               & A regeneração completa de um tópico pelo Administrador deve invalidar e recalcular os \textit{embeddings} associados; a edição pontual de uma tarefa individual pode aceitar um vetor desactualizado quando o custo de recalcular em cada edição não se justifica (ver Secção~\ref{sec:invalidacao}). \\
+RF07 & RAG               & A regeneração completa de um tópico pelo Administrador deve invalidar e recalcular os \textit{embeddings} associados; a edição pontual de uma tarefa individual pode aceitar um vetor desactualizado (ver Secção~\ref{sec:invalidacao}). \\
 RF08 & Desafios          & O sistema deve atribuir um desafio diário a cada Learner, de acordo com o seu percurso de progressão. \\
 RF09 & Desafios          & O Learner deve receber \textit{feedback} imediato após responder a cada desafio. \\
-RF10 & Consolidação      & O sistema deve implementar um percurso de remediação (\textit{struggle path}) que gere sub-tarefas adaptadas ao padrão de erro do Learner numa tarefa específica, reutilizando contextos de dificuldade semelhantes já resolvidos anteriormente. \\
+RF10 & Consolidação      & O sistema deve implementar um percurso de remediação (\textit{struggle path}) que gere sub-tarefas adaptadas ao padrão de erro do Learner, reutilizando contextos de dificuldade semelhantes já resolvidos. \\
 RF11 & Cliente Web       & O sistema deve disponibilizar um painel de administração acessível via browser. \\
 RF12 & Cliente Web       & O sistema deve disponibilizar uma \textit{landing page} pública com informação sobre a plataforma e ligação para descarregar a aplicação móvel. \\
 RF13 & Cliente Móvel     & O sistema deve disponibilizar uma aplicação móvel para os Learners, centrada na experiência de um desafio diário. \\
@@ -108,11 +94,11 @@ São apresentados de seguida os três casos de uso centrais do Play4Change.
 \textbf{Pré-condição:} O Administrador está autenticado no painel web.\\
 \textbf{Fluxo principal:}
 \begin{enumerate}
-    \item O Administrador define o tópico (título, descrição e metadados) e submete um documento PDF ou um URL como fonte de conhecimento; o sistema cria de imediato o tópico em estado \texttt{PENDING}.
+    \item O Administrador define o tópico e submete um documento PDF ou um URL como fonte de conhecimento; o sistema cria de imediato o tópico em estado \texttt{PENDING}.
     \item De forma assíncrona, o sistema extrai e limpa o texto do documento ou página.
-    \item O sistema divide o texto em \textit{chunks} e invoca o modelo de IA para gerar módulos e os respetivos desafios (\textit{task templates}) a partir do conteúdo extraído.
-    \item Por cada desafio gerado, o sistema calcula o \textit{embedding} do par título+descrição, verifica duplicação semântica face aos desafios já existentes no módulo, e persiste o resultado.
-    \item Concluída a geração, o tópico transita automaticamente para o estado \texttt{ACTIVE}, sem necessidade de aprovação explícita do Administrador; este pode, a qualquer momento, editar um desafio específico ou desencadear a regeneração completa do tópico.
+    \item O sistema divide o texto em \textit{chunks} e invoca o modelo de IA para gerar módulos e os respetivos desafios (\textit{task templates}).
+    \item Por cada desafio gerado, o sistema calcula o \textit{embedding}, verifica duplicação semântica face aos desafios já existentes no módulo, e persiste o resultado.
+    \item Concluída a geração, o tópico transita automaticamente para o estado \texttt{ACTIVE}, sem aprovação explícita do Administrador; este pode editar um desafio específico ou desencadear a regeneração completa do tópico.
 \end{enumerate}
 \textbf{Pós-condição:} O tópico está \texttt{ACTIVE}, com os desafios e o conhecimento associado indexados e disponíveis para atribuição aos Learners.
 
@@ -123,7 +109,7 @@ São apresentados de seguida os três casos de uso centrais do Play4Change.
 \textbf{Fluxo principal:}
 \begin{enumerate}
     \item O Learner abre a aplicação móvel e visualiza o desafio do dia.
-    \item O sistema seleciona e apresenta o desafio correspondente ao seu percurso actual, já gerado antecipadamente pela IA durante o pipeline de ingestão do tópico --- não há recuperação vetorial em tempo real neste passo.
+    \item O sistema apresenta o desafio correspondente ao seu percurso atual, já gerado antecipadamente pela IA durante o pipeline de ingestão do tópico --- não há recuperação vetorial em tempo real neste passo.
     \item O Learner submete a sua resposta.
     \item O sistema avalia a resposta e apresenta \textit{feedback} imediato, com explicação contextualizada.
     \item O sistema regista o resultado e atualiza o perfil de progressão do Learner.
@@ -136,9 +122,9 @@ São apresentados de seguida os três casos de uso centrais do Play4Change.
 \textbf{Pré-condição:} O Learner respondeu incorretamente a um desafio do dia.\\
 \textbf{Fluxo principal:}
 \begin{enumerate}
-    \item O sistema classifica deterministicamente o padrão do erro (por exemplo, atraso na submissão ou opção adjacente à correta) com base no contexto da submissão.
+    \item O sistema classifica deterministicamente o padrão do erro (por exemplo, atraso na submissão ou opção adjacente à correta).
     \item De forma assíncrona, o sistema gera três sub-tarefas mais simples, centradas no padrão de erro detetado, reutilizando um ramo já gerado para um contexto semelhante sempre que a similaridade semântica o permita.
     \item O Learner resolve as sub-tarefas; se as completar todas corretamente, a sessão é marcada como resolvida e o desafio original do dia é reposto para nova tentativa.
     \item Se o Learner voltar a falhar após esgotar a profundidade de remediação definida, o sistema substitui as sub-tarefas por uma sessão de explicação sintetizada por IA, com possibilidade de diálogo de esclarecimento.
 \end{enumerate}
-\textbf{Pós-condição:} O Learner é conduzido de volta ao desafio original, com uma remediação centrada no seu erro específico; esta adaptação ocorre dentro do próprio desafio do dia, não como uma escolha de que tópico apresentar em dias seguintes --- essa seleção continua a ser feita pelo próprio Learner, através de inscrição explícita nos tópicos disponíveis.
+\textbf{Pós-condição:} O Learner é conduzido de volta ao desafio original, com uma remediação centrada no seu erro específico; esta adaptação ocorre dentro do próprio desafio do dia, não altera a escolha de que tópico apresentar em dias seguintes --- essa seleção continua a ser feita pelo próprio Learner, através de inscrição explícita nos tópicos disponíveis.
