@@ -230,87 +230,7 @@ Original task: ${context.taskDescription}
 \end{verbatim}
 
 %
-% Apêndice B — Diagramas Complementares
-%
-\chapter{Diagramas Complementares} \label{ap:diagramas}
-
-Este apêndice reúne o diagrama entidade-relação completo do esquema relacional e a evidência documental bruta dos dois questionários de avaliação aplicados ao Play4Change, cuja análise é apresentada na Secção~\ref{sec:testes-usabilidade} do Capítulo~\ref{cap:testes}.
-
-\section{Diagrama Entidade-Relação}
-
-A Figura~\ref{fig:ap-der} apresenta o esquema relacional completo, tal como definido pelas \textit{migrations} Flyway (\texttt{V1} a \texttt{V32}) em \texttt{server/src/main/resources/db/migration}. As entidades estão agrupadas por domínio: identidade e autenticação (azul), conteúdo e conhecimento (verde), progresso de aprendizagem (amarelo), suporte adaptativo e explicações (vermelho), e governança/moderação (roxo). Tabelas puramente internas ao serviço de deduplicação do \texttt{ai-agent} (\texttt{struggle\_events}, \texttt{adaptive\_branches}) foram omitidas por não pertencerem ao domínio aplicacional principal.
-
-\begin{figure}[h!]
-    \centering
-    \resizebox{\textwidth}{!}{\includegraphics{./figures/der.png}}
-    \caption{Diagrama entidade-relação do esquema relacional da base de dados}
-    \label{fig:ap-der}
-\end{figure}
-
-\section{Formulário de Avaliação de Experiência de Utilizador} \label{ap:survey-ux}
-
-Reprodução integral dos resultados do formulário \textit{Play4Change --- User Experience Evaluation} (Google Forms, $n=12$), aplicado entre 8 e 12 de junho de 2026 e cuja análise --- pontuações SUS, declarações de envolvimento e síntese qualitativa --- é apresentada na Secção~\ref{sec:testes-usabilidade}. As páginas seguintes são a captura bruta da plataforma, sem qualquer edição.
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-01.png}
-    \caption{Formulário UX --- perfil dos participantes e avaliação global de usabilidade}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-02.png}
-    \caption{Formulário UX --- clareza das instruções e envolvimento com os desafios diários}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-03.png}
-    \caption{Formulário UX --- declarações de envolvimento e adaptação dos percursos de IA}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-04.png}
-    \caption{Formulário UX --- problemas técnicos reportados livremente pelos participantes}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-05.png}
-    \caption{Formulário UX --- funcionalidade mais valorizada, na opinião dos participantes}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-06.png}
-    \caption{Formulário UX --- principal área recomendada para melhoria}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-ux-07.png}
-    \caption{Formulário UX --- comentários e sugestões finais}
-\end{figure}
-
-\section{Formulário de Avaliação Técnica} \label{ap:survey-tech}
-
-Reprodução integral dos resultados do formulário complementar \textit{Play4Change: User \& Technical Evaluation} (Google Forms, $n=3$), focado em desempenho percebido e na eficácia do formato de \textit{micro-learning} diário. A amostra é reduzida e não sustenta generalização estatística; é apresentada como evidência qualitativa complementar à avaliação principal da Secção~\ref{sec:testes-usabilidade}, não como uma segunda medição independente.
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-tech-01.png}
-    \caption{Formulário técnico --- intuitividade da interface e qualidade das respostas geradas por IA}
-\end{figure}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\textwidth]{./figures/survey-tech-02.png}
-    \caption{Formulário técnico --- velocidade percebida e eficácia do formato de micro-aprendizagem diária}
-\end{figure}
-
-%
-% Apêndice C — Variáveis de Ambiente
+% Apêndice B — Variáveis de Ambiente
 %
 \chapter{Variáveis de Ambiente} \label{ap:env}
 
@@ -395,7 +315,7 @@ Os restantes parâmetros do modelo de IA (\texttt{ai.mistral.model}, \texttt{ai.
 \hline
 \textbf{Variável} & \textbf{Descrição} \\
 \hline
-\texttt{JWT\_SECRET}            & Segredo usado para assinar (HS256) os \textit{access tokens} JWT; mínimo de 64 caracteres em produção (\texttt{JwtSecretStartupGuard}) \\
+\texttt{JWT\_SECRET}            & Segredo usado para assinar (HS256, algoritmo fixado explicitamente no código --- Secção~\ref{sec:autenticacao}) os \textit{access tokens} JWT; mínimo de 64 caracteres em produção (\texttt{JwtSecretStartupGuard}) \\
 \texttt{APP\_BASE\_URL}         & URL base da aplicação, usada na construção de \textit{deep links} de autenticação \\
 \texttt{FRONTEND\_ORIGIN}       & Origem do \textit{frontend}, propagada para \texttt{APP\_BASE\_URL} no \texttt{docker-compose} \\
 \texttt{CORS\_ALLOWED\_ORIGINS} & Lista de origens autorizadas pela política CORS do servidor \\
@@ -454,3 +374,430 @@ A exposição pública do serviço em produção (\texttt{https://radesh-govind.
 \hline
 \end{tabular}
 \end{table}
+
+% !TEX root = relatorio.tex
+%
+% Apêndice C — Detalhe de Validações e Configuração
+%
+\chapter{Detalhe de Validações e Configuração} \label{ap:detalhe-config}
+
+Este apêndice reúne o detalhe de campo, cenário e valor de configuração referenciado a partir dos Capítulos~\ref{cap:desenvolvimento}, \ref{cap:ingestao}, \ref{cap:ia}, \ref{cap:rag}, \ref{cap:geracao-desafios}, \ref{cap:desafios} e \ref{cap:seguranca}, omitido do corpo do texto por não ser necessário ao argumento de arquitetura.
+
+\section{Diagramas de Sequência Complementares} \label{ap:diagramas}
+
+Esta secção reúne os diagramas de sequência que ilustram, em detalhe, os fluxos descritos em prosa nos Capítulos~\ref{cap:desenvolvimento} a~\ref{cap:desafios}, pela ordem em que são referenciados no corpo do texto.
+
+\subsection*{Pipeline Assíncrono de Geração de Tópicos}
+
+Ilustra o fluxo completo de criação de um tópico, descrito na Secção~\ref{sec:pipeline} do Capítulo~\ref{cap:desenvolvimento}: resposta imediata \texttt{201 Created}, execução assíncrona no \texttt{generationExecutor} e notificação de progresso via SSE.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{0.8\textwidth}{!}{\includegraphics{./figures/seq-topic-generation.png}}
+    \caption{Pipeline assíncrono de geração de tópicos com notificação SSE}
+    \label{fig:seq-topic-gen}
+\end{figure}
+
+\subsection*{Autenticação por Magic Link}
+
+Ilustra o fluxo completo de autenticação por \textit{magic link} descrito na Secção~\ref{sec:auth-flow} do Capítulo~\ref{cap:desenvolvimento}, incluindo os casos de token inválido, expirado ou já usado.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{0.8\textwidth}{!}{\includegraphics{./figures/seq-magic-link.png}}
+    \caption{Diagrama de sequência --- fluxo completo de autenticação por \textit{magic link}}
+    \label{fig:seq-magic-link}
+\end{figure}
+
+\subsection*{Extração de Texto de URL com Validação SSRF}
+
+Ilustra o fluxo de ingestão por URL descrito na Secção~\ref{sec:url} do Capítulo~\ref{cap:ingestao}, incluindo a validação \texttt{UrlSsrfValidator} antes de qualquer pedido ao \textit{scraper} Playwright.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{0.8\textwidth}{!}{\includegraphics{./figures/seq-ingest-url.png}}
+    \caption{Diagrama de sequência --- extração de texto de URL com validação SSRF e Playwright}
+    \label{fig:seq-ingest-url}
+\end{figure}
+
+\subsection*{Arquitetura Anti-\textit{Prompt Injection}}
+
+Ilustra a construção da lista de mensagens tipadas descrita na Secção~\ref{sec:protecao-ia} do Capítulo~\ref{cap:ia}, que isola o input do utilizador do \texttt{SystemMessage} de confiança.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{0.8\textwidth}{!}{\includegraphics{./figures/seq-ai-anti-injection.png}}
+    \caption{Arquitetura anti-\textit{injection}: construção tipada de mensagens por nível de confiança}
+    \label{fig:seq-ai-anti-injection}
+\end{figure}
+
+\subsection*{Tutoria com IA}
+
+Ilustra o fluxo da sessão de tutoria com IA descrito na Secção~\ref{sec:explicacao-ia} do Capítulo~\ref{cap:desafios}: geração holística assíncrona, diálogo conversacional multi-turno e resolução, usando a mesma estrutura de mensagens tipadas isolada acima.
+
+\begin{figure}[h!]
+    \centering
+    \resizebox{0.8\textwidth}{!}{\includegraphics{./figures/seq-explanation-conv.png}}
+    \caption{Tutoria com IA --- geração assíncrona, diálogo conversacional e resolução}
+    \label{fig:seq-explanation-conv}
+\end{figure}
+
+\section{Modelo de Dados de Autenticação} \label{ap:auth-detalhe}
+
+\subsection*{Geração de Tokens e Propriedades Criptográficas}
+
+Todos os tokens são gerados pela classe \texttt{AuthCrypto} com 32 bytes de \texttt{SecureRandom} (64 caracteres hexadecimais). Apenas o \textit{hash} SHA-256 do token é persistido; o token em claro existe exclusivamente em memória e no email enviado ao utilizador, nunca na base de dados.
+
+\begin{table}[h!]
+\centering
+\caption{Tabelas do modelo de dados de autenticação}
+\label{tab:auth-schema}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lp{5cm}p{7cm}}
+\hline
+\textbf{Tabela} & \textbf{Campos relevantes} & \textbf{Função e propriedades de segurança} \\
+\hline
+\texttt{users}
+  & \texttt{id} (UUID), \texttt{email}, \texttt{provider} (\texttt{MAGIC\_LINK}), \texttt{role} (\texttt{USER|ADMIN})
+  & Perfil de autenticação; email é normalizado (lowercase + trim) antes de qualquer operação \\
+\texttt{magic\_link\_tokens}
+  & \texttt{token} (SHA-256 do token em claro), \texttt{expires\_at} (+15\,min), \texttt{used} (bool)
+  & Apenas o \textit{hash} é persistido; consumo atómico via \texttt{UPDATE ... RETURNING} elimina janelas TOCTOU \\
+\texttt{refresh\_tokens}
+  & \texttt{token\_hash} (SHA-256), \texttt{family\_id} (UUID), \texttt{expires\_at} (+7\,dias), \texttt{used} (bool)
+  & \texttt{family\_id} agrupa todos os \textit{tokens} de uma sessão; deteção de reutilização revoga toda a família \\
+\texttt{recovery\_emails}
+  & \texttt{email}, \texttt{verified} (bool), \texttt{token\_hash}, \texttt{token\_expires\_at} (+24\,h)
+  & Permite autenticação com email alternativo verificado; não cria utilizador duplicado \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsection*{Decisões de Segurança do Fluxo Magic Link}
+
+O fluxo de autenticação por \textit{magic link} (Figura~\ref{fig:seq-magic-link}) assenta em três decisões deliberadas. Primeiro, o pedido do \textit{link} (utilizador submete o email, \texttt{MagicLinkService} normaliza-o e persiste o SHA-256) responde sempre \texttt{202 Accepted}, independentemente de o email existir --- não confirmando nem negando a sua existência, evitando enumeração de contas. Segundo, o consumo do token (móvel via \textit{deep link}; web via \textit{redirect} que não consome, apenas encaminha para o POST) é uma operação atómica \texttt{UPDATE ... WHERE used=false AND expires\_at>now() RETURNING email}, eliminando janelas de corrida. Terceiro, zero linhas devolvidas significa indistintamente token inválido, expirado ou já usado --- as três condições de falha são propositadamente indistinguíveis para o cliente, evitando \textit{oracle attacks}.
+
+\subsection*{Assinatura e Ciclo de Vida dos Tokens JWT}
+
+O \textit{access token} é um JWT assinado com HMAC-SHA-256, com a estrutura de \textit{claims} \texttt{\{sub, email, role, iat, exp\}}. O algoritmo é fixado explicitamente no código (\texttt{signWith(key, Jwts.SIG.HS256)}) em vez de deixado à seleção automática do jjwt, que escolheria HS512 para o segredo de 64+ caracteres exigido em produção --- uma inconsistência entre o algoritmo documentado e o efetivamente usado, identificada em revisão e corrigida ao fixar o algoritmo explicitamente. A chave de assinatura é validada em arranque pelo \texttt{JwtSecretStartupGuard}: em perfil \texttt{prod}, o arranque falha (\texttt{IllegalStateException}) se a chave tiver menos de 64 caracteres ou for igual ao valor de desenvolvimento por omissão; fora de \texttt{prod}, o uso desse valor por omissão gera apenas um aviso em log, sem impedir o arranque. A sessão Spring é \texttt{STATELESS} (\texttt{SessionCreationPolicy.STATELESS}) --- cada pedido é autenticado independentemente pelo \texttt{JwtAuthFilter}.
+
+O mecanismo de rotação de \textit{refresh tokens} segue o padrão \textit{token rotation} com deteção de reutilização. Quando o cliente faz \texttt{POST /auth/refresh}, o \texttt{TokenService} localiza o \textit{refresh token} pelo hash. Se o token já foi marcado como \texttt{used}, é detetado um possível roubo de sessão: todos os tokens da mesma \texttt{family\_id} são imediatamente revogados, forçando o utilizador a re-autenticar. Em caso de token válido, o token atual é marcado como usado e é emitido um novo par, mantendo o mesmo \texttt{family\_id} --- o que garante que o \textit{logout} revoga toda a cadeia de rotação da sessão.
+
+\begin{table}[h!]
+\centering
+\caption{Zonas de controlo de acesso configuradas no Spring Security}
+\label{tab:access-zones}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lp{7cm}l}
+\hline
+\textbf{Zona} & \textbf{Paths} & \textbf{Requisito} \\
+\hline
+Pública
+  & \texttt{/auth/**}, \texttt{/api/stats/public}, \texttt{/error}, \texttt{/actuator/health}, \texttt{/actuator/prometheus}
+  & Sem autenticação \\
+Swagger
+  & \texttt{/swagger-ui/**}, \texttt{/v3/api-docs/**}
+  & \texttt{ROLE\_ADMIN} em \textit{prod}; público em dev \\
+Administração
+  & \texttt{/admin/**}
+  & \texttt{ROLE\_ADMIN} obrigatório \\
+Utilizador
+  & Todos os restantes \textit{paths}
+  & JWT válido (qualquer \textit{role}) \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\section{Modelo de Dados de Desafios e Progressão}
+
+\begin{table}[h!]
+\centering
+\caption{Campos de \texttt{TaskTemplate} e \texttt{TaskInstance}}
+\label{tab:model-tasks}
+\begin{tabular}{llp{8.5cm}}
+\hline
+\textbf{Entidade} & \textbf{Campo} & \textbf{Descrição} \\
+\hline
+\texttt{TaskTemplate} & \texttt{title}, \texttt{description}, \texttt{hint} & Conteúdo textual gerado pelo LLM \\
+ & \texttt{taskType} & \texttt{MULTIPLE\_CHOICE}, único valor suportado \\
+ & \texttt{options[4]}, \texttt{correctAnswer} & Quatro opções; resposta correta sempre no índice~0 \\
+ & \texttt{embedding} & Vector de 1024 dimensões, usado para deduplicação \\
+ & \texttt{dayIndex}, \texttt{poolIndex} & Posição no percurso e no conjunto de variantes \\
+ & \texttt{version}, \texttt{isCurrent} & Controlo de versão para edição e regeneração \\
+\hline
+\texttt{TaskInstance} & \texttt{correctAnswer} & Partilhado com o \textit{template} de origem \\
+ & \texttt{options} & Distratores alternativos, distintos por instância \\
+ & (relação) & 1:N com \texttt{TaskTemplate}, até \texttt{instancesPerTask = 5} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\caption{Campos de \texttt{Enrollment} e \texttt{TaskAssignment}}
+\label{tab:model-assignment}
+\begin{tabular}{llp{8.5cm}}
+\hline
+\textbf{Entidade} & \textbf{Campo} & \textbf{Descrição} \\
+\hline
+\texttt{Enrollment} & \texttt{currentDayIndex} & Dia corrente do percurso do utilizador no módulo \\
+ & \texttt{status} & \texttt{ACTIVE} \textbar\ \texttt{COMPLETED} \textbar\ \texttt{EXPIRED} \textbar\ \texttt{PAUSED} \\
+ & \texttt{totalPointsEarned}, \texttt{streakDays} & Pontuação e sequência de dias consecutivos \\
+\hline
+\texttt{TaskAssignment} & \texttt{enrollmentId}, \texttt{taskTemplateId}, \texttt{taskInstanceId} & Referências à inscrição, ao \textit{template} e à variante seleccionada \\
+ & \texttt{optionOrder}, \texttt{correctAnswerIndex} & Permutação de opções apresentada e índice correto \\
+ & \texttt{dueAt} & 24~horas após \texttt{assignedAt} \\
+ & \texttt{status} & \texttt{PENDING} \textbar\ \texttt{SUBMITTED} \textbar\ \texttt{LATE} \\
+ & \texttt{wrongAttemptCount} & Contador de tentativas erradas \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Campos do Pedido de Ingestão por PDF}
+
+\begin{table}[h!]
+\centering
+\caption{Campos do pedido \texttt{POST /admin/topics/pdf} (multipart/form-data)}
+\label{tab:pdf-fields}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llll}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Obrigatório} & \textbf{Restrições} \\
+\hline
+\texttt{file}        & binary PDF  & Sim & máx.\ 25\,MB \\
+\texttt{title}       & String      & Sim & máx.\ 200 caracteres \\
+\texttt{description} & String      & Sim & máx.\ 1\,000 caracteres \\
+\texttt{category}    & String      & Não & máx.\ 100 caracteres \\
+\texttt{difficulty}  & Enum        & Não & \texttt{BEGINNER | INTERMEDIATE | ADVANCED} (omissão: \texttt{BEGINNER}) \\
+\texttt{language}    & String      & Não & código ISO 639-1 (omissão: \texttt{en}), máx.\ 10 caracteres \\
+\texttt{taskCount}   & Int         & Não & omissão: 10 \\
+\texttt{expiresAt}   & ISO 8601    & Não & omissão: agora + 90 dias \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+O fluxo por URL (\texttt{POST /admin/topics}) partilha o mesmo esquema, substituindo \texttt{file} por \texttt{url} (String, sujeito a validação SSRF --- Capítulo~\ref{cap:ingestao}).
+
+\section{Cenários de Falha na Extração de Conteúdo}
+
+\begin{table}[h!]
+\centering
+\caption{Cenários de falha na extração de conteúdo e respostas HTTP}
+\label{tab:ingest-errors}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+\textbf{Cenário} & \textbf{Resposta} & \textbf{Campo em erro} \\
+\hline
+PDF com apenas imagens sem OCR bem-sucedida   & \texttt{400} ``PDF contains no extractable text''     & \texttt{file} \\
+Página com conteúdo exclusivamente em canvas  & \texttt{400} ``page returned no extractable text''    & \texttt{url}  \\
+Timeout ou indisponibilidade do Unstructured  & \texttt{400} com mensagem de erro propagada           & \texttt{file} \\
+Timeout ou indisponibilidade do scraper       & \texttt{400} com mensagem de erro propagada           & \texttt{url}  \\
+Violação SSRF                                 & \texttt{400} com detalhe da violação                  & \texttt{url}  \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\section{Casos de Teste de Prevenção de SSRF}
+
+O vetor SSRF é crítico porque os administradores submetem URLs de conteúdo que a aplicação vai buscar para gerar tarefas com IA (Capítulo~\ref{cap:ingestao}). O \texttt{UrlSsrfValidatorTest.kt} (10 testes, referido na Secção~\ref{sec:estrategia-testes} do Capítulo~\ref{cap:testes}) valida que \texttt{UrlSsrfValidator.validate()} lança \texttt{UrlSsrfViolationException} para cada categoria de URL proibida, detalhada na Tabela~\ref{tab:ssrf-casos}.
+
+\begin{table}[h!]
+\centering
+\caption{Casos de teste de prevenção de SSRF — \texttt{UrlSsrfValidatorTest}.}
+\label{tab:ssrf-casos}
+\begin{tabular}{@{}p{6cm}p{4cm}p{4.3cm}@{}}
+\toprule
+\textbf{URL testada} & \textbf{Categoria} & \textbf{Resultado} \\
+\midrule
+\texttt{https://localhost/admin}, \texttt{127.0.0.1}, \texttt{[::1]} & Loopback (IPv4/IPv6) & \texttt{Url\allowbreak Ssrf\allowbreak Violation\allowbreak Exception} \\
+\texttt{192.168.1.1}, \texttt{10.0.0.1}, \texttt{172.16.0.1}     & RFC~1918 (redes privadas) & \texttt{Url\allowbreak Ssrf\allowbreak Violation\allowbreak Exception} \\
+\texttt{https://169.254.1.1/metadata}    & Link-local            & \texttt{Url\allowbreak Ssrf\allowbreak Violation\allowbreak Exception} \\
+\texttt{http://example.com/page}         & Esquema HTTP (não HTTPS) & \texttt{Url\allowbreak Ssrf\allowbreak Violation\allowbreak Exception} \\
+\texttt{https://nonexistent.tld.invalid} & Host inexistente (DNS falha) & \texttt{Url\allowbreak Ssrf\allowbreak Violation\allowbreak Exception} \\
+\texttt{https://1.1.1.1/}               & IP público conhecido  & Sem exceção \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Headers HTTP de Segurança (Nginx)}
+
+\begin{table}[h!]
+\centering
+\caption{Headers HTTP de segurança configurados no Nginx (incl. diretivas CSP)}
+\label{tab:security-headers}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\hline
+\textbf{Header} & \textbf{Valor} & \textbf{Proteção} \\
+\hline
+\texttt{Strict-Transport-Security} & \texttt{max-age=63072000; includeSubDomains} & Força HTTPS por 2 anos, inclui subdomínios \\
+\texttt{X-Content-Type-Options}    & \texttt{nosniff}                             & Impede MIME-type \textit{sniffing} \\
+\texttt{X-Frame-Options}           & \texttt{DENY}                                & Previne \textit{clickjacking} \\
+\texttt{Referrer-Policy}           & \texttt{strict-origin-when-cross-origin}     & Limita informação de \textit{referrer cross-origin} \\
+\texttt{Content-Security-Policy}\textsuperscript{*} & \texttt{default-src/script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'} & Previne XSS e \textit{clickjacking} via política de \textit{browser} \\
+\hline
+\end{tabular}%
+}
+\end{table}
+\textsuperscript{*}Ao contrário dos restantes \textit{headers} desta tabela, aplicados globalmente, a CSP está configurada apenas no bloco \texttt{location /} do \texttt{nginx.conf} (SPA estática), não nas rotas de API proxied.
+
+\section{Catálogo de Métricas Instrumentadas}
+
+\begin{table}[htb]
+\centering
+\caption{Catálogo de métricas instrumentadas com Micrometer.}
+\label{tab:metricas-app}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Métrica} & \textbf{Tipo} & \textbf{Tags} & \textbf{Descrição} \\
+\midrule
+\texttt{http\_server\_requests\_seconds}        & Timer   & uri, method, status                                 & Latência e throughput HTTP (Spring MVC auto) \\
+\texttt{task.generation.duration}               & Timer   & status (success/failed/timeout)                     & Duração total da pipeline de geração por tópico \\
+\texttt{ai.generation.duration}                 & Timer   & generation\_phase (GENERATION/ANALYSIS)             & Tempo de chamada ao Mistral por fase \\
+\texttt{ai.generation.failures}                 & Counter & type                                                & Falhas de geração por categoria \\
+\texttt{ai.adaptive.reuse}                      & Counter & strategy (full/partial/fresh)                       & Distribuição de estratégias de reutilização \\
+\texttt{ai.dedup.duplicates\_skipped}           & Counter & module\_id                                          & Tarefas descartadas por deduplicação semântica \\
+\texttt{ai.struggle.reuse\_strategy}            & Counter & strategy                                            & Estratégia de reuso no pgvector por ocorrência \\
+\texttt{struggle\_sessions\_total}              & Counter & error\_pattern                                      & Sessões de dificuldade por padrão de erro \\
+\texttt{explanation\_sessions\_created\_total}  & Counter & —                                                   & Total de sessões de explicação criadas \\
+\texttt{explanation\_sessions\_resolved\_total} & Counter & outcome                                             & Resultado das sessões de explicação \\
+\texttt{task\_submissions\_total}               & Counter & outcome (correct/incorrect/late), task\_type        & Submissões por resultado e tipo de tarefa \\
+\texttt{tasks\_submitted\_total}                & Counter & result (correct/incorrect), topic\_id               & Submissões por resultado e tópico (métrica complementar orientada a análise por tópico) \\
+\texttt{enrollments\_completed\_total}          & Counter & topic\_id                                           & Inscrições concluídas por tópico \\
+\texttt{topic\_enrollments\_total}              & Counter & topic\_id                                           & Inscrições iniciadas por tópico \\
+\texttt{struggle\_sessions\_created\_total}     & Counter & topic\_id                                           & Sessões de dificuldade criadas, por tópico \\
+\texttt{struggle\_sessions\_escalated\_to\_explanation\_total} & Counter & --                                     & Sessões de dificuldade escaladas para tutoria com IA \\
+\texttt{rate\_limit\_exceeded\_total}           & Counter & path                                                & Bloqueios por limite de taxa por caminho de API \\
+\texttt{executor\_queued\_tasks}                & Gauge   & name=generationExecutor                             & Tarefas na fila do thread pool de geração \\
+\texttt{jvm\_memory\_used\_bytes}               & Gauge   & area=heap/nonheap                                   & Utilização de memória JVM \\
+\texttt{resilience4j\_circuitbreaker\_state}    & Gauge   & name=aiAgent, state                                 & Estado do circuit breaker de IA (aiAgent) \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Note-se que \texttt{executor\_queued\_tasks} depende do \textit{binder} automático do Spring Boot para \texttt{ThreadPoolTaskExecutor} (introduzido na série 3.2); ao contrário das restantes métricas desta tabela, não existe nenhuma linha de código que registe explicitamente este nome --- pelo que a sua disponibilidade efetiva sob esse nome exato não foi confirmada em runtime e deve ser validada antes de se confiar no alerta \texttt{GenerationThreadPoolQueueSaturated} (Tabela~\ref{tab:alertas}) que a consome.
+
+\section{Regras de Alerta Prometheus}
+
+\begin{table}[htb]
+\centering
+\caption{Regras de alerta Prometheus configuradas (\textit{evaluation\_interval}: 15s).}
+\label{tab:alertas}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Alerta} & \textbf{Expressão PromQL (simplificada)} & \textbf{Limiar} & \textbf{Duração} & \textbf{Sev.} \\
+\midrule
+ServerDown                         & \texttt{up\{job="spring-boot"\} == 0}                               & —      & 1~min  & Crítico \\
+AiCircuitBreakerOpen               & \texttt{resilience4j\_circuitbreaker\_state\{state="open"\} == 1}   & —      & Imediato & Crítico \\
+JvmHeapUsageCritical               & \texttt{jvm\_memory\_used / jvm\_memory\_max}                        & > 95\% & 2~min  & Crítico \\
+HighHttpErrorRate                  & \texttt{rate(http\_5xx[5m]) / rate(http\_all[5m])}                  & > 5\%  & 2~min  & Aviso \\
+HighAiGenerationFailureRate        & \texttt{rate(ai\_generation\_failures\_total[10m])}                  & > 0,1/s & 5~min & Aviso \\
+AiGenerationP95High                & \texttt{histogram\_quantile(0.95, task.generation[10m])}             & > 90~s & 5~min  & Aviso \\
+JvmHeapUsageHigh                   & \texttt{jvm\_memory\_used / jvm\_memory\_max}                        & > 85\% & 5~min  & Aviso \\
+GenerationThreadPoolQueueSaturated & \texttt{executor\_queued\_tasks\{name="generationExecutor"\}}        & $\geq$ 20 & 2~min & Aviso \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+%
+% Apêndice D — Garantias de Qualidade e Configuração Operacional
+%
+\chapter{Garantias de Qualidade e Configuração Operacional} \label{ap:qualidade-config}
+
+Este apêndice reúne, num único local, as garantias de qualidade aplicadas a cada questão gerada por Inteligência Artificial e os parâmetros de configuração operacional referenciados a partir dos Capítulos~\ref{cap:intro}, \ref{cap:desenvolvimento}, \ref{cap:ingestao}, \ref{cap:ia}, \ref{cap:geracao-desafios}, \ref{cap:seguranca} e \ref{cap:discussao}.
+
+\section{Garantias de Qualidade das Questões Geradas}
+
+\begin{table}[h!]
+\centering
+\caption{Garantias de qualidade das questões geradas}
+\label{tab:garantias-qualidade}
+\begin{tabular}{cp{10.5cm}}
+\hline
+\textbf{Nº} & \textbf{Garantia} \\
+\hline
+1 & \textbf{Unicidade semântica} --- similaridade coseno $< 0{,}90$ com qualquer tarefa já existente no mesmo módulo, verificada por consulta pgvector (índice IVFFlat) sobre o \textit{embedding} de 1024 dimensões do \texttt{TaskTemplate} (§\ref{sec:armazenamento}). \\
+2 & \textbf{Formato válido} --- o esquema JSON imposto ao modelo exige exatamente 4 opções por questão; a resposta correta é sempre persistida no índice~0 e só é baralhada no momento de apresentação ao utilizador (\texttt{OptionsJsonParser}). \\
+3 & \textbf{Língua correta} --- o parâmetro \texttt{language} é obrigatório em todos os \textit{prompts} (Apêndice~\ref{ap:prompts}), reforçado pela instrução explícita de não alternar de língua; o \texttt{DayIndexCalculator} aplica um \textit{gating} adicional de idioma antes de expor conteúdo ao aprendente. \\
+4 & \textbf{Adequação ao nível de audiência} --- o \textit{prompt} inclui uma descrição expandida do \texttt{AudienceLevel} (\textit{Beginner}, \textit{Intermediate}, \textit{Advanced}), evitando que o modelo infira o nível apenas a partir do nome da categoria. \\
+5 & \textbf{Segurança do conteúdo} --- sanitização com Jsoup em todos os campos de texto devolvidos pelo modelo (título, descrição, dica, opções) antes de persistência; o \textit{input} do utilizador nunca é interpolado diretamente em \textit{strings} de \textit{prompt} (Secção~\ref{sec:xss}). \\
+6 & \textbf{Resiliência a falhas do modelo} --- \textit{schema reminder} automático em caso de resposta incompleta ou malformada (retry Resilience4j), abandono gracioso da geração caso o resultado final seja zero tarefas válidas, e \textit{circuit breaker} \texttt{aiAgent} para prevenir cascata de falhas sobre a API da Mistral. \\
+\hline
+\end{tabular}
+\end{table}
+
+As seis garantias resultam diretamente dos mecanismos descritos nos Capítulos~\ref{cap:ia} e~\ref{cap:seguranca} e são discutidas em conjunto na Secção~\ref{sec:garantias-qualidade}.
+
+\section{Limites de Rate Limiting por Endpoint}
+
+O \texttt{RateLimitService} atribui a cada par (IP do cliente, \textit{path} normalizado) um \textit{bucket} Bucket4j com capacidade fixa e reabastecimento total e intervalado --- isto é, cada \textit{bucket} recupera a totalidade da sua capacidade de uma só vez, no final da janela de 10 minutos, em vez de um reabastecimento contínuo \textit{token-by-token}. Endpoints não listados na Tabela~\ref{tab:rate-limits-endpoint} não têm limite aplicado. Ao exceder o limite, o \texttt{RateLimitFilter} responde \texttt{429 Too Many Requests} com o \textit{header} \texttt{Retry-After} e incrementa a métrica \texttt{rate\_limit\_exceeded\_total} (Tabela~\ref{tab:metricas-app}).
+
+\begin{table}[h!]
+\centering
+\caption{Limites de \textit{rate limiting} por endpoint (janela de reabastecimento de 10 minutos em todos os casos)}
+\label{tab:rate-limits-endpoint}
+\begin{tabular}{lll}
+\hline
+\textbf{Endpoint} & \textbf{Limite} & \textbf{Janela} \\
+\hline
+\texttt{POST /auth/magic-link}                              & 5 pedidos  & 10 min \\
+\texttt{POST /auth/magic-link/verify}                        & 10 pedidos & 10 min \\
+\texttt{POST /auth/verify}                                   & 10 pedidos & 10 min \\
+\texttt{POST /auth/oauth}                                    & 10 pedidos & 10 min \\
+\texttt{POST /auth/refresh}                                  & 20 pedidos & 10 min \\
+\texttt{POST /auth/logout}                                   & 10 pedidos & 10 min \\
+\texttt{POST /auth/recovery-email/verify}                    & 10 pedidos & 10 min \\
+\texttt{POST /admin/topics}                                  & 3 pedidos  & 10 min \\
+\texttt{POST /admin/topics/pdf}                               & 2 pedidos  & 10 min \\
+\texttt{POST /admin/topics/\{id\}/regenerate}                 & 2 pedidos  & 10 min \\
+\texttt{POST /tasks/\{id\}/submit}                            & 30 pedidos & 10 min \\
+\texttt{POST /struggle/\{id\}/tasks/\{id\}/submit}            & 30 pedidos & 10 min \\
+\texttt{POST /explanation/\{id\}/message}                     & 10 pedidos & 10 min \\
+\hline
+\end{tabular}
+\end{table}
+
+Os limites mais apertados aplicam-se aos endpoints de menor frequência esperada e maior risco --- pedido de \textit{magic link} (previne \textit{email bombing}) e criação/regeneração de tópicos (cada pedido despoleta uma chamada à API da Mistral, pelo que o limite protege contra custo e \textit{DoS} não controlados). Os endpoints de submissão de tarefas têm um limite mais permissivo (30/10~min) por serem invocados com maior frequência em uso legítimo, mas ainda assim protegem contra \textit{brute-forcing} de respostas e \textit{replay} do percurso de \textit{struggle}.
+
+\section{Configuração de Resiliência da Integração LLM}
+
+\begin{table}[h!]
+\centering
+\caption{Configuração de resiliência da integração LLM (\textit{circuit breaker}, \textit{retry}, \textit{timeout})}
+\label{tab:resiliencia-llm}
+\begin{tabular}{ll}
+\hline
+\textbf{Parâmetro} & \textbf{Valor} \\
+\hline
+\multicolumn{2}{l}{\textit{Circuit breaker} (instância \texttt{aiAgent})} \\
+\hline
+\texttt{sliding-window-size}            & 10 chamadas \\
+\texttt{failure-rate-threshold}         & 50\% \\
+\texttt{wait-duration-in-open-state}    & 30 s \\
+\hline
+\multicolumn{2}{l}{\textit{Retry} (instância \texttt{aiAgent})} \\
+\hline
+\texttt{max-attempts}                       & 3 tentativas \\
+\texttt{wait-duration}                      & 2 s (base) \\
+\texttt{enable-exponential-backoff}         & \texttt{true} \\
+\texttt{exponential-backoff-multiplier}     & 2 \\
+\hline
+\multicolumn{2}{l}{\textit{Timeout} e capacidade da \textit{pool} de geração} \\
+\hline
+\texttt{ai.mistral.timeout-seconds}     & 60 s \\
+\texttt{ai.generation.pool-size}        & 3 \textit{threads} \\
+\texttt{ai.generation.queue-capacity}   & 25 tarefas \\
+\hline
+\end{tabular}
+\end{table}
+
+Com \textit{backoff} exponencial de base 2\,s e multiplicador 2, as três tentativas do \textit{retry} são espaçadas em aproximadamente 2\,s, 4\,s e 8\,s. O \textit{circuit breaker} avalia a taxa de falhas sobre uma janela deslizante das últimas 10 chamadas: ao ultrapassar 50\% de falhas, abre e rejeita novas chamadas à API da Mistral durante 30\,s, protegendo o sistema de uma cascata de \textit{timeouts} em caso de indisponibilidade do fornecedor (métrica \texttt{resilience4j\_circuitbreaker\_state}, Tabela~\ref{tab:metricas-app}; alerta \texttt{AiCircuitBreakerOpen}, Tabela~\ref{tab:alertas}).

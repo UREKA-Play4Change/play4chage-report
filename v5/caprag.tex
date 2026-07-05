@@ -1,0 +1,86 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 7 — Retrieval-Augmented Generation
+%
+\chapter{Retrieval-Augmented Generation} \label{cap:rag}
+
+Este capítulo dá continuidade à descrição do modelo de IA apresentada no Capítulo~\ref{cap:ia}, detalhando o mecanismo de \textit{Retrieval-Augmented Generation} (RAG) usado pelo Play4Change para deduplicação semântica e reutilização adaptativa de conteúdo. O ciclo de vida completo dos desafios entregues ao Learner é tratado em separado nos Capítulos~\ref{cap:geracao-desafios} e~\ref{cap:desafios}, e a segurança aplicacional de ponta a ponta no Capítulo~\ref{cap:seguranca}.
+
+O Play4Change implementa um padrão RAG que difere do RAG documental clássico: em vez de recuperar fragmentos de texto para enriquecer um \textit{prompt} a cada resposta, recupera vectores semânticos previamente computados para tomar decisões de reutilização e injeta contexto pedagógico estruturado nos prompts enviados ao LLM.
+O sistema mantém duas colecções vectoriais independentes em pgvector, executando pesquisa por similaridade cosseno em dois contextos distintos: deduplicação durante a geração de tarefas e branching adaptativo durante a sessão de dificuldade.
+
+% -----------------------------------------------------------
+\section{Armazenamento de Conhecimento} \label{sec:armazenamento}
+% -----------------------------------------------------------
+
+\subsection*{Base de Dados Vectorial}
+
+O armazenamento persistente de conhecimento assenta em PostgreSQL com a extensão \texttt{pgvector}, activada na migração \texttt{V3}.
+São mantidas duas colecções vectoriais independentes, cada uma com um índice \texttt{IVFFLAT} (predicado \texttt{WHERE embedding IS NOT NULL}, para que apenas registos com vector calculado entrem no plano de pesquisa): \textbf{\texttt{task\_templates.embedding vector(1024)}}, que representa semanticamente o par título+descrição de cada tarefa gerada; e \textbf{\texttt{struggle\_events.embedding vector(1024)}}, que representa o contexto de dificuldade de um aprendente (padrão de erro + descrição da tarefa + domínio), associado à tabela \texttt{adaptive\_branches} que regista os ramos gerados para reutilização futura (migração \texttt{V21}).
+
+O operador de distância cosseno do pgvector é \texttt{<=>}; a similaridade é derivada como $1 - (\texttt{embedding} \Leftrightarrow \texttt{?::vector})$, com valores no intervalo $[0,\,1]$.
+O modelo de \textit{embedding} é o \texttt{MistralAiEmbeddingModel}, que produz vectores de 1024 dimensões.
+
+\subsection*{Pipeline de Ingestão}
+
+O conhecimento é ingerido em quatro fases executadas de forma assíncrona pelo \texttt{TaskGenerationOrchestrator}, com o estado rastreado na coluna \texttt{current\_phase} da tabela \texttt{topics}, seguindo a mesma máquina de estados já apresentada na Secção~\ref{sec:pipeline} do Capítulo~\ref{cap:desenvolvimento}.
+
+Antes da fase GENERATION, o \texttt{ContentChunker} segmenta o texto extraído em janelas com sobreposição, seguindo o mesmo algoritmo de preservação de fronteiras de parágrafo já descrito na Secção~\ref{sec:limites-ingestao} do Capítulo~\ref{cap:ingestao} (parâmetros na Tabela~\ref{tab:context-limits}).
+
+Por cada tarefa gerada pelo LLM num chunk, o pipeline calcula o embedding do par título+descrição e consulta o índice \texttt{IVFFLAT} antes de persistir: se a similaridade máxima face aos templates existentes no módulo for superior a $0.90$, a tarefa é descartada como duplicado semântico. O diagrama de sequência completo deste pipeline, desde a submissão até à activação do tópico, foi já apresentado na Figura~\ref{fig:seq-topic-gen} (Secção~\ref{sec:pipeline} do Capítulo~\ref{cap:desenvolvimento}).
+
+% -----------------------------------------------------------
+\section{Recuperação e Reinjeção de Contexto} \label{sec:recuperacao}
+% -----------------------------------------------------------
+
+O sistema executa recuperação vectorial em dois contextos distintos: geração de ramos adaptativos (via similaridade entre vectores de dificuldade) e geração de explicações (via joins relacionais, sem pesquisa vectorial).
+
+\subsection*{Recuperação de Ramo Adaptativo}
+
+Quando um aprendente falha uma tarefa, o \texttt{HandleStruggleService} lança assincronamente a geração de um ramo adaptativo.
+O vector de entrada é construído concatenando \texttt{errorPattern}, \texttt{taskDescription} e \texttt{subjectDomain} (truncado a 8\,000 chars), e embebido em 1024 dimensões.
+A pesquisa vectorial no \texttt{PgVectorDeduplicationService.findSimilarStruggle()} ordena os ramos já \texttt{COMPLETED} por distância cosseno ao vector de entrada, excluindo os ramos que o aprendente já viu, e devolve o mais próximo.
+
+A estratégia de reutilização é determinada por dois limiares configuráveis em \texttt{application.yml}:
+
+\begin{table}[h!]
+\centering
+\caption{Estratégias de reutilização adaptativa por limiar de similaridade}
+\label{tab:rag-reuse}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llp{9cm}}
+\hline
+\textbf{Similaridade} & \textbf{Estratégia} & \textbf{Comportamento} \\
+\hline
+$> 0.90$         & \texttt{FULL\_REUSE}       & Devolver ramo existente sem chamada ao LLM \\
+$[0.65,\,0.90]$  & \texttt{PARTIAL\_REUSE}    & Reutilizar $\lfloor n \times \text{normSim} \rfloor$ tarefas; gerar o complemento via Mistral; persistir novo ramo \\
+$< 0.65$         & \texttt{FRESH\_GENERATION} & Gerar ramo completo via Mistral; persistir embedding para reutilização futura \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Para \texttt{PARTIAL\_REUSE}, a proporção de reutilização é calculada por interpolação linear, $n_{\text{reuse}} = \lfloor n_{\text{total}} \times \frac{sim - 0.65}{0.90 - 0.65} \rfloor$ --- a mesma fórmula e o mesmo mecanismo são também usados na síntese de ramos adaptativos a partir de sessões de dificuldade (Secção~\ref{sec:ia-prompting} do Capítulo~\ref{cap:ia}).
+
+\subsection*{Assemblagem e Reinjeção de Contexto para Explicações}
+
+Quando o aprendente esgota o nível máximo de dificuldade (\texttt{MAX\_STRUGGLE\_DEPTH = 1}), é criada uma sessão de explicação.
+O \texttt{ExplanationService.buildContext()} recupera e assembleia contexto exclusivamente por joins relacionais --- sem pesquisa vectorial --- construindo o \texttt{ExplanationContext} a partir da descrição da tarefa, do objetivo do módulo e do domínio (truncados conforme a Tabela~\ref{tab:context-limits}), do nível de audiência e língua do tópico, do padrão de erro traduzido, e do historial completo de sessões de dificuldade anteriores (profundidade, padrão de erro e títulos das tarefas adaptativas).
+
+Este contexto é injetado no \textit{prompt} de utilizador de \texttt{ExplanationPrompt.userExplanation()}, que inclui o historial completo de sessões de dificuldade do aprendente nessa tarefa.
+Para as respostas conversacionais, a lista tipada de \texttt{ChatMessage} (descrita na Secção~\ref{sec:protecao-ia} do Capítulo~\ref{cap:ia}) isola dados de controlo de conteúdo do utilizador; o ciclo completo de explicação está ilustrado na Figura~\ref{fig:seq-explanation-conv} (Secção~\ref{sec:explicacao-ia} do Capítulo~\ref{cap:desafios}, diagrama no Apêndice~\ref{ap:detalhe-config}).
+
+% -----------------------------------------------------------
+\section{Edição de Conteúdo e Invalidação} \label{sec:invalidacao}
+% -----------------------------------------------------------
+
+A base de conhecimento vectorial pode tornar-se incoerente quando o conteúdo pedagógico é alterado por um administrador.
+O sistema trata este problema de duas formas, consoante o alcance da edição.
+
+Na \textbf{edição pontual} de uma tarefa (\texttt{AdminTaskService.updateTask()}), o \textit{template} é atualizado e as suas instâncias recriadas, mas o \textit{embedding} da versão anterior é mantido --- uma inconsistência deliberadamente aceite, já que só afeta a deduplicação em gerações futuras, não a entrega ao aprendente.
+
+Na \textbf{regeneração completa} de um tópico (\texttt{POST /admin/topics/\{id\}/regenerate}, rejeitada se já estiver em \texttt{GENERATING}), o módulo antigo é marcado como superado e depois eliminado, acionando uma cascata que purga \texttt{task\_templates}, \texttt{task\_instances}, \texttt{struggle\_events} e \texttt{adaptive\_branches} do índice \texttt{IVFFLAT} --- todos os vetores são recalculados de raiz.
+
+A diferença central é, portanto, o tratamento do \textit{embedding}: aceite desatualizado na edição pontual, recalculado por completo na regeneração.
+
+O ciclo de vida completo dos desafios entregues ao Learner --- geração (Capítulo~\ref{cap:geracao-desafios}), e atribuição, remediação adaptativa (\textit{struggle path}) e tutoria com IA (Capítulo~\ref{cap:desafios}) --- é tratado em separado nesses capítulos.

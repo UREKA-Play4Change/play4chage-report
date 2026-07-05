@@ -3,12 +3,12 @@
 
 % Packages utilizadas e respetivos parâmetros.
 \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage[portuguese]{babel}
 \addto{\captionsportuguese}{\renewcommand{\bibname}{Refer\^{e}ncias}}
 \addto{\captionsportuguese}{\renewcommand{\contentsname}{\'{I}ndice}}
 \addto{\captionsportuguese}{\renewcommand{\appendixname}{Ap\^{e}ndice}}
 
-\usepackage{lipsum} % gerador de texto
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage{amsmath}
@@ -16,6 +16,7 @@
 \usepackage{booktabs}  % tabelas com \toprule, \midrule, \bottomrule
 \usepackage{longtable} % tabelas multi-página
 \usepackage{float}     % especificador [H] para posicionamento exacto de floats
+\usepackage{enumitem}  % listas de descrição com o termo numa linha e o texto na linha seguinte
 
 % Símbolos de comparação para tabelas
 \newcommand{\cmark}{\textbf{\checkmark}}
@@ -107,11 +108,9 @@ Licenciatura em Engenharia Informática e de Computadores\\[20mm]
 % Página de resumo em Português
 \cleardoublepage
 \chapter*{Resumo}
-O Play4Change é uma plataforma de aprendizagem adaptativa para o desenvolvimento de competências digitais segundo o referencial europeu DigComp~2.2, desenvolvida no âmbito do projeto U!REKA SHIFT em colaboração entre o ISEL e a Amsterdam University of Applied Sciences. O projeto responde à escassez de plataformas que integrem nativamente este referencial e que recorram à Inteligência Artificial para gerar e personalizar conteúdo pedagógico a partir de fontes documentais fornecidas por um formador, em vez de um catálogo estático pré-construído.
+O Play4Change é uma plataforma de aprendizagem adaptativa para o desenvolvimento de competências digitais segundo o referencial europeu DigComp~2.2, desenvolvida no âmbito do projeto U!REKA SHIFT (ISEL e Amsterdam University of Applied Sciences). Composta por um painel de administração web, uma aplicação móvel centrada num desafio diário e um servidor Spring Boot, a plataforma gera automaticamente conteúdo pedagógico por Inteligência Artificial (Mistral, via LangChain4j) a partir de documentos fornecidos por um formador, indexando-o em PostgreSQL/pgvector para deduplicação semântica. Quando um Learner erra, o sistema adapta o percurso de remediação e escala para tutoria conversacional com IA; a autenticação é \textit{passwordless} e a aplicação foi validada por 50 ficheiros de teste automatizados.
 
-A plataforma é composta por um painel de administração web, uma aplicação móvel nativa para Android/iOS centrada num desafio diário, e um servidor Spring Boot que orquestra um \textit{pipeline} assíncrono de ingestão de conteúdo (PDF ou URL), geração de tarefas por um modelo de linguagem (Mistral, via LangChain4j) e indexação vetorial em PostgreSQL/pgvector para deduplicação semântica e reutilização adaptativa de conteúdo. Quando um Learner erra um desafio, o sistema classifica o padrão do erro e gera um percurso de remediação adaptado, escalando para tutoria conversacional com IA caso a remediação não seja suficiente. A autenticação é \textit{passwordless} por \textit{magic link}, e a aplicação foi validada por uma análise de risco OWASP e uma suite de 49 ficheiros de teste automatizados.
-
-A avaliação de usabilidade com doze utilizadores reais confirmou uma pontuação média de usabilidade (SUS) de 76,0, na categoria ``Bom'', com a tutoria adaptativa por IA identificada como a funcionalidade mais valorizada. Os resultados confirmam a viabilidade técnica de uma plataforma que gera e adapta autonomamente o seu próprio conteúdo pedagógico, mantendo garantias de segurança e qualidade verificáveis.
+Uma avaliação de usabilidade com doze utilizadores reais registou uma pontuação SUS média de 76,0, acima da média de referência da indústria (68,0), com a tutoria por IA como funcionalidade mais valorizada --- um resultado que atesta a facilidade de uso, não o ganho de competências DigComp~2.2. Os resultados confirmam a viabilidade técnica de uma plataforma que gera e adapta autonomamente o seu conteúdo pedagógico.
 
 \vspace{5mm}
 \noindent{\bf Palavras-chave:} Aprendizagem Adaptativa; Inteligência Artificial Generativa; \textit{Retrieval-Augmented Generation}; Competências Digitais; DigComp~2.2.
@@ -119,11 +118,9 @@ A avaliação de usabilidade com doze utilizadores reais confirmou uma pontuaç�
 % Página de abstract em Inglês
 \cleardoublepage
 \chapter*{Abstract}
-Play4Change is an adaptive learning platform for developing digital competences under the European DigComp~2.2 framework, developed as part of the U!REKA SHIFT project in collaboration between ISEL and the Amsterdam University of Applied Sciences. The project addresses the scarcity of platforms that natively integrate this framework and use Artificial Intelligence to generate and personalise pedagogical content from documentary sources supplied by an instructor, rather than a static, pre-built catalogue.
+Play4Change is an adaptive learning platform for developing digital competences under the European DigComp~2.2 framework, developed as part of the U!REKA SHIFT project (ISEL and the Amsterdam University of Applied Sciences). Comprising a web administration panel, a mobile application centred on a daily challenge, and a Spring Boot server, the platform automatically generates pedagogical content via Artificial Intelligence (Mistral, via LangChain4j) from documents supplied by an instructor, indexing it in PostgreSQL/pgvector for semantic deduplication. When a Learner answers incorrectly, the system adapts the remediation path and escalates to conversational AI tutoring; authentication is passwordless, and the application was validated through 50 automated test files.
 
-The platform comprises a web administration panel, a native Android/iOS mobile application centred on a daily challenge, and a Spring Boot server that orchestrates an asynchronous content-ingestion pipeline (PDF or URL), task generation by a large language model (Mistral, via LangChain4j), and vector indexing in PostgreSQL/pgvector for semantic deduplication and adaptive content reuse. When a Learner answers a challenge incorrectly, the system classifies the error pattern and generates a tailored remediation path, escalating to conversational AI tutoring when remediation alone is insufficient. Authentication is passwordless via magic link, and the application was validated through an OWASP risk analysis and a suite of 49 automated test files.
-
-A usability evaluation with twelve real users confirmed an average System Usability Scale (SUS) score of 76.0, in the ``Good'' category, with AI-driven adaptive tutoring identified as the most valued feature. The results confirm the technical feasibility of a platform that autonomously generates and adapts its own pedagogical content while maintaining verifiable security and quality guarantees.
+A usability evaluation with twelve real users recorded an average System Usability Scale (SUS) score of 76.0, above the industry reference average (68.0), with AI tutoring identified as the most valued feature --- a result that attests to ease of use, not to DigComp~2.2 competence gains. The results confirm the technical feasibility of a platform that autonomously generates and adapts its own pedagogical content.
 
 \vspace{5mm}
 \noindent{\bf Keywords:} Adaptive Learning; Generative Artificial Intelligence; Retrieval-Augmented Generation; Digital Competences; DigComp~2.2.
@@ -214,19 +211,40 @@ XSS     & \textit{Cross-Site Scripting} \\
 % Capitulo 3 — Análise e Requisitos
 \include{caprequisitos}
 
-% Capitulo 4 — Desenvolvimento
+% Capitulo 4 — Arquitetura e Fundações
 \include{capexemplos}
 
-% Capitulo 5 — Testes e Validação
+% Capitulo 5 — Ingestão e Extração de Conteúdo
+\include{capingestao}
+
+% Capitulo 6 — Inteligência Artificial
+\include{capia}
+
+% Capitulo 7 — Retrieval-Augmented Generation
+\include{caprag}
+
+% Capitulo 8 — Geração de Desafios
+\include{capgeracao}
+
+% Capitulo 9 — Atribuição, Remediação e Tutoria com IA
+\include{capdesafios}
+
+% Capitulo 10 — Segurança da Aplicação
+\include{capseguranca}
+
+% Capitulo 11 — Suite de Testes Automatizados
 \include{captestes}
 
-% Capitulo 6 — Resultados
-\include{capresultados}
+% Capitulo 12 — Testes de Usabilidade
+\include{capusabilidade}
 
-% Capitulo 7 — Discussão
+% Capitulo (não numerado) — Resultados
+% \include{capresultados}
+
+% Capitulo 13 — Discussão
 \include{capdiscussao}
 
-% Capitulo 8 — Conclusão
+% Capitulo 14 — Conclusão
 \include{capconclusao}
 
 % Referências

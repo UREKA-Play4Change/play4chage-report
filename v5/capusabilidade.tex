@@ -1,0 +1,89 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 12 — Testes de Usabilidade
+%
+\chapter{Testes de Usabilidade} \label{cap:usabilidade}
+
+Este capítulo dá continuidade à validação automatizada apresentada no Capítulo~\ref{cap:testes}, descrevendo a avaliação de usabilidade conduzida com doze utilizadores reais através da escala SUS (\textit{System Usability Scale}).
+
+Antes de apresentar os resultados, importa delimitar o que esta avaliação mede: a escala SUS quantifica a perceção subjetiva de facilidade de utilização e de aprendizagem da interface --- não a aquisição efetiva de competências digitais pelo utilizador. Uma pontuação SUS elevada indica que a aplicação é fácil de usar; não constitui, por si só, evidência de que os Learners melhoraram as suas competências no referencial DigComp~2.2. Este relatório não contém dados (avaliação de competências antes/depois da utilização, ou medição longitudinal de desempenho) que permitam sustentar essa inferência.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Metodologia} \label{sec:usab-metodologia}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A avaliação de usabilidade foi conduzida através de um questionário Google Forms aplicado a 12 participantes entre 8 e 12 de Junho de 2026 (4 estudantes actuais do ISEL, 7 testadores externos, 1 antigo aluno), organizado em quatro secções: avaliação global (escala 1–5), quatro declarações de envolvimento (Likert 1–5), a escala SUS (\textit{System Usability Scale}) de Brooke~\cite{brooke1996sus} (10 itens, Likert 1–5), e questões abertas.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Análise SUS} \label{sec:usab-sus}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A pontuação SUS segue a fórmula de Brooke: subtrai-se 1 aos itens ímpares (positivos) e o valor a 5 nos pares (negativos), soma-se os 10 resultados e multiplica-se por 2,5, numa escala de 0 a 100. Este valor de 0 a 100 \textbf{não é uma percentagem}: é um \textit{score} compósito que só é interpretável por comparação com um referencial externo~\cite{nngroup2018}. Segue-se por isso, para interpretar os resultados, a orientação do Nielsen Norman Group sobre a análise do SUS~\cite{nngroup2018}, que reporta o \textit{benchmarking} de Sauro a mais de 500 estudos: a pontuação SUS média observada na indústria é 68,0, e um sistema com pontuação $\geq$80 posiciona-se no top 10\% dos sistemas avaliados nesse universo de estudos. A Tabela~\ref{tab:sus-scores} apresenta as pontuações obtidas face a este referencial.
+
+\begin{table}[htb]
+\centering
+\caption{Pontuações SUS por participante (\textit{n}~=~12), face à média de referência da indústria (68,0)~\cite{nngroup2018}.}
+\label{tab:sus-scores}
+\begin{tabular}{@{}lllr@{}}
+\toprule
+\textbf{Part.} & \textbf{Perfil} & \textbf{Face à referência (68,0)} & \textbf{SUS} \\
+\midrule
+P01 & Estudante & Acima (top 10\%$^{*}$) & 80,0 \\
+P02 & Estudante & Acima (top 10\%$^{*}$) & 97,5 \\
+P03 & Externo   & Acima (top 10\%$^{*}$) & 90,0 \\
+P04 & Externo   & Abaixo                 & 45,0 \\
+P05 & Alumni    & Abaixo                 & 35,0 \\
+P06 & Externo   & Abaixo                 & 50,0 \\
+P07 & Externo   & Acima                  & 77,5 \\
+P08 & Externo   & Acima (top 10\%$^{*}$) & 95,0 \\
+P09 & Estudante & Abaixo                 & 60,0 \\
+P10 & Externo   & Acima (top 10\%$^{*}$) & 97,5 \\
+P11 & Externo   & Acima (top 10\%$^{*}$) & 92,5 \\
+P12 & Estudante & Acima (top 10\%$^{*}$) & 92,5 \\
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Média}} & \textbf{76,0} \\
+\multicolumn{3}{@{}l}{\textbf{Mediana}} & \textbf{85,0} \\
+\bottomrule
+\multicolumn{4}{@{}p{13cm}}{\footnotesize $^{*}$Pontuação $\geq$80, o limiar que Sauro reporta como correspondente ao top 10\% dos estudos de referência~\cite{nngroup2018}.} \\
+\end{tabular}
+\end{table}
+
+A média de 76,0 está 8,0 pontos acima da média de referência de 68,0 reportada por Sauro para mais de 500 estudos~\cite{nngroup2018}, e sete dos doze participantes (58,3\%) atingiram uma pontuação igual ou superior a 80, o limiar que posiciona um sistema no top 10\% desse universo de referência. A discrepância entre média (76,0) e mediana (85,0) reflecte dois \textit{outliers} (P04~=~45, P05~=~35) que puxam a média para baixo --- sem eles, a média sobe para 83,25. A avaliação global obteve uma média de 4,25 em 5.
+
+Uma ressalva de leitura aplica-se a estes números: comparar doze respostas contra um \textit{benchmarking} assente em centenas de estudos é indicativo, não uma inferência estatisticamente robusta.
+
+As declarações de envolvimento (Tabela~\ref{tab:sus-engagement}) mostram o design visual como a mais bem pontuada (4,33) e o encorajamento a regressar diariamente como a mais baixa (3,92), sugerindo margem de melhoria na retenção.
+
+\begin{table}[htb]
+\centering
+\caption{Médias das declarações de envolvimento (escala Likert 1–5, \textit{n}~=~12).}
+\label{tab:sus-engagement}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Declaração} & \textbf{Média} \\
+\midrule
+A aplicação motivou-me a aprender sobre educação cívica / cidades inteligentes & 3,83 \\
+Os desafios pareceram relevantes para problemas do mundo real                  & 4,00 \\
+O design visual e a estética do jogo foram apelativos                         & 4,33 \\
+Senti-me encorajado/a a regressar e completar desafios diariamente            & 3,92 \\
+\midrule
+Os caminhos de aprendizagem IA adaptaram-se eficazmente ao meu desempenho     & 4,08 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Análise Qualitativa} \label{sec:usab-qualitativa}
+% ─────────────────────────────────────────────────────────────────────────────
+
+As respostas abertas revelaram pontos fortes e oportunidades de melhoria consistentes.
+
+\textbf{Pontos fortes.} A explicação adaptativa após resposta errada foi apontada como melhor funcionalidade por quatro participantes; a intuitividade da interface por outros quatro; e a adaptabilidade da IA ao desempenho individual por três. Os desafios diários e a relevância das questões foram igualmente referidos positivamente.
+
+\textbf{Problemas técnicos.} A mais grave foi uma \textit{race condition} visual no caminho de consolidação: a resposta era marcada correta e, meio segundo depois, aparecia como errada. Foram também reportados a barra de pesquisa oculta durante a inserção de e-mail, respostas corretas marcadas intermitentemente como erradas, e questões repetidas em caminhos alternativos. Os dois participantes com pontuações mais baixas (P04, P05) apontaram ainda a confusão causada pela transição abrupta para um novo desafio após resposta errada, sem explicação --- comportamento que ocorre antes de a sessão de \textit{struggle} ser criada.
+
+\textbf{Perfis de afinidade tecnológica.} A observação direta revelou uma segunda linha de segmentação, além do vínculo institucional (Tabela~\ref{tab:sus-scores}): P04 e P05, os dois \textit{outliers} negativos, pertencem a um perfil de utilização tecnológica mínima, sugerindo que a sua pontuação reflecte não só o bug de transição identificado acima, mas também uma dificuldade de base com aprendizagem digital autónoma --- precisamente o perfil que mais beneficiaria do Play4Change (retomada em §\ref{sec:trabalho-futuro}).
+
+\textbf{Sugestões de melhoria.} As mais recorrentes foram funcionalidades sociais (amigos, tabelas de classificação), diversificação de tópicos, maior concisão das explicações IA em mobile, e personalização geográfica das questões por localização.
+
+\textbf{Conclusão da avaliação.} Os resultados SUS indicam uma usabilidade global consistentemente acima da média de referência da indústria (68,0), com a maioria dos participantes (sete em doze) a atingir o limiar de top 10\% ($\geq$80) reportado por Sauro/NNGroup~\cite{nngroup2018}. Os dois \textit{outliers} convergem num problema de comunicação de estado após erro, mitigável com uma transição animada, mas reflectem também uma barreira de entrada mais alta para o perfil de menor afinidade tecnológica.

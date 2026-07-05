@@ -21,7 +21,7 @@ O \textbf{Administrador} é o perfil responsável pela criação e gestão de co
 
 O \textbf{Learner} é o destinatário da experiência de aprendizagem. O seu perfil é deliberadamente amplo: qualquer cidadão que pretenda desenvolver as suas competências digitais no referencial DigComp~2.2, independentemente do nível de partida ou do contexto institucional em que se insere.
 
-O Learner interage com a plataforma através do \textbf{cliente móvel}, numa experiência desenhada para ser discreta e integrada na rotina diária. O modelo de um \textbf{desafio por dia} não é arbitrário: sessões curtas e regulares são significativamente mais eficazes do que sessões longas e esporádicas (\textit{spaced repetition})~\cite{ebbinghaus1885,cepeda2006}, e a Teoria da Autodeterminação de Deci e Ryan mostra que a motivação intrínseca é sustentada por \textit{autonomia}, \textit{competência crescente} e \textit{ligação} a um propósito~\cite{deci2000} --- fatores a que este modelo responde diretamente. A escolha do telemóvel é também suportada pela investigação em \textit{mobile learning}~\cite{traxler2007}, com mais de 5 mil milhões de utilizadores no mundo~\cite{itu2023}.
+O Learner interage com a plataforma através do \textbf{cliente móvel}, numa experiência desenhada para ser discreta e integrada na rotina diária. O modelo de um \textbf{desafio por dia} não é arbitrário: sessões curtas e regulares são significativamente mais eficazes do que sessões longas e esporádicas (\textit{spaced repetition})~\cite{ebbinghaus1885,cepeda2006}, e a Teoria da Autodeterminação de Deci e Ryan mostra que a motivação intrínseca é sustentada por três necessidades psicológicas básicas --- \textit{autonomia}, \textit{competência} e \textit{relatedness} (ligação social a outras pessoas, não apenas a um propósito abstrato)~\cite{deci2000} --- fatores a que este modelo responde parcialmente: a autonomia e a competência são endereçadas diretamente pelo desenho do desafio diário, mas a \textit{relatedness} depende das funcionalidades sociais ainda por implementar (Secção~\ref{sec:trabalho-futuro}). A escolha do canal móvel segue a justificação já apresentada na Secção~\ref{sec:formal-informal}.
 
 % -----------------------------------------------------------
 \section{Requisitos Funcionais} \label{sec:rf}
@@ -30,14 +30,21 @@ O Learner interage com a plataforma através do \textbf{cliente móvel}, numa ex
 Os requisitos funcionais descrevem os comportamentos que o sistema deve exibir em resposta a determinadas entradas ou condições~\cite{sommerville2016}.
 A Tabela~\ref{tab:rf} apresenta os requisitos funcionais do Play4Change, organizados por área funcional.
 
-\begin{table}[H]
-\centering
-\caption{Requisitos funcionais do sistema Play4Change}
-\label{tab:rf}
-\begin{tabular}{p{1.3cm}p{3.5cm}p{8cm}}
+\begin{longtable}{p{1.3cm}p{3.5cm}p{8cm}}
+\caption{Requisitos funcionais do sistema Play4Change} \label{tab:rf} \\
 \hline
 \textbf{ID} & \textbf{Área} & \textbf{Descrição} \\
 \hline
+\endfirsthead
+\multicolumn{3}{l}{\small \textit{(continuação da Tabela~\ref{tab:rf})}} \\
+\hline
+\textbf{ID} & \textbf{Área} & \textbf{Descrição} \\
+\hline
+\endhead
+\hline \multicolumn{3}{r}{\small \textit{continua na página seguinte}} \\
+\endfoot
+\hline
+\endlastfoot
 RF01 & Autenticação      & O sistema deve suportar autenticação para ambos os perfis de utilizador. \\
 RF02 & Ingestão          & O Administrador deve poder submeter documentos PDF como fonte de conhecimento. \\
 RF03 & Ingestão          & O Administrador deve poder submeter URLs como fonte de conhecimento. \\
@@ -51,9 +58,7 @@ RF10 & Consolidação      & O sistema deve implementar um percurso de remediaç
 RF11 & Cliente Web       & O sistema deve disponibilizar um painel de administração acessível via browser. \\
 RF12 & Cliente Web       & O sistema deve disponibilizar uma \textit{landing page} pública com informação sobre a plataforma e ligação para descarregar a aplicação móvel. \\
 RF13 & Cliente Móvel     & O sistema deve disponibilizar uma aplicação móvel para os Learners, centrada na experiência de um desafio diário. \\
-\hline
-\end{tabular}
-\end{table}
+\end{longtable}
 
 % -----------------------------------------------------------
 \section{Requisitos Não Funcionais} \label{sec:rnf}

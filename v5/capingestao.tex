@@ -1,0 +1,74 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 5 — Ingestão e Extração de Conteúdo
+%
+\chapter{Ingestão e Extração de Conteúdo} \label{cap:ingestao}
+
+Este capítulo dá continuidade à descrição da arquitetura iniciada no Capítulo~\ref{cap:desenvolvimento}, detalhando a primeira fase do pipeline de criação de tópicos: a extração de texto a partir de PDF ou URL, as camadas de validação aplicadas ao pedido de ingestão, e os limites de contexto que preparam o conteúdo extraído para a geração por Inteligência Artificial, tratada no Capítulo~\ref{cap:ia}.
+
+A ingestão de conteúdo é a primeira fase do pipeline de criação de tópicos.
+Um Administrador fornece uma fonte --- um URL público ou um ficheiro PDF --- a partir da qual o sistema extrai texto simples que servirá de base à geração automática de tarefas educativas.
+
+A camada de extração segue o padrão \textit{Port \& Adapter}: a interface \texttt{ContentExtractorPort} é definida na camada de aplicação com dois métodos, \texttt{extractFromUrl(url: String): String} e \texttt{extractFromPdf(pdfBytes: ByteArray): String}, e é implementada na infraestrutura pelo \texttt{ContentExtractorAdapter}.
+O domínio nunca referencia nenhuma tecnologia de extração diretamente.
+
+Independentemente da fonte, o fluxo sincrónico partilha o mesmo padrão: o \texttt{Topic\allowbreak Management\allowbreak Service} extrai o texto, valida que não está vazio, persiste o conteúdo original no MinIO (como ficheiro de auditoria e para eventual regeneração), cria o tópico em estado \texttt{PENDING} e lança o pipeline assíncrono de geração --- devolvendo \texttt{201 Created} imediatamente sem aguardar a conclusão da IA.
+
+\section{Extração de Texto: PDF e URL} \label{sec:pdf} \label{sec:url}
+
+A ingestão suporta duas fontes com tecnologias distintas mas o mesmo contrato (\texttt{ContentExtractorPort}), resumidas na Tabela~\ref{tab:extracao-comparativa}: PDF, delegado à \textbf{Unstructured API}~\cite{unstructured2023} (contentor Docker, porta~9500) pela necessidade de OCR em documentos digitalizados; e URL, delegado a um microserviço \textbf{Playwright}~\cite{playwright2023} (Node.js, porta~3000) porque muitas páginas educativas são \textit{Single Page Applications} que exigem execução de JavaScript para renderizar conteúdo invisível a uma chamada HTTP convencional.
+
+\begin{table}[h!]
+\centering
+\caption{Extração de texto por fonte: PDF vs URL}
+\label{tab:extracao-comparativa}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lp{6.3cm}p{6.3cm}}
+\hline
+ & \textbf{PDF} (\texttt{POST /admin/topics/pdf}) & \textbf{URL} (\texttt{POST /admin/topics}) \\
+\hline
+Processamento & \texttt{multipart/form-data} para \texttt{/general/v0/general} (\texttt{strategy=auto}: texto nativo ou OCR consoante a página); filtra elementos vazios, une por parágrafo, remove bytes nulos de OCR & Browser Chromium persistente; aguarda \texttt{domcontentloaded} (25\,s) e \texttt{networkidle} (5\,s, ignora falhas); remove \texttt{nav}/\texttt{footer}/\texttt{script}/\texttt{style}/\texttt{iframe}; extrai \texttt{innerText} normalizado \\
+\textit{Timeout} & 120\,s (documentos extensos ou totalmente digitalizados) & 45\,s no servidor, 35\,s no \textit{scraper} (\textit{headroom} para latência de rede) \\
+Persistência & MinIO, \texttt{topics/\{id\}/content.pdf} & MinIO, \texttt{topics/\{id\}/content.txt} \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+O ponto de entrada HTTP aceita título, descrição, categoria, dificuldade, língua, número de tarefas e data de expiração como metadados, validados declarativamente (Secção~\ref{sec:limites-ingestao}); o fluxo por PDF substitui o campo \texttt{file} (máx.\ 25\,MB) por \texttt{url} (sujeito a validação SSRF) no fluxo por URL. O esquema completo dos campos é reproduzido no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:pdf-fields}).
+
+A Figura~\ref{fig:seq-ingest-url} (Apêndice~\ref{ap:detalhe-config}) detalha o fluxo por URL, incluindo a validação de segurança SSRF; o fluxo por PDF segue o mesmo padrão de invocação síncrona ao adaptador, substituindo o Playwright pela Unstructured API.
+
+\subsection*{Prevenção de SSRF}
+
+Antes de qualquer pedido de rede, o \texttt{UrlSsrfValidator} executa uma validação sequencial que termina na primeira violação detetada: esquema obrigatório \texttt{https}, presença de um componente de \textit{host} válido e, por resolução DNS (\texttt{InetAddress.getAllByName}), rejeição de qualquer endereço \textit{loopback} (127.0.0.0/8, ::1), de rede privada RFC~1918 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), \textit{link-local} (169.254.0.0/16, fe80::/10) ou \textit{multicast}.
+Qualquer violação lança uma \texttt{UrlSsrfViolationException} que o \texttt{TopicManagementService} converte em \texttt{400 Bad Request}.
+Esta validação mitiga ataques de \textit{Server-Side Request Forgery} (SSRF), impedindo que o sistema seja usado como \textit{proxy} para alcançar serviços internos da rede Docker.
+
+\section{Limites e Validações} \label{sec:limites-ingestao}
+
+A ingestão de conteúdo envolve quatro camadas de validação independentes, cada uma responsável por uma classe distinta de erros, aplicadas pela ordem da Tabela~\ref{tab:validacao-ingestao}.
+
+\begin{table}[h!]
+\centering
+\caption{Camadas de validação da ingestão de conteúdo, por ordem de aplicação}
+\label{tab:validacao-ingestao}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{clp{7.5cm}l}
+\hline
+\textbf{Camada} & \textbf{Nome} & \textbf{Mecanismo} & \textbf{Resposta em erro} \\
+\hline
+1 & Rate Limiting & \texttt{RateLimitFilter} (Secção~\ref{sec:pipeline}), limites conservadores por IP antes de qualquer autenticação, dado tratar-se da operação de maior custo computacional e financeiro do sistema (limites na Tabela D.2, Apêndice D) & 429 \\
+2 & Validação HTTP & Tamanho do ficheiro PDF (máx.\ 25\,MB, \texttt{TopicController}) e campos obrigatórios via \texttt{@Valid} (Jakarta Validation) & 413 / 400 \\
+3 & Validação de Domínio & Invariantes de negócio no \texttt{TopicManagementService} (conteúdo não vazio, \texttt{taskCount} positivo) e violação SSRF & 400 \\
+4 & Conteúdo Extraído & Ausência de texto extraível, \textit{timeout} ou indisponibilidade do extrator, violação SSRF & 400 (cenários no Apêndice~\ref{ap:detalhe-config}, Tabela~\ref{tab:ingest-errors}) \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+\subsection*{Limites de Contexto para Geração (ContentChunker)}
+
+Após extração bem-sucedida, o texto é particionado pelo \texttt{ContentChunker} antes de ser enviado ao LLM.
+Os parâmetros são definidos em \texttt{AiContextLimits}: tamanho máximo de cada \textit{chunk} de 32\,000 caracteres, com sobreposição (\textit{overlap}) de 2\,000 caracteres entre \textit{chunks} consecutivos para preservar contexto nas fronteiras.
+O algoritmo prefere divisões em limites de parágrafo (\texttt{\textbackslash n\textbackslash n}) dentro dos últimos 500 caracteres de cada \textit{chunk}, recorrendo ao corte rígido por posição apenas quando não encontra parágrafo --- garantindo que o contexto enviado ao modelo preserva a coerência semântica do texto original. Estes parâmetros são retomados e centralizados na classe \texttt{AiContextLimits} discutida no Capítulo~\ref{cap:ia} (Secção~\ref{sec:ia-prompting}).

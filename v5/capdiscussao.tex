@@ -1,75 +1,110 @@
 % !TEX root = relatorio.tex
 %
-% Capítulo 7 — Discussão
+% Capítulo 13 — Discussão
 %
 \chapter{Discussão} \label{cap:discussao}
 
-Este capítulo analisa criticamente os resultados obtidos, confrontando-os com os objetivos propostos, identificando as decisões técnicas mais bem-sucedidas, reconhecendo as limitações encontradas, posicionando o trabalho face ao estado da arte e traçando direções para trabalho futuro.
+Este capítulo confronta os resultados com os objetivos propostos, identifica o que correu melhor e pior, posiciona o Play4Change face ao estado da arte, e aponta direções de trabalho futuro.
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Análise dos Resultados face aos Objetivos} \label{sec:analise-objetivos}
+\section{Objetivos Atingidos} \label{sec:analise-objetivos}
 
-O projeto foi orientado por cinco objetivos operacionais, cuja concretização se analisa de seguida.
+Os cinco objetivos operacionais foram todos atingidos, com diferentes graus de exigência.
 
-\textbf{OBJ-1 — Plataforma de aprendizagem adaptativa alinhada com o DigComp~2.2.} O sistema implementa todos os elementos estruturantes de uma plataforma adaptativa: inscrição com gating de pré-requisitos, entrega de tarefas por calendário, percurso de dificuldade com ramos de remediação, e escalamento para tutoria IA. O alinhamento com o DigComp~2.2 é assegurado ao nível dos tópicos, curados pelos administradores a partir de fontes documentais alinhadas com as áreas de competência da framework. A avaliação de usabilidade (§\ref{sec:testes-usabilidade}) confirmou que 66,7\% dos participantes classificaram a aplicação na categoria SUS \textit{Bom} ou \textit{Excelente}, com mediana de 85,0.
+\begin{description}[style=nextline, font=\bfseries]
 
-\textbf{OBJ-2 — Pipeline de geração de conteúdo por IA a partir de fontes arbitrárias.} O pipeline (§\ref{sec:rag}) funciona de ponta a ponta --- \textit{ingestion}, \textit{chunking}, geração por Mistral com \textit{schema reminder}, e deduplicação semântica --- e é robusto a falhas intermediárias: degradação graciosa por chunk e circuit breaker Resilience4j (§\ref{sec:thread-pool-cb}). O objetivo foi atingido com seis garantias de qualidade verificáveis (§\ref{sec:garantias-qualidade}).
+\item[OBJ-1 --- Plataforma adaptativa DigComp~2.2]
+O sistema implementa inscrição com gating de pré-requisitos, entrega calendarizada de tarefas, remediação por dificuldade e escalamento para tutoria IA. O alinhamento com o DigComp~2.2 depende da curação humana dos tópicos, não de verificação automática. Na avaliação de usabilidade (Capítulo~\ref{cap:usabilidade}), sete dos doze participantes (58,3\%) atingiram uma pontuação SUS de 80 ou superior --- o limiar que Sauro reporta como correspondente ao top 10\% de mais de 500 estudos de referência~\cite{nngroup2018}.
 
-\textbf{OBJ-3 — Remediação adaptativa personalizada por padrão de erro.} O \texttt{ErrorPatternClassifier} classifica cada resposta errada em três padrões e injeta esse diagnóstico no prompt do ramo adaptativo (§\ref{sec:consolidation}); a reutilização semântica de ramos (§\ref{sec:recuperacao}) acrescenta eficiência económica ao evitar invocações desnecessárias do modelo. O objetivo foi atingido; a limitação identificada é a profundidade máxima de \textit{struggle} (\texttt{MAX\_STRUGGLE\_DEPTH~=~1}).
+\item[OBJ-2 --- Pipeline de geração por IA]
+O pipeline --- \textit{ingestion}, \textit{chunking}, geração com \textit{schema reminder}, deduplicação semântica --- funciona de ponta a ponta e degrada graciosamente em caso de falha (circuit breaker, retry). As seis garantias de qualidade estão detalhadas no Apêndice D.
 
-\textbf{OBJ-4 — Tutoria conversacional com IA como escalamento da remediação.} A \texttt{ExplanationSession} (§\ref{sec:explicacao-ia}) implementa um ciclo completo --- geração assíncrona com contexto relacional, diálogo multi-turno e resolução com retorno ao fluxo principal --- com injeção de cabeçalho de contexto para prevenir injeção de prompt. O objetivo foi atingido; a avaliação qualitativa (§\ref{sec:usab-qualitativa}) confirmou que esta foi a funcionalidade mais valorizada.
+\item[OBJ-3 --- Remediação adaptativa]
+O \texttt{ErrorPatternClassifier} classifica cada erro em três padrões e a reutilização semântica de ramos (§\ref{sec:recuperacao}) reduz custos de API. A limitação principal é a profundidade fixa (\texttt{MAX\_STRUGGLE\_DEPTH~=~1}), analisada criticamente em §\ref{sec:limitacoes}.
 
-\textbf{OBJ-5 — Segurança e qualidade do conteúdo gerado numa aplicação web multi-utilizador.} A análise de risco OWASP (§\ref{sec:riscos}) identificou dez ameaças, com os três riscos residuais de nível Médio mitigados por controlos implementados; a suite de segurança (§\ref{sec:testes-seguranca}) valida SSRF, XSS, magic link e controlo de acesso ao Swagger. O objetivo foi atingido para o perfil de ameaças identificado.
+\item[OBJ-4 --- Tutoria com IA]
+A \texttt{ExplanationSession} (§\ref{sec:explicacao-ia}) cobre geração assíncrona, diálogo multi-turno e retorno ao fluxo principal. Foi a funcionalidade mais valorizada na avaliação qualitativa (§\ref{sec:usab-qualitativa}).
+
+\item[OBJ-5 --- Segurança e qualidade]
+A segurança não foi o foco do projeto, mas dez vetores de ataque concretos foram endereçados (§\ref{sec:riscos}), três com exposição residual reconhecida (nível Médio); a suite de segurança valida SSRF, XSS, magic link e controlo de acesso ao Swagger. Não há pretensão de cobertura exaustiva.
+
+\end{description}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{O que Correu Bem} \label{sec:positivo}
 
-\textbf{Arquitetura hexagonal como base de testabilidade.} Modelar todas as dependências externas como interfaces revelou-se a decisão mais impactante do projeto: permitiu uma suite de 49 ficheiros de teste em que os unitários executam em memória pura, em microssegundos. O contrato \texttt{Either<DomainError,~T>} da Arrow tornou os casos de insucesso tão explícitos e verificáveis como os de sucesso.
+\begin{description}[style=nextline, font=\bfseries]
 
-\textbf{Reutilização semântica de ramos adaptativos.} O mecanismo de três estratégias (FULL\_REUSE, PARTIAL\_REUSE, FRESH\_GENERATION) por similaridade coseno pgvector é o contributo técnico mais original do sistema: servir um ramo sem qualquer chamada ao modelo (FULL\_REUSE, similaridade $> 0{,}90$) reduz os custos de API de forma estrutural à medida que a base de ramos cresce --- uma melhoria contínua sem custo marginal crescente, valiosa para uma plataforma em escala.
+\item[Arquitetura hexagonal]
+Modelar todas as dependências externas como interfaces (§\ref{sec:arquitetura}) foi a decisão mais rentável do projeto: torna a suite de testes rápida e determinística (§\ref{sec:estrategia-testes}), a ponto de permitir substituir o próprio relógio por um \texttt{ManualTimeMeter} (§\ref{sec:testes-rate-int}) e tornar 100\% deterministas até os testes de janelas temporais de \textit{rate limiting}.
 
-\textbf{Resiliência por design no pipeline de geração.} A combinação de circuit breaker, degradação graciosa por chunk, \textit{schema reminder} automático e \textit{fail-safe} na \texttt{ExplanationSession} tornou o sistema tolerante a falhas intermitentes da API externa sem expor o utilizador a erros, com visibilidade operacional imediata via alerta \texttt{AiCircuitBreakerOpen}.
+\item[Reutilização semântica de ramos]
+A reutilização por similaridade coseno (§\ref{sec:recuperacao}, Tabela~\ref{tab:rag-reuse}) reduz o custo de API à medida que a base de ramos cresce, sem intervenção humana --- o contributo técnico mais original do sistema.
 
-\textbf{Autenticação sem senha com garantias de segurança formais.} O fluxo \textit{magic link} eliminou a complexidade de gestão de passwords e é mais seguro para utilizadores não técnicos; hashing SHA-256, consumo atómico e rotação de família de tokens cobrem as ameaças mais relevantes do modelo de autenticação (§\ref{sec:autenticacao}).
+\item[Resiliência do pipeline de IA]
+Circuit breaker, degradação graciosa e \textit{fail-safe} tornam o sistema tolerante a falhas intermitentes do Mistral, com visibilidade via o alerta \texttt{AiCircuitBreakerOpen}.
 
-\textbf{Rate limiting com teste determinístico.} A substituição do \texttt{TimeMeter} por \texttt{ManualTimeMeter} nos testes de integração (§\ref{sec:testes-rate-int}) permitiu verificar limites e resets de janela sem dependência de tempo de parede, tornando os testes 100\% determinísticos --- uma técnica diretamente transferível a qualquer componente sensível ao tempo.
+\item[Autenticação sem senha]
+O fluxo \textit{magic link} elimina a gestão de passwords e cobre as ameaças relevantes ao modelo de autenticação (§\ref{sec:autenticacao}).
+
+\end{description}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Limitações e Dificuldades} \label{sec:limitacoes}
 
-\textbf{Conformidade de schema do modelo de linguagem.} O Mistral não garante que a resposta JSON respeite sempre o schema pedido. O \textit{schema reminder} mitiga o problema com uma segunda invocação, mas não elimina a possibilidade de falha persistente; sem dados de produção em escala não é possível quantificar a taxa de ocorrência real.
+\begin{description}[style=nextline, font=\bfseries]
 
-\textbf{Profundidade máxima de struggle.} \texttt{MAX\_STRUGGLE\_DEPTH~=~1} significa que após um único ramo falhado o sistema escala imediatamente para explicação. Numa plataforma com tópicos de nível avançado, uma profundidade maior poderia ser pedagogicamente mais adequada; a constante é configurável apenas por código, dificultando a experimentação.
+\item[Conformidade de schema do LLM]
+O Mistral não garante JSON válido em todas as chamadas. O \textit{schema reminder} mitiga, não elimina, a falha; sem dados de produção não é possível quantificar a taxa real de ocorrência.
 
-\textbf{Bugs de interface identificados na avaliação.} A avaliação (§\ref{sec:usab-qualitativa}) identificou uma \textit{race condition} visual no caminho de consolidação, responsável pelas duas pontuações SUS mais baixas (P04~=~45, P05~=~35), além da barra de pesquisa oculta durante a inserção de e-mail e inconsistência de idioma nos conteúdos --- problemas que afetam a percepção de qualidade de forma desproporcionada à sua complexidade técnica de resolução.
+\item[Profundidade fixa de struggle]
+A escolha de \texttt{MAX\_STRUGGLE\_DEPTH~=~1}, justificada na Secção~\ref{sec:consolidation}, deixa tópicos avançados sem patamares intermédios antes do escalamento para tutoria --- o compromisso identificado fica por endereçar em trabalho futuro (§\ref{sec:trabalho-futuro}).
 
-\textbf{Ausência de métricas de produção em escala.} O sistema instrumenta 18 métricas e oito alertas (§\ref{sec:metricas}), mas a avaliação foi conduzida com 12 participantes num ambiente controlado; latências reais, distribuição de estratégias de reutilização e taxa de deduplicação efetiva sob carga real permanecem por medir.
+\item[Falta de dados de produção]
+O sistema instrumenta 20 métricas e oito alertas, mas a validação assentou em 12 participantes num ambiente controlado. Latências reais, distribuição de estratégias de reutilização e taxa de deduplicação sob carga permanecem por medir.
 
-\textbf{Dependência de fornecedor de IA único.} O sistema está acoplado ao Mistral AI. A abstracção LangChain4j isola o código de negócio da implementação concreta, mas os prompts estão calibrados ao comportamento específico do Mistral; uma migração exigiria recalibração e re-embedding de todos os vectores existentes.
+\item[Fornecedor de IA único]
+O sistema está acoplado ao Mistral; a abstração LangChain4j isola a lógica de negócio, mas os prompts e os \textit{embeddings} estão calibrados a este modelo --- migrar exigiria recalibração e \textit{re-embedding} de todo o catálogo.
 
-\textbf{Validação pedagógica do alinhamento DigComp~2.2.} O alinhamento é garantido pela curação humana dos tópicos, mas não é validado automaticamente pela IA --- não existe verificação de que uma tarefa gerada testa efetivamente a competência DigComp~2.2 pretendida, e não apenas conhecimento genérico.
+\item[Contexto \textit{Report} por integrar]
+O mecanismo de sinalização de tarefas incorretas (contexto \textit{Report}, Secção~\ref{sec:arquitetura}) está implementado no servidor e no painel web, mas não ligado a nenhum cliente --- restam por decidir a política de suspensão de conteúdo, as salvaguardas contra falsos alarmes, e o tratamento de instâncias já entregues.
+
+\end{description}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Comparação com o Estado da Arte} \label{sec:comparacao-arte}
 
-O Play4Change insere-se no cruzamento de três linhas de trabalho revistas no Capítulo~2: plataformas gamificadas, sistemas de tutoria inteligente (ITS) e geração de conteúdo educativo por LLM.
+O Play4Change cruza três linhas do Capítulo~\ref{cap:estadodaarte}: plataformas gamificadas, sistemas de tutoria inteligente (ITS) e geração de conteúdo por LLM.
 
-\textbf{Face a plataformas gamificadas estabelecidas.} O Duolingo usa repetição espaçada e um currículo pré-construído por especialistas humanos; o Play4Change não usa SRS, mas distingue-se pela capacidade de gerar conteúdo a partir de qualquer fonte documental. Nem a Khan Academy nem o Coursera estão alinhados com o DigComp~2.2 ou permitem que instituições adicionem conteúdo próprio com geração automática de tarefas.
+\begin{description}[style=nextline, font=\bfseries]
 
-\textbf{Face a sistemas de tutoria inteligente clássicos.} Os ITS tradicionais (Cognitive Tutor, ALEKS) usam modelos de utilizador explícitos (BKT, PFA); o Play4Change usa uma heurística mais simples --- classificação de padrão de erro em três categorias --- trivial mas pedagogicamente interpretável. A vantagem dos ITS clássicos é a precisão diagnóstica; a do Play4Change é a generalidade, funcionando em qualquer domínio sem dados de calibração histórica.
+\item[Face às plataformas gamificadas]
+(Tabela~\ref{tab:comparativo}, §\ref{sec:sintese}) Nenhuma gera conteúdo próprio a partir de fontes documentais de uma instituição, mas todas oferecem hoje mais funcionalidades sociais e de retenção --- a lacuna mais relevante para o trabalho futuro.
 
-\textbf{Face a soluções baseadas em LLM para educação.} Usar ChatGPT ou Claude diretamente para tutoria é flexível mas não estruturado pedagogicamente: sem percurso definido, sem gamificação, sem progressão garantida e sem isolamento do input do utilizador. O Play4Change estrutura a progressão (tarefa~$\to$~struggle~$\to$~explicação~$\to$~retentativa), gamifica, garante qualidade por schema e deduplicação, e isola o input em mensagens tipadas separadas.
+\item[Face aos ITS clássicos]
+(Cognitive Tutor, ALEKS) Estes usam modelos de utilizador explícitos (BKT, PFA), mais precisos diagnosticamente; o Play4Change usa uma heurística mais simples --- três padrões de erro --- trocando precisão por generalidade: funciona em qualquer domínio sem dados de calibração histórica.
 
-\textbf{Contributos originais.} Três aspetos distinguem o Play4Change: a reutilização semântica de ramos adaptativos por similaridade coseno, que melhora continuamente a eficiência de custo sem intervenção humana; o modelo de escalamento estruturado (tarefa~$\to$~struggle~$\to$~explicação IA~$\to$~retentativa), com transições de estado explícitas; e a baralhagem determinística por utilizador, que previne partilha de respostas sem eliminar a reprodutibilidade dentro da mesma sessão.
+\item[Face ao uso direto de LLM para tutoria]
+(ChatGPT, Claude) É flexível mas sem percurso definido, gamificação ou isolamento de input. O Play4Change estrutura a progressão (tarefa~$\to$~struggle~$\to$~explicação~$\to$~retentativa), gamifica, garante qualidade por schema e deduplicação, e isola o input do utilizador em mensagens tipadas.
+
+\end{description}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Trabalho Futuro} \label{sec:trabalho-futuro}
 
-\textbf{Funcionalidades sociais e de retenção.} A sugestão mais recorrente na avaliação de usabilidade foi a adição de funcionalidades sociais --- lista de amigos, tabelas de classificação, rivalidade positiva --- com impacto direto na retenção diária, já que a declaração de envolvimento mais baixa (3,92) foi precisamente sobre o regresso diário. Conquistas e medalhas por nível de aprendizagem podem ser implementadas sobre a infraestrutura de \texttt{micro\_competences} já existente, tal como notificações comportamentais personalizadas junto da janela habitual de utilização do utilizador.
+Duas direções têm prioridade estratégica:
 
-\textbf{Reconhecimento formal via Open Badges e créditos ECTS.} O sistema de crachás atual é interno e não portável. Mapear estas conquistas para o \textit{standard} europeu \textit{Open Badges} permitiria a sua exportação e verificação externa, podendo suportar, no contexto da rede U!REKA, o reconhecimento formal de micro-créditos ECTS em unidades curriculares de reduzida carga horária.
+\begin{description}[style=nextline, font=\bfseries]
 
-A Tabela~\ref{tab:trabalho-futuro} resume cinco direções adicionais, de menor prioridade estratégica que as duas acima mas tecnicamente viáveis sobre a arquitetura atual sem alterações estruturais.
+\item[Funcionalidades sociais e de retenção]
+Amigos, tabelas de classificação, conquistas sobre a infraestrutura de \texttt{micro\_competences} já existente, e notificações comportamentais --- respondem à sugestão mais recorrente da avaliação de usabilidade e à declaração de envolvimento mais baixa (regresso diário, 3,92/5).
+
+\item[Reconhecimento formal via Open Badges e créditos ECTS]
+Tornaria o sistema de crachás atual, hoje interno e não portável, exportável e verificável externamente, com potencial para micro-créditos ECTS na rede U!REKA.
+
+\end{description}
+
+A Tabela~\ref{tab:trabalho-futuro} resume seis direções de menor prioridade, todas viáveis sobre a arquitetura atual sem alterações estruturais.
 
 \begin{table}[h!]
 \centering
@@ -80,15 +115,15 @@ A Tabela~\ref{tab:trabalho-futuro} resume cinco direções adicionais, de menor 
 \hline
 \textbf{Direção} & \textbf{Descrição} \\
 \hline
-Explicações adaptadas ao móvel & A avaliação qualitativa revelou que as explicações IA em prosa são longas demais para ecrãs pequenos; configurar o comprimento em função do \texttt{audienceLevel} e do canal, ou gerar uma versão resumida expansível. \\
-Personalização geográfica & Um participante sugeriu usar a localização do dispositivo para personalizar questões sobre cidades inteligentes ao município do utilizador --- viável com a arquitetura atual, bastando injetar metadados de localização no contexto de geração. \\
-Profundidade variável de struggle & Substituir \texttt{MAX\_STRUGGLE\_DEPTH~=~1} por um valor configurável por tópico, complementado por um modelo de utilizador simples baseado no histórico de \texttt{wrongAttemptCount} e na distribuição de padrões de erro. \\
-Análise de desempenho das questões & O sistema já instrumenta \texttt{tasks\_submitted\_total} por resultado e tópico; um painel de qualidade (taxa de acerto, tempo médio) sinalizaria para revisão questões com taxa de acerto $<$20\% ou $>$95\%. \\
-Validação automática de alinhamento DigComp~2.2 & Um segundo prompt poderia classificar a competência DigComp~2.2 testada por cada tarefa gerada e verificar a correspondência com o módulo configurado, sinalizando incongruências para revisão humana. \\
-Suporte nativo multi-plataforma & O Kotlin Multiplatform possibilita compilação nativa para iOS com código partilhado, mas o projeto atual entrega apenas o alvo Android. \\
+Explicações adaptadas ao móvel & Comprimento configurável por \texttt{audienceLevel} e canal, ou versão resumida expansível --- as explicações em prosa são hoje longas para ecrãs pequenos. \\
+Personalização geográfica & Injetar a localização do dispositivo no contexto de geração, adaptando questões ao município do utilizador. \\
+Profundidade variável de struggle & \texttt{MAX\_STRUGGLE\_DEPTH} configurável por tópico, baseado em \texttt{wrongAttemptCount} e na distribuição de padrões de erro. \\
+Análise de desempenho das questões & Painel sobre \texttt{tasks\_submitted\_total} que sinalize questões com taxa de acerto $<$20\% ou $>$95\%. \\
+Validação automática de alinhamento DigComp~2.2 & Segundo prompt que classifique a competência testada e sinalize incongruências com o módulo. \\
+Suporte nativo multi-plataforma & Kotlin Multiplatform permite compilação nativa para iOS; hoje entrega-se apenas Android. \\
 \hline
 \end{tabular}%
 }
 \end{table}
 
-\textbf{Duas direções estratégicas para o futuro.} A segmentação de perfis de afinidade tecnológica observada nos testes de usabilidade (§\ref{sec:usab-qualitativa}) sugere duas direções não necessariamente exclusivas: aprofundar a vertente universitária junto do perfil tecnologicamente confortável, através de Open Badges e créditos ECTS na rede U!REKA; ou, para o perfil de menor afinidade tecnológica --- que é precisamente quem mais beneficiaria do reforço de competências digitais ---, acrescentar mecanismos de acompanhamento, orientação ou mediação humana, em vez de depender exclusivamente da auto-motivação do utilizador. A escolha entre estas direções, ou a exploração de ambas em paralelo, fica em aberto para trabalho futuro.
+Duas direções estratégicas, não necessariamente exclusivas, ficam em aberto --- aprofundar a vertente universitária para o público tecnologicamente confortável, ou investir em acompanhamento humano para o perfil de menor afinidade digital --- retomadas na síntese final do Capítulo~\ref{cap:conclusao}.
