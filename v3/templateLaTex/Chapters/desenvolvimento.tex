@@ -45,7 +45,7 @@ Esta sec\c{c}\~ao descreve cada m\'odulo pelo que \'e \emph{respons\'avel por
 garantir}, n\~ao pelas tecnologias que usa. A Tabela~\ref{tab:modulos-responsabilidades}
 fornece um resumo antes da descri\c{c}\~ao detalhada.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{3.0cm} p{9.5cm}}
@@ -173,21 +173,7 @@ dist intivos quando os crit\'erios de mestria s\~ao atingidos; e verificar a
 integridade do grafo de pr\'e-requisitos por pesquisa em largura.
 
 \paragraph{Agendadores.}
-Executa tarefas temporais em segundo plano sem interven\c{c}\~ao humana,
-organizadas em tr\^es responsabilidades distintas.
-
-A primeira \'e a \textbf{expira\c{c}\~ao de inscri\c{c}\~oes}: um job peri\'odico
-percorre as inscri\c{c}\~oes \texttt{ACTIVE} cujo \texttt{dueDate} j\'a foi
-ultrapassado e as transita para \texttt{EXPIRED}, impedindo que utilizadores
-inactivos continuem a ocupar vagas em t\'opicos com limite de inscritos.
-
-A segunda \'e o \textbf{encerramento de revis\~oes por pares}: quando o sistema
-suporta submiss\~oes abertas com revis\~ao por outros utilizadores, um job
-independente detecta revis\~oes cujo prazo de resposta expirou e fecha-as
-automaticamente com o estado \texttt{TIMED\_OUT}, desbloqueando o progresso
-do autor.
-
-A terceira e mais cr\'itica \'e o \textbf{watchdog de gera\c{c}\~ao de IA}:
+Executa tarefas temporais em segundo plano sem interven\c{c}\~ao humana. O \textbf{watchdog de gera\c{c}\~ao de IA}:
 qualquer gera\c{c}\~ao de conte\'udo que permane\c{c}a no estado
 \texttt{GENERATING} por mais tempo do que o timeout configurado \'e
 considerada presa --- tipicamente por falha do servidor durante a chamada
@@ -562,7 +548,7 @@ gerado desactualizado sem qualquer notifica\c{c}\~ao ao sistema.
 
 \paragraph{Limite de contexto e truncagem.}
 Independentemente da fonte, o texto extra\'ido \'e truncado a
-\textbf{50.000 caracteres} antes de ser injectado no prompt do LLM
+\textbf{8.000 caracteres} antes de ser injectado no prompt do LLM
 (campo \texttt{subjectDomain}). Este limite existe porque os modelos de
 linguagem t\^em uma janela de contexto finita e porque textos
 excessivamente longos diluem a aten\c{c}\~ao do modelo, reduzindo a
@@ -570,7 +556,7 @@ coer\^encia e a especificidade das tarefas geradas.
 
 A truncagem tem uma implica\c{c}\~ao directa: para documentos longos ---
 manuais t\'ecnicos, disserta\c{c}\~oes, relat\'orios extensos --- apenas
-os primeiros 50.000 caracteres s\~ao usados como contexto. Se o conte\'udo
+os primeiros 8.000 caracteres s\~ao usados como contexto. Se o conte\'udo
 mais relevante estiver distribu\'ido ao longo de todo o documento, as
 tarefas geradas podem reflectir apenas a primeira por\c{c}\~ao. Esta \'e
 uma \textbf{limita\c{c}\~ao conhecida do prot\'otipo}: uma vers\~ao de
@@ -972,7 +958,7 @@ adaptativo (Figura~\ref{fig:seq-wrong}). O servidor classifica imediata e
 deterministicamente o padr\~ao de erro usando tr\^es regras em cascata,
 conforme a Tabela~\ref{tab:classificacao-erro}.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{3.8cm} p{8.0cm}}
@@ -1299,75 +1285,23 @@ o formato de sa\'ida (JSON array apenas, sem texto adicional), e a posi\c{c}\~ao
 da resposta correcta (sempre no \'indice 0 do array de op\c{c}\~oes --- o
 sistema baralha antes de enviar ao utilizador).
 
-\begin{lstlisting}[
-	language=,
-	caption={[System prompt da gera\c{c}\~ao de tarefas]System prompt para gera\c{c}\~ao de tarefas do percurso fixo (fonte: \texttt{TaskGenerationPrompt.kt}). As regras do formato JSON s\~ao expl\'icitas para minimizar falhas de esquema.},
-	label=lst:task-gen-system,
-	basicstyle=\ttfamily\footnotesize,
-	frame=single,
-	breaklines=true
-]
-You are an expert educational content designer specialising in
-gamified learning experiences. You create engaging daily
-multiple-choice tasks that teach real skills through practice,
-not memorisation.
-
-LANGUAGE: You MUST generate ALL text content in {language}.
-Do not mix languages.
-
-RULES:
-- Each task completable in 5-15 minutes
-- Practical and actionable, not theoretical
-- Difficulty must match audience level exactly
-- Hints must guide without giving away the answer
-- Always generate exactly 4 options per task
-- Correct answer always at index 0 (system shuffles before display)
-- Wrong options must be plausible
-
-OUTPUT FORMAT: Valid JSON array only. No preamble.
-[{
-  "title": "string (max 60 chars)",
-  "description": "string (max 300 chars)",
-  "hint": "string (max 150 chars)",
-  "pointsReward": number (10-100),
-  "options": ["correct", "wrong1", "wrong2", "wrong3"],
-  "correctAnswerIndex": 0
-}]
-\end{lstlisting}
+O system prompt completo encontra-se na Listagem~\ref{lst:task-gen-system}
+(Ap\^endice~\ref{ap:prompts-ia}).
 
 O \emph{user prompt} (Listagem~\ref{lst:task-gen-user}) injeta o contexto
-espec\'ifico do t\'opico, incluindo o texto extra\'ido (at\'e 50.000
+espec\'ifico do t\'opico, incluindo o texto extra\'ido (at\'e 8.000
 caracteres), o objectivo do m\'odulo, o n\'ivel de audi\^encia e o idioma.
 A instru\c{c}\~ao de progress\~ao l\'ogica das tarefas reflecte o princ\'ipio
 do \emph{scaffolding} cognitivo: tarefas mais cedo constroem fundamentos,
 tarefas mais tarde aplicam conceitos em cen\'arios mais complexos.
 
-\begin{lstlisting}[
-	language=,
-	caption={[User prompt da gera\c{c}\~ao de tarefas]User prompt para gera\c{c}\~ao de tarefas (fonte: \texttt{TaskGenerationPrompt.kt}).},
-	label=lst:task-gen-user,
-	basicstyle=\ttfamily\footnotesize,
-	frame=single,
-	breaklines=true
-]
-Generate {taskCount} multiple-choice learning tasks for:
-
-Subject Domain: {subjectDomain}     [max 50 000 chars]
-Module Objective: {moduleObjective} [max 2 000 chars]
-Audience Level: {audienceLevel}
-Language: {language}
-
-Tasks must progress logically -- earlier tasks build foundations,
-later tasks apply concepts in more complex scenarios.
-
-Remember: correct answer at index 0.
-Generate the JSON array now:
-\end{lstlisting}
+O user prompt completo encontra-se na Listagem~\ref{lst:task-gen-user}
+(Ap\^endice~\ref{ap:prompts-ia}).
 
 O n\'ivel de audi\^encia \'e traduzido para linguagem natural conforme a
 Tabela~\ref{tab:audience-levels}.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{2.8cm} p{9.5cm}}
@@ -1414,7 +1348,7 @@ gerado, excluindo os ramos que o utilizador j\'a viu para esta atribui\c{c}\~ao.
 O resultado determina a estrat\'egia de reutiliza\c{c}\~ao conforme a
 Tabela~\ref{tab:reuse-strategy}.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{3.2cm} p{3.0cm} p{5.9cm}}
@@ -1460,32 +1394,14 @@ remediativa: o modelo \'e instru\'ido a come\c{c}ar pelo conceito mais
 simples poss\'ivel e a reencadrar a dificuldade como uma oportunidade.
 \end{sloppypar}
 
-\begin{lstlisting}[
-	language=,
-	caption={[System prompt da gera\c{c}\~ao adaptativa]System prompt para gera\c{c}\~ao de ramos adaptativos de consolida\c{c}\~ao (fonte: \texttt{StruggleAnalysisPrompt.kt}).},
-	label=lst:struggle-system,
-	basicstyle=\ttfamily\footnotesize,
-	frame=single,
-	breaklines=true
-]
-You are an expert adaptive learning coach. A student is struggling
-with a specific task. Your job is to create a short sequence of
-simpler subtasks that scaffold the student back to success.
-
-PRINCIPLES:
-- Diagnose the root cause from the error pattern
-- Start with the simplest possible related concept
-- Each subtask builds on the previous one
-- Final subtask brings student back to original task level
-- Be encouraging -- frame as achievable steps, not remediation
-- Each subtask completable in 3-10 minutes
-\end{lstlisting}
+O system prompt completo encontra-se na Listagem~\ref{lst:struggle-system}
+(Ap\^endice~\ref{ap:prompts-ia}).
 
 O \emph{user prompt} injeta o padr\~ao de erro com a sua tradu\c{c}\~ao
 pedag\'ogica (Tabela~\ref{tab:error-patterns}), permitindo ao LLM gerar
 subtarefas especificamente adaptadas ao tipo de dificuldade detectada.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{4.2cm} p{7.7cm}}
@@ -1494,7 +1410,7 @@ subtarefas especificamente adaptadas ao tipo de dificuldade detectada.
 		\midrule
 		\texttt{WRONG\_CONCEPT}
 			& The student misunderstands the core concept. Start by re-explaining it differently. \\
-		\texttt{PARTIAL\_UNDERSTANDING}
+		\texttt{PARTIAL\_UNDERSTANDING}\textsuperscript{*}
 			& The student understands the concept but applies the wrong steps. Focus on procedure. \\
 		\texttt{READING\_ERROR}
 			& The task instructions were unclear. Provide clearer, more explicit guidance. \\
@@ -1505,6 +1421,7 @@ subtarefas especificamente adaptadas ao tipo de dificuldade detectada.
 	\caption[Mapeamento de padr\~oes de erro para instru\c{c}\~oes pedag\'ogicas no prompt]{Tradu\c{c}\~ao dos padr\~oes de erro para instru\c{c}\~oes pedag\'ogicas espec\'ificas inclu\'idas no prompt adaptativo. A especificidade da instru\c{c}\~ao \'e o principal factor de qualidade das subtarefas geradas.}
 	\label{tab:error-patterns}
 \end{table}
+\noindent\textsuperscript{*}\small\texttt{PARTIAL\_UNDERSTANDING} est\'a definido no modelo de dom\'inio e mapeado na camada de servi\c{c}o, mas n\~ao \'e emitido pelo classificador actual: requer uma m\'aquina de estados de duas tentativas que n\~ao existe nesta vers\~ao do prot\'otipo. O seu desenvolvimento est\'a listado como trabalho futuro (\S\ref{sec:trabalho-futuro}).\normalsize
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{Gera\c{c}\~ao da explica\c{c}\~ao hol\'istica}
@@ -1525,26 +1442,8 @@ sem listas, sem cabe\c{c}alhos), com 3 a 5 par\'agrafos. Esta restri\c{c}\~ao
 suficiente de m\'ultipla escolha; o que precisa \'e de uma explica\c{c}\~ao
 natural, emp\'atica e flu\'ida.
 
-\begin{lstlisting}[
-	language=,
-	caption={[System prompt do modo de explica\c{c}\~ao]System prompt para gera\c{c}\~ao da explica\c{c}\~ao hol\'istica (fonte: \texttt{ExplanationPrompt.kt}).},
-	label=lst:explanation-prompt,
-	basicstyle=\ttfamily\footnotesize,
-	frame=single,
-	breaklines=true
-]
-You are a patient and empathetic learning coach helping a student
-who has struggled repeatedly with the same concept.
-
-YOUR GOAL:
-- Synthesise what went wrong across all their attempts
-- Explain the underlying concept clearly and simply
-- Use concrete examples relevant to the subject domain
-- Be encouraging -- frame struggles as a normal part of learning
-- Keep the explanation concise: 3-5 paragraphs maximum
-- Write in plain prose -- no JSON, no bullet lists, no headers
-- Match the learner's language exactly
-\end{lstlisting}
+O system prompt completo encontra-se na Listagem~\ref{lst:explanation-prompt}
+(Ap\^endice~\ref{ap:prompts-ia}).
 
 Para o di\'alogo subsequente, o \emph{system prompt} de resposta
 (Listagem~\ref{lst:reply-prompt}) instrui o modelo a agir como coach
@@ -1553,25 +1452,8 @@ enviada ao modelo juntamente com o hist\'orial completo da conversa,
 constru\'ido dinamicamente como texto simples com prefixos de papel
 (\texttt{Coach:} / \texttt{Student:}).
 
-\begin{lstlisting}[
-	language=,
-	caption={[System prompt do di\'alogo de explica\c{c}\~ao]System prompt para as rondas de di\'alogo ap\'os a explica\c{c}\~ao hol\'istica (fonte: \texttt{ExplanationPrompt.kt}).},
-	label=lst:reply-prompt,
-	basicstyle=\ttfamily\footnotesize,
-	frame=single,
-	breaklines=true
-]
-You are a patient learning coach in an ongoing conversation
-with a confused student who already received an initial explanation.
-
-PRINCIPLES:
-- Address their exact question directly
-- Use simple language and concrete examples
-- Keep replies focused: 2-4 sentences
-- Be warm and encouraging
-- Write in the same language as the student
-- Plain prose only
-\end{lstlisting}
+O system prompt completo encontra-se na Listagem~\ref{lst:reply-prompt}
+(Ap\^endice~\ref{ap:prompts-ia}).
 
 A Figura~\ref{fig:escalada-ia} sintetiza a escada progressiva do modo de IA
 desde a gera\c{c}\~ao de tarefas adaptativas at\'e ao di\'alogo livre.
@@ -1670,7 +1552,7 @@ iniciar e manter.
 A Tabela~\ref{tab:api-endpoints} sintetiza os principais \emph{endpoints}
 REST que exp\~oem as funcionalidades descritas neste cap\'itulo.
 
-\begin{table}[h]
+\begin{table}[htbp]
 	\centering
 	\small
 	\begin{tabular}{p{1.5cm} p{6.0cm} p{1.3cm} p{3.8cm}}
@@ -1705,6 +1587,7 @@ REST que exp\~oem as funcionalidades descritas neste cap\'itulo.
 \label{sec:sintese-desenvolvimento}
 % ─────────────────────────────────────────────────────────────────────────────
 
+\begin{sloppypar}
 O desenvolvimento do \emph{Play4Change} produziu um prot\'otipo funcional com
 tr\^es camadas bem definidas --- servidor, cliente multiplatforma e painel de
 administra\c{c}\~ao --- articuladas por uma API REST segundo os princ\'ipios da
@@ -1712,6 +1595,7 @@ arquitectura hexagonal~\cite{cockburn2005hexagonal}. A separa\c{c}\~ao entre o
 contrato de porta (\texttt{TaskGenerationPort}) e a sua implementa\c{c}\~ao
 (\texttt{LangChain4jTaskGenerationAdapter}) garante que o fornecedor de LLM
 pode ser substitu\'ido sem altera\c{c}\~oes no servidor de aplica\c{c}\~ao.
+\end{sloppypar}
 
 O mecanismo mais complexo e distint ivo \'e o percurso adaptativo: a
 combina\c{c}\~ao de classifica\c{c}\~ao determin\'istica de erros

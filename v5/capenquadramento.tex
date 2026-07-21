@@ -1,0 +1,77 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 2 — Estado da Arte
+%
+\chapter{Estado da Arte} \label{cap:estadodaarte}
+
+Este capítulo situa o Play4Change no panorama da aprendizagem adaptativa, da Inteligência Artificial na educação, da distinção entre aprendizagem formal, informal e móvel, e do \textit{Retrieval-Augmented Generation}, terminando com uma síntese comparativa face às soluções existentes.
+
+% -----------------------------------------------------------
+\section{Aprendizagem Adaptativa e Sistemas de Tutoria Inteligente} \label{sec:its}
+% -----------------------------------------------------------
+
+A ideia de adaptar o ensino ao ritmo e ao perfil individual de cada aluno não é nova: em meados do século XX, Skinner propôs as primeiras ``máquinas de ensinar'', baseadas no reforço imediato da resposta correta~\cite{skinner1958}, evoluindo nas décadas seguintes para os \textit{Intelligent Tutoring Systems} (ITS), sistemas que modelam o estado de conhecimento do aluno e adaptam dinamicamente a instrução através de três módulos (domínio, estudante e pedagógico)~\cite{anderson1985,vanlehn2011}, o segundo tipicamente implementado por \textit{Knowledge Tracing}~\cite{corbett1994,piech2015}.
+
+No mercado atual, plataformas como Duolingo, Khan Academy e Coursera incorporam adaptatividade em graus distintos e têm vindo, desde 2023--2024, a recorrer também elas a Inteligência Artificial generativa para acelerar a produção de conteúdo: a Duolingo lançou 148 novos cursos de línguas construídos com IA generativa~\cite{duolingo2025ai}; a Khan Academy oferece, através do Khanmigo, geração dinâmica de planos de aula, questões e diferenciação por interesse do aluno~\cite{khanmigo2025}; e a Coursera disponibiliza aos seus parceiros um Course Builder que gera automaticamente estrutura, leituras e avaliações a partir de indicações do autor~\cite{coursera2024coursebuilder}. A limitação que persiste não é a geração de conteúdo em si, mas o seu âmbito: em todos os casos a IA alimenta o catálogo próprio e curado da plataforma, não a submissão livre de uma fonte arbitrária por qualquer Administrador. É nesse âmbito que o Play4Change se distingue: a ingestão de uma fonte própria do Administrador, a geração ancorada por RAG e a remediação adaptativa por Learner, integradas no mesmo ciclo.
+
+% -----------------------------------------------------------
+\section{Inteligência Artificial na Educação} \label{sec:aied}
+% -----------------------------------------------------------
+
+A aplicação da Inteligência Artificial à educação (\textit{AI in Education}, AIEd) tem uma história de várias décadas, mas os LLM introduziram uma mudança qualitativa nas possibilidades desta área. Em 1984, Bloom demonstrou que a tutoria individual supera em dois desvios padrão (\textit{2 sigma}) o ensino tradicional em sala de aula, um ganho pedagógico economicamente inviável a essa escala~\cite{bloom1984}. Os LLM reabriram este debate~\cite{kasneci2023}: um modelo disponível 24 horas, capaz de adaptar a explicação ao nível do utilizador e dar \textit{feedback} imediato e contextualizado, aproxima pela primeira vez esse ideal de uma escala de implementação massiva~\cite{bommasani2021}.
+
+Estar disponível a qualquer hora não basta, contudo, para que essa tutoria seja pedagogicamente eficaz, e é aqui que a literatura aponta o primeiro requisito que um tutor por IA precisa de cumprir. A investigação converge num ponto, independentemente da tecnologia que a entrega: o \textit{feedback} imediato e formativo acelera a aprendizagem. Hattie (2009) coloca-o entre os dez maiores aceleradores, com um tamanho de efeito $d = 0{,}73$~\cite{hattie2009}, ainda que a robustez estatística desta meta-análise tenha sido questionada~\cite{simpson2017}. É este o padrão que o Play4Change persegue, ainda que de forma parcial: fornece de imediato o resultado (certo/errado) de cada desafio diário, mas o \textit{feedback} explicativo por IA só é acionado quando o Learner erra e a remediação adaptativa subsequente também falha (Secção~\ref{sec:consolidation} do Capítulo~\ref{cap:implementacao}). Uma escalada deliberada, não a resposta imediata e exaustiva que a tecnologia já permitiria.
+
+Um tutor sempre disponível e com \textit{feedback} imediato traz consigo um segundo risco, este do lado oposto: o de sobrecarregar o aluno pela própria frequência da interação. A \textit{Cognitive Load Theory} de Sweller~\cite{sweller1994} distingue carga cognitiva \textit{intrínseca} (a dificuldade inerente ao próprio conteúdo a aprender), \textit{extrínseca} (a dificuldade acrescida pela forma como esse conteúdo é apresentado, evitável por bom desenho instrucional) e \textit{germane} (o esforço mental produtivo que o aluno dedica a consolidar o que aprende), e é este o segundo requisito que orienta o desenho do Play4Change: aplicado à escala do tópico, traduz-se num único desafio curto e diário por tópico, sem conteúdo simultâneo a competir pela atenção do Learner dentro desse tópico. É também essa unidade por tópico que permite a um Administrador ativar um novo domínio de conhecimento sem redesenhar a experiência dos restantes. A carga cognitiva agregada só cresce, ainda assim, por opção do próprio Learner: ao inscrever-se em vários tópicos em simultâneo (Secção~\ref{sec:atribuicao} do Capítulo~\ref{cap:implementacao}), cada tópico ativo soma um desafio diário independente, um comportamento que a versão atual não limita nem orienta explicitamente.
+
+% -----------------------------------------------------------
+\section{Aprendizagem Formal, Informal e Móvel} \label{sec:formal-informal}
+% -----------------------------------------------------------
+
+A distinção entre aprendizagem formal e informal é central para compreender o posicionamento do Play4Change. A \textbf{aprendizagem formal} caracteriza-se por ser institucionalizada, estruturada e avalizada por certificações reconhecidas, com motivação frequentemente extrínseca~\cite{colley2003}. A \textbf{aprendizagem informal}, por contraste, é não estruturada, autodirigida e motivada pela necessidade imediata ou curiosidade intrínseca~\cite{cross2007}: Knowles demonstrou que os adultos aprendem melhor quando a aprendizagem resolve problemas reais e é controlada pelo próprio~\cite{knowles1984}, e Cross popularizou a estimativa (originada em investigação anterior do Institute for Research on Learning) de que 80\% do conhecimento prático usado no trabalho é adquirido informalmente~\cite{cross2007}. O Play4Change opera deliberadamente na interseção destes dois paradigmas: ancorado no referencial estruturado do DigComp~2.2, mas com um modelo de utilização informal e autodirigido, sem avaliações sumativas. A única concessão a um horário é o próprio desafio diário: o Learner escolhe quando o resolver dentro de uma janela de 24 horas, sujeita a uma penalização progressiva por atraso em vez de um prazo rígido de submissão.
+
+O canal escolhido para essa interseção é o dispositivo móvel: a aprendizagem móvel (\textit{m-learning}) tira partido da portabilidade e ubiquidade destes dispositivos~\cite{traxler2007}, transformando a aprendizagem num processo contínuo integrado na vida quotidiana~\cite{laurillard2007}, algo central para o Play4Change, cujo desafio diário se integra nos momentos em que o utilizador já usa o dispositivo. Com 8,9 mil milhões de subscrições móveis ativas no mundo~\cite{itu2023}, é também o canal mais inclusivo disponível, relevante para o objetivo do DigComp~2.2 de servir \textit{todos} os cidadãos~\cite{digcomp22}.
+
+% -----------------------------------------------------------
+\section{Retrieval-Augmented Generation} \label{sec:rag-arte}
+% -----------------------------------------------------------
+
+Os LLM apresentam uma limitação estrutural relevante para aplicações de domínio específico: o seu conhecimento é estático, corresponde apenas ao que aprenderam até à data de treino, e é caro de atualizar sem treinar o modelo de novo desde o início. Na prática, isto torna qualquer LLM um generalista desatualizado sobre tudo o que não estava nesse treino. É o caso, por exemplo, do documento concreto que um formador acabou de submeter à plataforma. É como perguntar a alguém culto, mas que nunca leu esse documento em particular: a resposta pode soar convincente, sem no entanto estar de facto ancorada naquele conteúdo.
+
+O \textit{Retrieval-Augmented Generation} (RAG) resolve este problema de forma direta: antes de responder, o sistema procura primeiro os excertos mais relevantes desse documento (à semelhança de um exame de consulta, em que se localiza a página certa antes de escrever a resposta) e entrega-os ao modelo como contexto, para que a resposta gerada se apoie nesses excertos em vez de no conhecimento genérico do modelo~\cite{lewis2020}. Essa procura não é feita por palavra-chave exata, mas por significado: cada excerto de texto é convertido num vetor numérico que representa o seu sentido, de forma que dois excertos com significados semelhantes ficam matematicamente próximos entre si, mesmo que usem palavras diferentes. É essa proximidade de significado que permite encontrar, de entre todo o documento, o excerto mais relevante para uma pergunta concreta. O resultado é uma redução de respostas inventadas (\textit{hallucinations}) e respostas rastreáveis às fontes que as originaram~\cite{gao2024}.
+
+A sua aplicação a sistemas educativos é uma área de investigação em crescimento: ancorar a geração de questões e \textit{feedback} em documentos fornecidos pelo formador, em vez de no conhecimento genérico do modelo, é particularmente valioso em contextos de formação especializada~\cite{kasneci2023}. É este o papel do RAG no Play4Change, detalhado na Secção~\ref{cap:rag} do Capítulo~\ref{cap:implementacao}: garantir que os desafios gerados para cada Learner estão ancorados no conteúdo submetido pelo Administrador, e não em conhecimento genérico do modelo.
+
+% -----------------------------------------------------------
+\section{Síntese Comparativa} \label{sec:sintese}
+% -----------------------------------------------------------
+
+A Tabela~\ref{tab:comparativo} apresenta uma análise comparativa entre o Play4Change e as principais plataformas de referência identificadas no estado da arte, segundo os critérios mais relevantes para o posicionamento do projeto.
+
+\begin{table}[h!]
+\centering
+\caption{Comparação entre o Play4Change e plataformas de referência}
+\label{tab:comparativo}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\hline
+ & & & & \multicolumn{2}{c}{\textbf{Play4Change}} \\
+\cline{5-6}
+\textbf{Critério} & \textbf{Duolingo} & \textbf{Khan Academy} & \textbf{Coursera} & \textbf{Atual} & \textbf{Futuro} \\
+\hline
+Gamificação                            & \cmark & \pmark & \xmark & \pmark & \cmark \\
+Adaptação à dificuldade do utilizador  & \cmark & \cmark & \xmark & \cmark & \cmark \\
+Catálogo de conteúdo pré-definido      & \cmark & \cmark & \cmark & \xmark & \pmark \\
+Reconhecimento com credenciais formais & \pmark & \xmark & \cmark & \xmark & \cmark \\
+Comunidade e interação social          & \cmark & \pmark & \cmark & \xmark & \cmark \\
+\hline
+Modelo de desafio diário no móvel      & \cmark & \xmark & \xmark & \cmark & \cmark \\
+Cliente móvel nativo                   & \cmark & \cmark & \cmark & \cmark & \cmark \\
+Autenticação \textit{passwordless}     & \xmark & \xmark & \xmark & \cmark & \cmark \\
+\hline
+\multicolumn{6}{l}{\footnotesize \cmark\ Suportado \quad \xmark\ Não suportado \quad \pmark\ Parcialmente suportado}
+\end{tabular}%
+}
+\end{table}
+
+A análise revela um posicionamento diferenciado, mas expõe também limitações claras: em gamificação, o Play4Change já tem uma base real (pontuação, \textit{streak} e crachás, visíveis na própria interface do desafio diário), mais leve do que a das plataformas estabelecidas, com espaço evidente para crescer (Secção~\ref{sec:trabalho-futuro}). Já nos critérios onde essas plataformas lideram sem contrapartida atual (reconhecimento formal por certificados, catálogo pré-definido e comunidade/interação social), o Play4Change fica em desvantagem real, por depender do conteúdo submetido pelo Administrador e não cobrir ainda estas dimensões sociais, reconhecidas como prioridades de trabalho futuro. Diferencia-se, ainda assim, pelo seu modelo de entrega, desafio diário por tópico no canal móvel, com adaptação ao desempenho e autenticação \textit{passwordless}, uma combinação que nenhuma das plataformas analisadas oferece (com a ressalva sobre múltiplas inscrições simultâneas já assinalada na Secção~\ref{sec:aied}).

@@ -1,0 +1,1658 @@
+%
+% desenvolvimento.tex
+% Capítulo 3 — Design e Implementação do Sistema
+%
+\chapter{Design e Implementação do Sistema}
+\label{cha:desenvolvimento}
+
+Este capítulo descreve como o \emph{Play4Change} foi concebido e implementado.
+A ênfase recai sobre a \textbf{arquitetura lógica} do sistema --- os seus módulos,
+as respetivas responsabilidades e os fluxos de interação que os atravessam ---
+e sobre o \textbf{motor de inteligência artificial} que sustenta a personalização
+adaptativa: como os prompts são construídos, como a resposta do modelo é
+processada e como o sistema lida com falhas.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Visão geral da arquitetura}
+\label{sec:arquitectura}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{Chapters/img/Play4change-System_Design.pdf}
+	\caption[Arquitetura l\'ogica do sistema \emph{Play4Change}]{Arquitetura l\'ogica do \emph{Play4Change}. As cinco zonas --- Apresenta\c{c}\~ao, Rede de Fronteira, Aplica\c{c}\~ao, Persist\^encia e Observabilidade --- interagem atrav\'es de protocolos e contratos bem definidos. Os servi\c{c}os externos (LLM e Email) s\~ao acedidos exclusivamente pelo servidor de aplica\c{c}\~ao, isolando os clientes de qualquer depend\^encia direta. Os r\'otulos do diagrama mant\^em-se em ingl\^es por refletirem diretamente a nomenclatura usada no c\'odigo-fonte e na configura\c{c}\~ao de infraestrutura; \texttt{U/D} designa as opera\c{c}\~oes de \emph{upload}/\emph{download} sobre o armazenamento de objetos, e \texttt{R/W} as opera\c{c}\~oes de leitura/escrita sobre a base de dados relacional.}
+	\label{fig:arquitectura-sistema}
+\end{figure}
+
+O \emph{Play4Change} organiza-se em cinco zonas lógicas claramente
+delimitadas (Figura~\ref{fig:arquitectura-sistema}): a camada de
+\textbf{apresentação}, que agrega os clientes que interagem com o sistema;
+a \textbf{rede de fronteira}, responsável pela terminação TLS e pelo
+encaminhamento de tráfego; o \textbf{servidor de aplicação}, onde reside toda
+a lógica de domínio; a camada de \textbf{persistência}, que garante o
+armazenamento durável dos dados; e a zona de \textbf{observabilidade}, que
+recolhe e expõe métricas operacionais. Acresce ainda um conjunto de
+\textbf{serviços externos} que o servidor utiliza para capacidades que
+transcendem o seu perímetro: geração de linguagem natural e entrega de
+correio eletrónico.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{M\'odulos e responsabilidades}
+\label{sec:modulos}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Esta sec\c{c}\~ao descreve cada m\'odulo pelo que \'e \emph{respons\'avel por
+garantir}, n\~ao pelas tecnologias que usa. A Tabela~\ref{tab:modulos-responsabilidades}
+fornece um resumo antes da descri\c{c}\~ao detalhada.
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\begin{tabular}{p{3.0cm} p{9.5cm}}
+		\toprule
+		\textbf{M\'odulo} & \textbf{Responsabilidades principais} \\
+		\midrule
+		Mobile Client
+			& Renderizar a experi\^encia de aprendizagem; submeter respostas; navegar
+			  nos percursos adaptativo e de explica\c{c}\~ao; apresentar distintivos e streak. \\
+		\addlinespace
+		Web Client
+			& Interface de administra\c{c}\~ao; criar, editar e publicar t\'opicos; monitorizar
+			  progresso de utilizadores; configurar pr\'e-requisitos e o grafo de
+			  aprendizagem. \\
+		\addlinespace
+		Reverse Proxy
+			& Terminar liga\c{c}\~oes TLS; encaminhar pedidos para o servidor de aplica\c{c}\~ao;
+			  servir a SPA do cliente web; proteger o servidor de exposi\c{c}\~ao direta
+			  \`a internet. \\
+		\addlinespace
+		Autentica\c{c}\~ao \& Seguran\c{c}a
+			& Emitir e validar \emph{magic links}; emitir, renovar e revogar tokens
+			  de sess\~ao; impor limites de frequ\^encia por IP; garantir que cada pedido
+			  autenticado tem o papel correto. \\
+		\addlinespace
+		L\'ogica de Dom\'inio
+			& Orquestrar todos os casos de uso: inscri\c{c}\~ao em t\'opicos,
+			  entrega e avalia\c{c}\~ao de tarefas, gera\c{c}\~ao do percurso adaptativo,
+			  emiss\~ao de distintivos e gest\~ao de prefer\^encias do utilizador. \\
+		\addlinespace
+		Agendadores
+			& Executar tarefas temporais sem interven\c{c}\~ao humana: expirar t\'opicos
+			  cujo per\'iodo de inscri\c{c}\~ao terminou, e detectar gera\c{c}\~oes
+			  de IA presas (\emph{watchdog}). A desativa\c{c}\~ao de inscri\c{c}\~oes
+			  individuais e a revis\~ao por pares s\~ao acionadas sincronamente pelos
+			  respetivos servi\c{c}os, n\~ao por tarefas agendadas. \\
+		\addlinespace
+		Agente de IA
+			& Construir prompts contextualizados; invocar o fornecedor de LLM;
+			  validar e sanear a resposta; gerir a deduplica\c{c}\~ao vetorial;
+			  isolar o resto do sistema de qualquer depend\^encia direta do modelo. \\
+		\addlinespace
+		Base de Dados
+			& Persistir o estado dur\'avel de todos os agregados de dom\'inio;
+			  suportar pesquisa por similaridade vetorial para deduplica\c{c}\~ao de
+			  tarefas geradas. \\
+		\addlinespace
+		Armazenamento de Objetos
+			& Guardar ficheiros bin\'arios (PDFs, fotografias de submiss\~oes);
+			  disponibilizar URLs pr\'e-assinados para acesso tempor\'ario. \\
+		\addlinespace
+		M\'etricas DB
+			& Receber e armazenar s\'eries temporais de m\'etricas operacionais
+			  recolhidas do servidor por scraping peri\'odico. \\
+		\addlinespace
+		Dashboard
+			& Visualizar as m\'etricas operacionais em pain\'eis de tempo real para
+			  observabilidade e detec\c{c}\~ao de anomalias. \\
+		\addlinespace
+		Fornecedor de LLM
+			& Gerar texto determinado por prompt; devolver respostas estruturadas
+			  (JSON) ou em prosa; sem estado persistente sobre o sistema. \\
+		\addlinespace
+		API de Email
+			& Entregar transacionalmente mensagens de correio eletr\'onico
+			  (magic links de autentica\c{c}\~ao) com garantias de entrega e rastreio. \\
+		\bottomrule
+	\end{tabular}
+	\caption[M\'odulos do sistema e respetivas responsabilidades]{M\'odulos do sistema \emph{Play4Change} e respetivas responsabilidades. A descri\c{c}\~ao foca o \emph{o qu\^e} (contrato de responsabilidade), n\~ao o \emph{como} (tecnologia de implementa\c{c}\~ao).}
+	\label{tab:modulos-responsabilidades}
+\end{table}
+
+\subsection{Camada de apresenta\c{c}\~ao}
+\label{ssec:apresentacao}
+
+A camada de apresenta\c{c}\~ao \'e o \'unico ponto de contacto direto com o
+utilizador humano, composta por dois clientes independentes com finalidades
+distintas.
+
+O \textbf{Mobile Client} \'e o canal prim\'ario de aprendizagem. A sua
+responsabilidade central \'e traduzir o modelo de dom\'inio devolvido pela
+API REST numa experi\^encia de utiliza\c{c}\~ao flu\'ida: apresentar a tarefa
+di\'aria, recolher a resposta, comunicar o resultado (correto ou errado) e ---
+quando despoletado pelo servidor --- navegar automaticamente para o percurso
+adaptativo ou para o modo de explica\c{c}\~ao. O cliente n\~ao cont\'em
+l\'ogica de neg\'ocio: toda a avalia\c{c}\~ao de respostas, atribui\c{c}\~ao
+de pontos e classifica\c{c}\~ao de erros ocorre exclusivamente no servidor.
+
+O \textbf{Web Client} serve os administradores de conte\'udo. As suas
+responsabilidades incluem criar t\'opicos a partir de documentos PDF ou URLs,
+monitorizar em tempo real o progresso de gera\c{c}\~ao de tarefas via SSE,
+editar individualmente as quest\~oes geradas pela IA, configurar o grafo de
+pr\'e-requisitos, e consultar relat\'orios de utiliza\c{c}\~ao.
+
+\subsection{Rede de fronteira}
+\label{ssec:fronteira}
+
+O \textbf{Reverse Proxy} interp\~oe-se entre a internet p\'ublica e o servidor
+de aplica\c{c}\~ao, cumprindo tr\^es responsabilidades distintas: termina\c{c}\~ao
+TLS (recebe liga\c{c}\~oes HTTPS e reencaminha internamente via HTTP);
+encaminhamento de tr\'afego (distingue pedidos de API de ativos est\'aticos);
+e fronteira de seguran\c{c}a (o servidor nunca est\'a exposto diretamente
+\`a internet p\'ublica).
+
+\subsection{Servidor de aplica\c{c}\~ao}
+\label{ssec:servidor}
+
+O servidor de aplica\c{c}\~ao \'e o n\'ucleo do sistema, organizado
+internamente em cinco sub-m\'odulos.
+
+\paragraph{Autentica\c{c}\~ao e Seguran\c{c}a.}
+Respons\'avel por garantir que apenas utilizadores leg\'itimos acedem ao
+sistema com o n\'ivel de privil\'egio correto. Gere o ciclo de vida completo
+do \emph{magic link} (emiss\~ao, hash, consumo at\'omico, expira\c{c}\~ao);
+emite e valida pares de tokens de acesso e renova\c{c}\~ao; imp\~oe limites
+de frequ\^encia por endere\c{c}o IP; e valida o papel
+(\texttt{ROLE\_USER} ou \texttt{ROLE\_ADMIN}) em cada pedido protegido.
+N\~ao tem conhecimento de qualquer l\'ogica de neg\'ocio.
+
+\paragraph{L\'ogica de Dom\'inio.}
+Implementa todos os casos de uso e mant\'em os invariantes do dom\'inio:
+avaliar respostas e calcular pontos com penaliza\c{c}\~ao temporal; classificar
+padr\~oes de erro de forma determin\'istica; orquestrar o ciclo de vida das
+inscri\c{c}\~oes; gerir o desbloqueio di\'ario de tarefas por \'indice; detectar
+a necessidade de percurso adaptativo e despolet\'a-lo assincronamente; emitir
+distintivos quando os crit\'erios de mestria s\~ao atingidos; e verificar a
+integridade do grafo de pr\'e-requisitos por pesquisa em profundidade.
+
+\paragraph{Agendadores.}
+Executa tarefas temporais em segundo plano sem interven\c{c}\~ao humana. O \textbf{watchdog de gera\c{c}\~ao de IA}:
+qualquer gera\c{c}\~ao de conte\'udo que permane\c{c}a no estado
+\texttt{GENERATING} por mais tempo do que o timeout configurado \'e
+considerada presa --- tipicamente por falha do servidor durante a chamada
+ass\'incrona ao LLM. O watchdog deteta estes casos, transita o registo
+para \texttt{FAILED} e, consoante o tipo de gera\c{c}\~ao, ou marca o
+t\'opico como \texttt{FAILED} (para conte\'udo de percurso fixo) ou repõe
+a atribui\c{c}\~ao original em \texttt{PENDING} (para sess\~oes de
+explica\c{c}\~ao), garantindo que nenhum utilizador fica bloqueado
+indefinidamente \`a espera de conte\'udo que nunca vai chegar. Um segundo
+agendador (\texttt{TopicExpirationJob}) expira t\'opicos cujo per\'iodo de
+inscri\c{c}\~ao terminou; a desativa\c{c}\~ao de inscri\c{c}\~oes individuais
+e a revis\~ao por pares n\~ao s\~ao geridas por tarefas agendadas, mas
+acionadas sincronamente pelos servi\c{c}os respetivos no momento em que
+ocorrem.
+
+\paragraph{Agente de IA.}
+\'E o \'unico ponto de contacto com o fornecedor de LLM. A sua principal
+responsabilidade \'e \textbf{isolar} o resto do sistema de qualquer
+depend\^encia do modelo: o servidor de aplica\c{c}\~ao nunca sabe que modelo
+est\'a a ser usado, que API est\'a a ser chamada, ou que formato de resposta
+\'e devolvido. O agente exp\~oe uma interface com tr\^es opera\c{c}\~oes:
+gerar tarefas de percurso fixo, gerar um ramo adaptativo para um padr\~ao
+de erro, e gerar explica\c{c}\~ao em prosa. Internamente, constr\'oi prompts
+contextualizados, valida o JSON produzido (com retenta\c{c}\~ao autom\'atica),
+saneia o texto gerado, calcula embeddings para deduplica\c{c}\~ao vetorial
+e reporta m\'etricas de lat\^encia e taxa de falha.
+
+\paragraph{Observabilidade (interna ao servidor).}
+Instrumenta o servidor com contadores e temporizadores que cobrem os eventos
+de neg\'ocio mais relevantes: submiss\~oes corretas e incorretas, sess\~oes
+adaptativas criadas e resolvidas, gera\c{c}\~oes de IA com sucesso e falha,
+inscri\c{c}\~oes conclu\'idas, distintivos emitidos. Os dados s\~ao expostos
+num \emph{endpoint} de scraping sem impacto na performance dos pedidos.
+
+\subsection{Camada de persist\^encia}
+\label{ssec:persistencia}
+
+A camada de persist\^encia divide-se em dois componentes com responsabilidades
+completamente distintas.
+
+\paragraph{Base de Dados.}
+Armazena todo o estado dur\'avel do dom\'inio: utilizadores, inscri\c{c}\~oes,
+atribui\c{c}\~oes, sess\~oes adaptativas, sess\~oes de explica\c{c}\~ao,
+templates de tarefas, distintivos e o grafo de pr\'e-requisitos. O modelo
+relacional garante a consist\^encia transacional dos invariantes cr\'iticos
+--- nomeadamente a natureza at\'omica do consumo de tokens de
+autentica\c{c}\~ao e da transi\c{c}\~ao de estado das inscri\c{c}\~oes.
+
+Para al\'em da persist\^encia relacional cl\'assica, a base de dados suporta
+\textbf{pesquisa por similaridade vetorial}: cada template de tarefa gerado
+pelo LLM \'e associado a um \emph{embedding} de 1024 dimens\~oes que
+representa semanticamente o seu conte\'udo. Na gera\c{c}\~ao de ramos
+adaptativos, o sistema calcula o embedding do contexto de dificuldade atual
+e executa uma pesquisa de vizinhos mais pr\'oximos por similaridade cosseno,
+recuperando ramos previamente gerados que sejam semanticamente equivalentes.
+Este mecanismo, descrito em detalhe na Sec\c{c}\~ao~\ref{ssec:ia-geracao-adaptativa},
+elimina gera\c{c}\~oes redundantes e reduz tanto a lat\^encia como o custo
+de chamadas ao LLM.
+
+\paragraph{Armazenamento de Objetos.}
+Respons\'avel por guardar ficheiros bin\'arios que n\~ao t\^em lugar num
+modelo relacional: os PDFs que os administradores carregam para criar
+t\'opicos, e eventuais ficheiros de submiss\~ao dos utilizadores. O acesso
+aos ficheiros nunca \'e feito diretamente pelo cliente --- o servidor gera
+URLs pr\'e-assinados com tempo de vida limitado que permitem ao cliente
+descarregar ou visualizar o ficheiro diretamente a partir do armazenamento,
+sem que o conte\'udo bin\'ario transite pelo servidor de aplica\c{c}\~ao.
+Isto elimina um gargalo de banda e garante que os ficheiros nunca s\~ao
+expostos sem autoriza\c{c}\~ao impl\'icita do servidor.
+
+\subsection{Observabilidade externa}
+\label{ssec:observabilidade}
+
+A observabilidade do sistema \'e composta por dois componentes que operam
+fora do servidor de aplica\c{c}\~ao, garantindo que a monitoriza\c{c}\~ao
+n\~ao interfere com a execu\c{c}\~ao da l\'ogica de neg\'ocio.
+
+\paragraph{M\'etricas DB.}
+Recebe e armazena s\'eries temporais de m\'etricas operacionais recolhidas
+do servidor por \emph{scraping} peri\'odico ao \emph{endpoint} de
+observabilidade interna. A arquitetura de \emph{pull} --- em que a base de
+m\'etricas vai buscar os dados ao servidor em vez de o servidor os enviar ---
+garante que uma eventual indisponibilidade da base de m\'etricas n\~ao afecta
+o desempenho nem a disponibilidade do servidor. As m\'etricas cobertas
+incluem: lat\^encia de pedidos por rota, taxa de erro HTTP, contadores de
+eventos de neg\'ocio (inscri\c{c}\~oes, submiss\~oes, distintivos), e
+m\'etricas de desempenho da JVM (mem\'oria, GC, threads).
+
+\paragraph{Dashboard.}
+Visualiza as m\'etricas armazenadas na base de m\'etricas em pain\'eis de
+tempo real, acess\'iveis \`a equipa de opera\c{c}\~oes. Os pain\'eis est\~ao
+organizados em dois n\'iveis: um n\'ivel operacional, que exibe a sa\'ude
+imediata do sistema (taxa de erro, lat\^encia p95, utiliza\c{c}\~ao de
+recursos); e um n\'ivel de produto, que exibe m\'etricas de envolvimento dos
+utilizadores (inscri\c{c}\~oes ativas, taxa de conclus\~ao de t\'opicos,
+sess\~oes adaptativas criadas por dia, distintivos emitidos). A separa\c{c}\~ao
+entre os dois n\'iveis permite que tanto engenheiros como gestores de produto
+extraiam valor da mesma infra-estrutura de observabilidade sem navegar por
+pain\'eis irrelevantes para os seus objetivos.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Fluxos de interac\c{c}\~ao}
+\label{sec:fluxos}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Esta sec\c{c}\~ao apresenta os diagramas de sequ\^encia dos principais fluxos
+do sistema. Cada diagrama descreve a interac\c{c}\~ao entre atores (cliente,
+servidor, componentes internos, servi\c{c}os externos) para um caso de uso
+concreto.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Autentica\c{c}\~ao}
+\label{ssec:seq-auth}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O \emph{Play4Change} usa autentica\c{c}\~ao sem palavra-passe (\emph{passwordless})
+baseada em \emph{magic links}. O fluxo divide-se em duas fases: pedido do link
+e verifica\c{c}\~ao do token.
+
+Na fase de pedido (passos 1--4 da Figura~\ref{fig:seq-auth}), o utilizador
+fornece apenas o endere\c{c}o de email. O servidor gera um token opaco
+criptograficamente seguro, armazena \textbf{apenas o seu hash SHA-256} na
+base de dados (o token em claro nunca \'e persistido), e envia o link por
+email. Esta separa\c{c}\~ao garante que mesmo um acesso n\~ao autorizado \`a
+base de dados n\~ao compromete os tokens ativos. Ao contr\'ario de uma
+\emph{password}, o token \'e gerado aleatoriamente com entropia elevada e
+tem validade curta (15 minutos), pelo que n\~ao est\'a sujeito a ataques de
+dicion\'ario ou de tabelas pr\'e-calculadas (\emph{rainbow tables}); por
+essa raz\~ao, um \emph{salt} --- necess\'ario para mitigar esses ataques em
+\emph{passwords} de baixa entropia escolhidas por utilizadores --- n\~ao
+\'e necess\'ario aqui.
+
+Na fase de verifica\c{c}\~ao (passos 5--8), o servidor calcula o hash do
+token recebido e executa uma atualiza\c{c}\~ao at\'omica:
+\begin{quote}
+\footnotesize\ttfamily UPDATE SET used=true WHERE token=\$hash AND used=false AND expires\_at>NOW()
+\end{quote}
+Esta opera\c{c}\~ao at\'omica elimina a janela de
+\emph{Time-of-Check/Time-of-Use} (TOCTOU) que existiria com um
+\texttt{SELECT} seguido de \texttt{UPDATE} separados.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\small\bfseries,
+		               minimum width=2.6cm, minimum height=0.9cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=2mm]}, thick},
+		retarr/.style={{Latex[length=2mm]}-, thick},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+		                minimum width=2.8cm, inner sep=6pt}
+	]
+		\node[actbox, fill=blue!8]        (ac1) at (0,    14.5) {Utilizador};
+		\node[actbox, fill=orange!8]      (ac2) at (3.8,  14.5) {Servidor};
+		\node[actbox, fill=gray!8]        (ac3) at (7.6,  14.5) {Base de Dados};
+		\node[actbox, fill=teal!8, dashed](ac4) at (11.4, 14.5) {API de Email};
+
+		\draw[lifeline] (0,    14.05) -- (0,    0.0);
+		\draw[lifeline] (3.8,  14.05) -- (3.8,  0.0);
+		\draw[lifeline] (7.6,  14.05) -- (7.6,  0.0);
+		\draw[lifeline] (11.4, 14.05) -- (11.4, 0.0);
+
+		% ── Fase 1 ────────────────────────────────────────────────────────────
+		\node[font=\small\bfseries, gray!60] at (5.7, 13.6)
+			{--- Fase 1: Pedido ---};
+
+		\draw[msgarr] (0, 13.0) -- (3.8, 13.0)
+			node[above, font=\scriptsize, midway]
+			{(1) POST /auth/magic-link \{email\}};
+
+		% caixa nota com folga generosa acima (13.0) e abaixo (10.8)
+		\node[notebox, fill=orange!5] at (5.65, 11.9)
+			{gera token opaco\\[3pt]
+			 armazena SHA-256(token)\\[3pt]
+			 TTL: 15 minutos};
+		\draw[gray!30, thin] (3.8, 11.9) -- (4.6, 11.9);
+
+		\draw[msgarr] (3.8, 10.7) -- (7.6, 10.7)
+			node[above, font=\scriptsize, midway]
+			{(2) INSERT MagicLinkToken(hash, email, expires)};
+		\draw[retarr] (3.8, 10.0) -- (7.6, 10.0)
+			node[below, font=\scriptsize, midway] {OK};
+
+		\draw[msgarr] (3.8, 9.2) -- (11.4, 9.2)
+			node[above, font=\scriptsize, midway]
+			{(3) sendMagicLink(email, rawToken)};
+		\draw[retarr] (3.8, 8.5) -- (11.4, 8.5)
+			node[below, font=\scriptsize, midway] {accepted};
+
+		\draw[retarr] (0, 7.7) -- (3.8, 7.7)
+			node[below, font=\scriptsize, midway] {(4) 202 Accepted};
+
+		% ── Fase 2 ────────────────────────────────────────────────────────────
+		\node[font=\small\bfseries, gray!60] at (5.7, 7.0)
+			{--- Fase 2: Verifica\c{c}\~ao ---};
+
+		\draw[msgarr] (0, 6.3) -- (3.8, 6.3)
+			node[above, font=\scriptsize, midway]
+			{(5) GET /auth/verify?token=\{rawToken\}};
+
+		% caixa nota com 4 linhas — folga extra acima (6.3) e abaixo (3.8)
+		\node[notebox, fill=orange!5] at (5.65, 5.0)
+			{UPDATE SET used=true\\[3pt]
+			 WHERE hash=SHA256(t)\\[3pt]
+			 AND used=false\\[3pt]
+			 AND expires > NOW()};
+		\draw[gray!30, thin] (3.8, 5.0) -- (4.6, 5.0);
+
+		\draw[msgarr] (3.8, 3.7) -- (7.6, 3.7)
+			node[above, font=\scriptsize, midway]
+			{(6) claimToken(SHA256(token)) --- at\'omico};
+		\draw[retarr] (3.8, 3.0) -- (7.6, 3.0)
+			node[below, font=\scriptsize, midway] {email | null};
+
+		\draw[msgarr] (3.8, 2.3) -- (7.6, 2.3)
+			node[above, font=\scriptsize, midway] {(7) UPSERT User(email)};
+		\draw[retarr] (3.8, 1.6) -- (7.6, 1.6)
+			node[below, font=\scriptsize, midway] {User\{id, email, role\}};
+
+		\draw[retarr] (0, 0.8) -- (3.8, 0.8)
+			node[below, font=\scriptsize, midway]
+			{(8) 200 \{accessToken, refreshToken\}};
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia de autentica\c{c}\~ao por \emph{magic link}]{Autentica\c{c}\~ao \emph{passwordless}. O token opaco em claro nunca \'e persistido --- apenas o seu hash SHA-256 \'e armazenado (passo~2). A verifica\c{c}\~ao usa uma atualiza\c{c}\~ao at\'omica (passo~6) que elimina a janela TOCTOU. Se o token for inv\'alido, usado ou expirado, o servidor rejeita sem informa\c{c}\~ao adicional --- uma decis\~ao deliberada de seguran\c{c}a \emph{anti-enumera\c{c}\~ao}: distinguir entre "token inv\'alido", "j\'a usado" e "expirado" na resposta daria a um atacante informa\c{c}\~ao \'util para inferir o estado de tokens que n\~ao lhe pertencem.}
+	\label{fig:seq-auth}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Criar t\'opico e gerar conte\'udo}
+\label{ssec:seq-create-topic}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A cria\c{c}\~ao de um t\'opico desencadeia um \textbf{pipeline de gera\c{c}\~ao
+em quatro fases} (Figura~\ref{fig:seq-create-topic}). O pedido HTTP do
+administrador retorna imediatamente com o identificador do t\'opico (passo~3);
+toda a gera\c{c}\~ao ocorre em \emph{background} de forma ass\'incrona, com
+notifica\c{c}\~ao em tempo real ao cliente via SSE.
+
+As quatro fases s\~ao: \textbf{INGESTION} (extra\c{c}\~ao do texto do PDF ou URL);
+\textbf{ANALYSIS} (limpeza e estrutura\c{c}\~ao do m\'odulo de aprendizagem);
+\textbf{GENERATION} (chamada ao LLM com o texto extra\'ido como contexto); e
+\textbf{INDEXING} (persist\^encia dos templates de tarefas com embeddings e
+cria\c{c}\~ao da microcompet\^encia associada ao t\'opico). Ap\'os a
+transi\c{c}\~ao para \texttt{ACTIVE}, o t\'opico fica dispon\'ivel para
+inscri\c{c}\~oes. A Figura~\ref{fig:pipeline-fases} ilustra o fluxo completo,
+incluindo os caminhos de falha em cada fase.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  fase/.style={draw, rounded corners=5pt, align=center, font=\small\bfseries,
+               minimum width=3.2cm, minimum height=1.4cm,
+               fill=blue!8, thick, inner sep=6pt},
+  estado/.style={draw, rounded corners=4pt, align=center, font=\small,
+                 minimum width=2.6cm, minimum height=1.0cm, thick},
+  falha/.style={draw, rounded corners=4pt, align=center, font=\scriptsize,
+                minimum height=0.9cm,
+                fill=red!7, draw=red!40, text=red!70, thick, inner sep=5pt},
+  sse/.style={draw, rounded corners=3pt, align=center, font=\scriptsize,
+              minimum width=2.4cm, minimum height=0.8cm,
+              fill=purple!6, draw=purple!30, dashed, inner sep=4pt},
+  seta/.style={-{Latex[length=2.2mm]}, thick},
+  setaf/.style={-{Latex[length=2mm]}, thick, red!50, dashed},
+  setar/.style={-{Latex[length=2mm]}, thick, purple!50, dotted},
+]
+
+% ── SSE labels (linha superior, alinhadas com cada fase) ────────────────────
+\node[sse] (sse1) at (3.6,  3.8) {SSE: ingestion};
+\node[sse] (sse2) at (7.2,  3.8) {SSE: analysis};
+\node[sse] (sse3) at (10.8, 3.8) {SSE: generation};
+\node[sse] (sse4) at (18.0, 3.8) {SSE: completed};
+
+% ── fases + estados (linha principal, toda horizontal) ──────────────────────
+\node[estado, fill=gray!10]  (pending) at (0,    1.8) {PENDING};
+\node[fase,   fill=blue!10]  (ing)     at (3.6,  1.8)
+  {INGESTION\\[4pt]{\scriptsize extrai texto}\\{\scriptsize PDF / URL}};
+\node[fase,   fill=blue!12]  (ana)     at (7.2,  1.8)
+  {ANALYSIS\\[4pt]{\scriptsize estrutura}\\{\scriptsize m\'odulo}};
+\node[fase,   fill=blue!15]  (gen)     at (10.8, 1.8)
+  {GENERATION\\[4pt]{\scriptsize chama LLM}\\{\scriptsize valida JSON}};
+\node[fase,   fill=blue!18]  (idx)     at (14.4, 1.8)
+  {INDEXING\\[4pt]{\scriptsize embed + persist}\\{\scriptsize microcompet\^encia}};
+\node[estado, fill=green!12] (active)  at (18.0, 1.8) {ACTIVE};
+
+% ── falhas primárias (1ª linha de falha) ────────────────────────────────────
+\node[falha] (f1a) at (3.6,  -1.2) {texto insuficiente\\(PDF digitalizado)};
+\node[falha] (f2)  at (7.2,  -1.2) {falha ao estruturar\\conte\'udo};
+\node[falha] (f3a) at (10.8, -1.2) {timeout / erro\\do fornecedor LLM};
+\node[falha] (f4)  at (14.4, -1.2) {erro de persist\^encia\\ou embedding};
+
+% ── falhas secundárias (2ª linha de falha) ──────────────────────────────────
+\node[falha] (f1b) at (3.6,  -3.0) {URL inacess\'ivel / JS\\ou acesso restrito};
+\node[falha] (f3b) at (10.8, -3.0) {JSON inv\'alido ap\'os\\2 tentativas};
+
+% ── FAILED (base) ───────────────────────────────────────────────────────────
+\node[estado, fill=red!10, draw=red!40]
+  (failed) at (7.2, -5.2) {\textcolor{red!70}{FAILED}};
+
+% ── caminho feliz (todo horizontal) ─────────────────────────────────────────
+\draw[seta] (pending) -- (ing);
+\draw[seta] (ing)     -- (ana);
+\draw[seta] (ana)     -- (gen);
+\draw[seta] (gen)     -- (idx);
+\draw[seta] (idx)     -- (active);
+
+% ── SSE (setas verticais limpas para cima) ───────────────────────────────────
+\draw[setar] (ing.north)    -- (sse1.south);
+\draw[setar] (ana.north)    -- (sse2.south);
+\draw[setar] (gen.north)    -- (sse3.south);
+\draw[setar] (active.north) -- (sse4.south);
+
+% ── falhas primárias ────────────────────────────────────────────────────────
+\draw[setaf] (ing.south) -- (f1a.north);
+\draw[setaf] (ana.south) -- (f2.north);
+\draw[setaf] (gen.south) -- (f3a.north);
+\draw[setaf] (idx.south) -- (f4.north);
+
+% ── falhas secundárias ──────────────────────────────────────────────────────
+\draw[setaf] (f1a.south) -- (f1b.north);
+\draw[setaf] (f3a.south) -- (f3b.north);
+
+% ── convergência para FAILED ────────────────────────────────────────────────
+\draw[setaf] (f1b.south) -- ++(0,-0.4) -| (failed.north);
+\draw[setaf] (f2.south)  -- ++(0,-0.8) -- (failed.north);
+\draw[setaf] (f3b.south) -- ++(0,-0.4) -| (failed.north);
+\draw[setaf] (f4.south)  -- ++(0,-0.8) -| (failed.north);
+
+\end{tikzpicture}}%
+\caption[Pipeline de gera\c{c}\~ao de conte\'udo em quatro fases]{Pipeline de gera\c{c}\~ao de conte\'udo ass\'incrona. O caminho feliz (setas s\'olidas) transita o t\'opico de \texttt{PENDING} para \texttt{ACTIVE} em quatro fases; o administrador \'e notificado em tempo real via SSE (setas pontilhadas roxas) ap\'os cada fase. Qualquer falha (setas a vermelho) transita diretamente para \texttt{FAILED} sem degradar silenciosamente a qualidade do conte\'udo.}
+\label{fig:pipeline-fases}
+\end{figure}
+
+\subsubsection{Ingest\~ao de conte\'udo: PDF e URL}
+\label{sssec:ingestion}
+
+A fase de INGESTION \'e a primeira do pipeline e determina a qualidade de
+todo o conte\'udo que o LLM vai gerar. O administrador fornece o conte\'udo
+numa de duas formas: um ficheiro PDF carregado diretamente, ou um URL
+p\'ublico a partir do qual o sistema descarrega o conte\'udo. Em ambos os
+casos, o objetivo \'e o mesmo: obter texto simples e limpo que possa ser
+injetado no contexto do LLM.
+
+\paragraph{Ingest\~ao de PDF.}
+O ficheiro \'e recebido pelo servidor, persistido no armazenamento de
+objetos e depois processado por extrac\c{c}\~ao de texto. O processador
+percorre o PDF p\'agina a p\'agina, extrai o conte\'udo textual de cada uma
+e concatena-o preservando a ordem original do documento. O texto resultante
+\'e normalizado: espa\c{c}os m\'ultiplos e quebras de linha excessivas s\~ao
+colapsadas para reduzir ru\'ido sem perder estrutura sem\^antica.
+
+Esta abordagem funciona bem para PDFs \textbf{nativamente digitais} ---
+documentos criados por processadores de texto ou exportados de apresenta\c{c}\~oes
+---  porque o texto est\'a codificado de forma program\'aticamente acess\'ivel.
+No entanto, enfrenta uma limita\c{c}\~ao fundamental com \textbf{PDFs
+digitalizados} (imagens de p\'aginas f\'isicas): nestes casos, o extractor
+n\~ao encontra texto e devolve uma \emph{string} vazia ou quase vazia.
+Sem texto, o LLM recebe um contexto inadequado e as tarefas geradas ser\~ao
+gen\'ericas e desligadas do conte\'udo real do documento. O sistema deteta
+esta situa\c{c}\~ao quando o texto extra\'ido \'e inferior a um limiar m\'inimo
+de caracteres e transita o t\'opico para \texttt{FAILED} com uma mensagem de
+erro expl\'icita, em vez de gerar conte\'udo de baixa qualidade silenciosamente.
+
+\paragraph{Ingest\~ao de URL.}
+Quando o administrador fornece um URL, o servidor efetua um pedido HTTP GET
+ao destino e extrai o conte\'udo textual da p\'agina. O HTML recebido \'e
+processado para remover \emph{markup}, \emph{scripts}, estilos e elementos
+de navega\c{c}\~ao, retendo apenas o texto principal da p\'agina.
+
+Esta abordagem tem tr\^es limita\c{c}\~oes importantes. A primeira \'e a
+depend\^encia de \textbf{renderiza\c{c}\~ao no servidor}: p\'aginas que
+carregam o seu conte\'udo dinamicamente via JavaScript (aplica\c{c}\~oes
+\emph{single-page}) devolvem apenas o esqueleto HTML inicial sem conte\'udo
+real, uma vez que o sistema n\~ao executa um motor de renderiza\c{c}\~ao
+completo. A segunda \'e o \textbf{acesso restrito}: URLs que exigem
+autentica\c{c}\~ao, que est\~ao por tr\'as de \emph{paywalls}, ou que
+bloqueiam pedidos de servidores automatizados resultam num erro de acesso
+que falha a ingest\~ao. A terceira \'e a \textbf{instabilidade do conte\'udo}:
+ao contr\'ario de um PDF, uma p\'agina web pode ser alterada pelo seu
+propriet\'ario ap\'os a cria\c{c}\~ao do t\'opico, tornando o conte\'udo
+gerado desatualizado sem qualquer notifica\c{c}\~ao ao sistema.
+
+\paragraph{Limite de contexto e truncagem.}
+Independentemente da fonte, o texto extra\'ido \'e truncado a
+\textbf{8\,000 caracteres} antes de ser injetado no prompt do LLM, onde
+preenche o campo \texttt{subjectDomain} --- o trecho de contexto tem\'atico
+que ancora a gera\c{c}\~ao de tarefas ao conte\'udo da fonte. Este limite
+existe porque os modelos de
+linguagem t\^em uma janela de contexto finita e porque textos
+excessivamente longos diluem a aten\c{c}\~ao do modelo, reduzindo a
+coer\^encia e a especificidade das tarefas geradas.
+
+A truncagem tem uma implica\c{c}\~ao direta: para documentos longos ---
+manuais t\'ecnicos, disserta\c{c}\~oes, relat\'orios extensos --- apenas
+os primeiros 8\,000 caracteres s\~ao usados como contexto. Se o conte\'udo
+mais relevante estiver distribu\'ido ao longo de todo o documento, as
+tarefas geradas podem refletir apenas a primeira por\c{c}\~ao. Esta \'e
+uma \textbf{limita\c{c}\~ao conhecida do prot\'otipo}: uma vers\~ao de
+produ\c{c}\~ao beneficiaria de uma estratégia de chunking inteligente que
+selecionasse os excertos mais relevantes para o objetivo do m\'odulo
+em vez de truncar linearmente.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\small\bfseries,
+		               minimum width=2.2cm, minimum height=0.85cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=2mm]}, thick},
+		retarr/.style={{Latex[length=2mm]}-, thick},
+		dasharr/.style={-{Latex[length=2mm]}, thick, dashed, gray!60},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\scriptsize,
+		                minimum width=2.2cm, inner sep=5pt}
+	]
+		\node[actbox, fill=blue!8]        (ac1) at (0,    15.0) {Admin\\Web};
+		\node[actbox, fill=orange!8]      (ac2) at (3.2,  15.0) {Servidor};
+		\node[actbox, fill=green!8]       (ac3) at (6.4,  15.0) {Orchestrator\\(Async)};
+		\node[actbox, fill=gray!8]        (ac4) at (9.8,  15.0) {Armazenamento\\+ BD};
+		\node[actbox, fill=teal!8, dashed](ac5) at (13.2, 15.0) {Fornecedor\\LLM};
+
+		\draw[lifeline] (0,    14.58) -- (0,    -3.2);
+		\draw[lifeline] (3.2,  14.58) -- (3.2,  -3.2);
+		\draw[lifeline] (6.4,  14.58) -- (6.4,  -3.2);
+		\draw[lifeline] (9.8,  14.58) -- (9.8,  -3.2);
+		\draw[lifeline] (13.2, 14.58) -- (13.2, -3.2);
+
+		% ── passos 1-3 ──────────────────────────────────────────────────────
+		\draw[msgarr] (0, 14.0) -- (3.2, 14.0)
+			node[above, font=\scriptsize, midway]
+			{(1) POST /admin/topics \{pdf/url, config\}};
+
+		\draw[msgarr] (3.2, 13.5) -- (9.8, 13.5)
+			node[above, font=\scriptsize, midway]
+			{(2) upload conte\'udo + INSERT topic(PENDING)};
+		\draw[retarr] (3.2, 13.0) -- (9.8, 13.0)
+			node[below, font=\scriptsize, midway] {OK};
+
+		\draw[retarr] (0, 12.4) -- (3.2, 12.4)
+			node[below, font=\scriptsize, midway] {(3) 201 Created \{topicId\}};
+
+		% ── passo 4 (async) + 5 (SSE) ───────────────────────────────────────
+		\draw[dasharr] (3.2, 11.9) -- (6.4, 11.9)
+			node[above, font=\scriptsize, midway]
+			{(4) generateAsync(topicId) --- coroutine};
+
+		\draw[msgarr] (0, 11.4) -- (3.2, 11.4)
+			node[above, font=\scriptsize, midway]
+			{(5) GET /admin/topics/\{id\}/events (SSE)};
+
+		% ── INGESTION ───────────────────────────────────────────────────────
+		\node[notebox, fill=blue!5] at (7.9, 10.2)
+			{INGESTION:\\descarregar + extrair};
+		\draw[gray!30, thin] (6.4, 10.2) -- (7.1, 10.2);
+
+		\draw[msgarr] (6.4, 8.7) -- (9.8, 8.7)
+			node[above, font=\scriptsize, midway]
+			{(6) downloadFile + extractText};
+		\draw[retarr] (6.4, 8.0) -- (9.8, 8.0)
+			node[below, font=\scriptsize, midway] {rawText};
+
+		% ── ANALYSIS ────────────────────────────────────────────────────────
+		\node[notebox, fill=yellow!5] at (7.9, 6.8)
+			{ANALYSIS:\\criar m\'odulo};
+		\draw[gray!30, thin] (6.4, 6.8) -- (7.1, 6.8);
+
+		\draw[msgarr] (6.4, 5.6) -- (9.8, 5.6)
+			node[above, font=\scriptsize, midway]
+			{(7) INSERT TopicModule};
+		\draw[retarr] (6.4, 4.9) -- (9.8, 4.9)
+			node[below, font=\scriptsize, midway] {moduleId};
+
+		% ── GENERATION ──────────────────────────────────────────────────────
+		\node[notebox, fill=orange!5] at (7.9, 3.7)
+			{GENERATION:\\prompt + rawText};
+		\draw[gray!30, thin] (6.4, 3.7) -- (7.1, 3.7);
+
+		\draw[msgarr] (6.4, 2.5) -- (13.2, 2.5)
+			node[above, font=\scriptsize, midway]
+			{(8) LangChain4j: system + user prompt};
+		\draw[retarr] (6.4, 1.8) -- (13.2, 1.8)
+			node[below, font=\scriptsize, midway] {JSON array de tarefas};
+
+		\draw[dasharr] (3.2, 1.1) -- (0, 1.1)
+			node[above, font=\scriptsize, midway]
+			{(9) SSE: progress\{completed/total\}};
+
+		% ── INDEXING ────────────────────────────────────────────────────────
+		\node[notebox, fill=green!5] at (7.9, -0.1)
+			{INDEXING:\\embed + persist};
+		\draw[gray!30, thin] (6.4, -0.1) -- (7.1, -0.1);
+
+		\draw[msgarr] (6.4, -1.4) -- (9.8, -1.4)
+			node[above, font=\scriptsize, midway]
+			{(10) INSERT TaskTemplates + MicroCompetence};
+
+		\draw[dasharr] (3.2, -2.2) -- (0, -2.2)
+			node[above, font=\scriptsize, midway]
+			{(11) SSE: completed + UPDATE topic ACTIVE};
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia de cria\c{c}\~ao de t\'opico e gera\c{c}\~ao de conte\'udo]{Cria\c{c}\~ao de t\'opico e pipeline de gera\c{c}\~ao ass\'incrona em quatro fases. O pedido HTTP retorna imediatamente (passo~3). A gera\c{c}\~ao executa numa \emph{coroutine} independente, notificando o cliente via SSE (passos 9 e 11). Em caso de falha em qualquer fase, o t\'opico transita para \texttt{FAILED}.}
+	\label{fig:seq-create-topic}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Editar quest\~ao de um t\'opico}
+\label{ssec:seq-edit-task}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Ap\'os a gera\c{c}\~ao inicial, o administrador pode corrigir ou melhorar
+individualmente qualquer quest\~ao gerada pela IA
+(Figura~\ref{fig:seq-edit-task}). Ao contr\'ario da regenera\c{c}\~ao
+completa de um t\'opico --- que usa versionamento imut\'avel via
+\texttt{isCurrent}/\texttt{supersededBy} ---, a edi\c{c}\~ao individual de
+uma quest\~ao atualiza a mesma linha da base de dados: o identificador
+(\texttt{id}) \'e preservado e apenas o campo \texttt{version} \'e
+incrementado, persistido atrav\'es de um \texttt{UPDATE} (\emph{merge}
+JPA), n\~ao de um \texttt{INSERT}. As inst\^ancias da tarefa j\'a geradas
+para essa \emph{template} s\~ao apagadas e regeradas de imediato.
+
+Esta escolha de implementa\c{c}\~ao tem uma implica\c{c}\~ao pr\'atica que
+constitui uma \textbf{limita\c{c}\~ao conhecida do prot\'otipo}: uma
+atribui\c{c}\~ao (\texttt{TaskAssignment}) ainda \texttt{PENDING} que
+referencie esta \emph{template} passa a ver as op\c{c}\~oes e a resposta
+correta \emph{editadas} no momento da submiss\~ao, em vez de continuar a
+referenciar a vers\~ao com que foi originalmente gerada. O mecanismo de
+versionamento imut\'avel existe no modelo de dom\'inio, mas serve apenas o
+caso de regenera\c{c}\~ao completa de um t\'opico, n\~ao a edi\c{c}\~ao
+pontual de uma quest\~ao.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.7cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny,
+		                minimum width=2.3cm, inner sep=3pt}
+	]
+		\node[actbox, fill=blue!8]   (ac1) at (0,   6.5) {Admin\\Web};
+		\node[actbox, fill=orange!8] (ac2) at (3.5, 6.5) {Servidor};
+		\node[actbox, fill=gray!8]   (ac3) at (7.0, 6.5) {Base de Dados};
+
+		\draw[lifeline] (0,   6.14) -- (0,   -1.6);
+		\draw[lifeline] (3.5, 6.14) -- (3.5, -1.6);
+		\draw[lifeline] (7.0, 6.14) -- (7.0, -1.6);
+
+		\draw[msgarr] (0, 4.9) -- (3.5, 4.9)
+			node[above, font=\tiny, midway] {(1) PUT /admin/tasks/\{templateId\} \{fields\}};
+
+		\node[notebox, fill=orange!5] at (5.15, 4.0)
+			{mesma linha:\\id preservado\\version += 1};
+		\draw[gray!30, thin] (3.5, 4.0) -- (4.25, 4.0);
+
+		\draw[msgarr] (3.5, 2.6) -- (7.0, 2.6)
+			node[above, font=\tiny, midway] {(2) UPDATE TaskTemplate SET version=version+1, ... WHERE id=\{templateId\}};
+		\draw[retarr] (3.5, 2.15) -- (7.0, 2.15) node[below, font=\tiny, midway] {OK};
+
+		\draw[msgarr] (3.5, 1.2) -- (7.0, 1.2)
+			node[above, font=\tiny, midway] {(3) DELETE TaskInstance WHERE templateId=\{id\}; regenerar inst\^ancias};
+		\draw[retarr] (3.5, 0.7) -- (7.0, 0.7)
+			node[below, font=\tiny, midway] {OK};
+
+		\node[notebox, fill=red!5] at (5.15, -0.3)
+			{limita\c{c}\~ao: atribui\c{c}\~oes\\\texttt{PENDING} passam a ver\\os campos editados};
+		\draw[gray!30, thin] (3.5, -0.3) -- (4.25, -0.3);
+
+		\draw[retarr] (0, -1.2) -- (3.5, -1.2)
+			node[below, font=\tiny, midway] {(4) 200 TaskTemplate\{id, version\}};
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia de edi\c{c}\~ao de uma quest\~ao de t\'opico]{Edi\c{c}\~ao de uma quest\~ao. A opera\c{c}\~ao atualiza a mesma linha (\texttt{id} preservado, \texttt{version} incrementado --- passo~2), n\~ao cria uma nova vers\~ao imut\'avel. Atribui\c{c}\~oes \texttt{PENDING} que referenciem esta \emph{template} passam a ver os campos editados no momento da submiss\~ao (passo~3).}
+	\label{fig:seq-edit-task}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Inscri\c{c}\~ao num t\'opico}
+\label{ssec:seq-enroll}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A inscri\c{c}\~ao \'e o ponto de entrada de cada percurso de aprendizagem
+(Figura~\ref{fig:seq-enroll}). Antes de criar a inscri\c{c}\~ao, o servidor
+verifica tr\^es condi\c{c}\~oes: o t\'opico deve estar ativo, n\~ao expirado,
+e os seus pr\'e-requisitos devem estar conclu\'idos. A verifica\c{c}\~ao de
+pr\'e-requisitos consulta o conjunto de t\'opicos j\'a conclu\'idos pelo
+utilizador; caso existam em falta, o pedido \'e rejeitado com indica\c{c}\~ao
+precisa dos identificadores em falta.
+
+Em caso de sucesso, \'e criada uma \texttt{Enrollment} e \'e atribu\'ida
+imediatamente a primeira tarefa (\'indice 0), com as op\c{c}\~oes baralhadas
+de forma determin\'istica usando uma semente derivada do identificador do
+utilizador, do template e da inscri\c{c}\~ao.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.7cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny,
+		                minimum width=2.3cm, inner sep=3pt}
+	]
+		\node[actbox, fill=blue!8]   (ac1) at (0,   8.5) {Utilizador\\(Mobile)};
+		\node[actbox, fill=orange!8] (ac2) at (3.5, 8.5) {Servidor};
+		\node[actbox, fill=gray!8]   (ac3) at (7.0, 8.5) {Base de Dados};
+
+		\draw[lifeline] (0,   8.14) -- (0,   0.8);
+		\draw[lifeline] (3.5, 8.14) -- (3.5, 0.8);
+		\draw[lifeline] (7.0, 8.14) -- (7.0, 0.8);
+
+		\draw[msgarr] (0, 7.7) -- (3.5, 7.7)
+			node[above, font=\tiny, midway] {(1) POST /enrollments \{topicId\}};
+
+		\draw[msgarr] (3.5, 6.8) -- (7.0, 6.8)
+			node[above, font=\tiny, midway] {(2) SELECT topic + pr\'e-requisitos};
+		\draw[retarr] (3.5, 6.4) -- (7.0, 6.4)
+			node[below, font=\tiny, midway] {topic\{ACTIVE\} + missing:[]};
+
+		\node[notebox, fill=yellow!5] at (1.65, 5.9)
+			{se missing $\neq$ []\\$\to$ 400 Bad Request};
+		\draw[gray!30, thin] (0.75, 5.9) -- (1.1, 5.9);
+
+		\draw[msgarr] (3.5, 5.2) -- (7.0, 5.2)
+			node[above, font=\tiny, midway] {(3) INSERT Enrollment\{ACTIVE, dayIndex:0\}};
+		\draw[retarr] (3.5, 4.8) -- (7.0, 4.8)
+			node[below, font=\tiny, midway] {enrollmentId};
+
+		\draw[msgarr] (3.5, 4.1) -- (7.0, 4.1)
+			node[above, font=\tiny, midway] {(4) INSERT TaskAssignment\{dayIndex:0, PENDING\}};
+
+		\node[notebox, fill=orange!5] at (5.15, 3.5)
+			{optionOrder = shuffle(\\userId, templateId,\\enrollmentId)};
+		\draw[gray!30, thin] (3.5, 3.5) -- (4.25, 3.5);
+
+		\draw[retarr] (3.5, 2.9) -- (7.0, 2.9)
+			node[below, font=\tiny, midway] {assignmentId};
+
+		\draw[retarr] (0, 2.2) -- (3.5, 2.2)
+			node[below, font=\tiny, midway] {(5) 201 Enrollment\{id, topicId, ACTIVE\}};
+
+		\node[notebox, fill=green!5] at (5.15, 1.5)
+			{m\'etricas:\\topic\_enrollments\_total++};
+		\draw[gray!30, thin] (3.5, 1.5) -- (4.25, 1.5);
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia de inscri\c{c}\~ao num t\'opico]{Inscri\c{c}\~ao num t\'opico. O servidor executa tr\^es guardas (estado, expira\c{c}\~ao, pr\'e-requisitos) antes de criar a inscri\c{c}\~ao (passo~3) e atribuir a primeira tarefa com op\c{c}\~oes baralhadas deterministicamente (passo~4).}
+	\label{fig:seq-enroll}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Abandono de t\'opico}
+\label{ssec:seq-leave}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O utilizador pode abandonar uma inscri\c{c}\~ao ativa em qualquer momento
+(Figura~\ref{fig:seq-leave}). A inscri\c{c}\~ao transita para o estado
+\texttt{PAUSED} em vez de ser apagada: a data de pausa \'e registada para
+permitir ajustar o \texttt{enrolledAt} numa eventual reinscrição,
+compensando o per\'iodo de inatividade no c\'alculo do \'indice di\'ario.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.7cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny,
+		                minimum width=2.3cm, inner sep=3pt}
+	]
+		\node[actbox, fill=blue!8]   (ac1) at (0,   7.5) {Utilizador\\(Mobile)};
+		\node[actbox, fill=orange!8] (ac2) at (3.5, 7.5) {Servidor};
+		\node[actbox, fill=gray!8]   (ac3) at (7.0, 7.5) {Base de Dados};
+
+		\draw[lifeline] (0,   7.14) -- (0,   1.5);
+		\draw[lifeline] (3.5, 7.14) -- (3.5, 1.5);
+		\draw[lifeline] (7.0, 7.14) -- (7.0, 1.5);
+
+		\draw[msgarr] (0, 6.6) -- (3.5, 6.6)
+			node[above, font=\tiny, midway] {(1) DELETE /enrollments/\{topicId\}};
+
+		\draw[msgarr] (3.5, 5.6) -- (7.0, 5.6)
+			node[above, font=\tiny, midway] {(2) SELECT enrollment WHERE userId + topicId};
+		\draw[retarr] (3.5, 5.2) -- (7.0, 5.2)
+			node[below, font=\tiny, midway] {Enrollment\{status:ACTIVE\}};
+
+		\draw[msgarr] (3.5, 4.3) -- (7.0, 4.3)
+			node[above, font=\tiny, midway] {(3) UPDATE SET status=PAUSED, pausedAt=NOW()};
+		\draw[retarr] (3.5, 3.9) -- (7.0, 3.9) node[below, font=\tiny, midway] {OK};
+
+		\node[notebox, fill=orange!5] at (5.15, 3.2)
+			{pausedAt preservado:\\reinscrição ajusta\\enrolledAt + pauseDays};
+		\draw[gray!30, thin] (3.5, 3.2) -- (4.25, 3.2);
+
+		\draw[retarr] (0, 2.3) -- (3.5, 2.3)
+			node[below, font=\tiny, midway] {(4) 204 No Content};
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia de abandono de t\'opico]{Abandono de t\'opico. A inscri\c{c}\~ao transita para \texttt{PAUSED} com registo de data (passo~3). Numa eventual reinscrição, o servidor calcula os dias de pausa e ajusta o \texttt{enrolledAt} para que o \'indice de dias n\~ao salte abruptamente.}
+	\label{fig:seq-leave}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Resposta correta a um desafio}
+\label{ssec:seq-correct}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Quando o utilizador responde correctamente (Figura~\ref{fig:seq-correct}), o
+servidor executa em sequ\^encia: valida\c{c}\~ao da propriedade da atribui\c{c}\~ao;
+mapeamento da op\c{c}\~ao selecionada pelo \'indice de exibi\c{c}\~ao para o
+\'indice original (invertendo o baralhar); compara\c{c}\~ao com a resposta
+can\'onica; c\'alculo de pontos com penaliza\c{c}\~ao temporal; atualiza\c{c}\~ao
+do \emph{streak}; e verifica\c{c}\~ao da condi\c{c}\~ao de conclus\~ao do t\'opico.
+
+A penaliza\c{c}\~ao temporal aplica-se quando a resposta \'e submetida ap\'os o
+prazo, de acordo com a equa\c{c}\~ao:
+
+\begin{equation}
+	P = \begin{cases}
+		P_{\max} & \text{se } \Delta t \leq 0 \text{ (dentro do prazo)} \\
+		0.75 \cdot P_{\max} & \text{se } 0 < \Delta t \leq 24\text{h} \\
+		0.50 \cdot P_{\max} & \text{se } 24\text{h} < \Delta t \leq 72\text{h} \\
+		0.25 \cdot P_{\max} & \text{se } \Delta t > 72\text{h}
+	\end{cases}
+	\label{eq:penalizacao-temporal}
+\end{equation}
+
+onde $\Delta t = t_{\text{submiss\~ao}} - t_{\text{prazo}}$ e $P_{\max}$ \'e
+o valor m\'aximo de pontos definido no template da tarefa.
+
+\vspace*{\fill}
+\newpage
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.2cm, minimum height=0.7cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny,
+		                minimum width=2.4cm, inner sep=4pt}
+	]
+		\node[actbox, fill=blue!8]  (ac1) at (0,   20.0) {Utilizador\\(Mobile)};
+		\node[actbox, fill=orange!8](ac2) at (3.5, 20.0) {Servidor};
+		\node[actbox, fill=gray!8]  (ac3) at (7.0, 20.0) {Base de Dados};
+
+		\draw[lifeline] (0,   19.65) -- (0,   4.0);
+		\draw[lifeline] (3.5, 19.65) -- (3.5, 4.0);
+		\draw[lifeline] (7.0, 19.65) -- (7.0, 4.0);
+
+		\draw[msgarr] (0, 18.8) -- (3.5, 18.8)
+			node[above, font=\tiny, midway] {(1) POST /assignments/\{id\}/submit \{selectedOption\}};
+
+		\draw[msgarr] (3.5, 17.3) -- (7.0, 17.3)
+			node[above, font=\tiny, midway] {(2) SELECT assignment + template};
+		\draw[retarr] (3.5, 16.7) -- (7.0, 16.7)
+			node[below, font=\tiny, midway] {assignment\{optionOrder, dueAt\}};
+
+		\node[notebox, fill=orange!5] at (5.15, 15.3)
+			{originalIdx =\\optionOrder[selectedOpt]\\isCorrect = (originalIdx\\== correctAnswer)};
+		\draw[gray!30, thin] (3.5, 15.3) -- (4.25, 15.3);
+
+		\node[notebox, fill=yellow!5] at (5.15, 13.2)
+			{pontos = f($\Delta t$):\\0h: 100\% · $\leq$24h: 75\%\\$\leq$72h: 50\% · +72h: 25\%};
+		\draw[gray!30, thin] (3.5, 13.2) -- (4.25, 13.2);
+
+		\draw[msgarr] (3.5, 11.8) -- (7.0, 11.8)
+			node[above, font=\tiny, midway] {(3) UPDATE assignment\{SUBMITTED, isCorrect:true, points\}};
+		\draw[msgarr] (3.5, 10.8) -- (7.0, 10.8)
+			node[above, font=\tiny, midway] {(4) UPDATE enrollment\{points+, streak+\}};
+
+		\node[notebox, fill=green!5] at (5.15, 9.8)
+			{countCorrect/total $\geq \alpha$\\$\to$ INSERT Badge\\(idempotente)};
+		\draw[gray!30, thin] (3.5, 9.8) -- (4.25, 9.8);
+		\draw[msgarr] (3.5, 8.5) -- (7.0, 8.5)
+			node[above, font=\tiny, midway] {(5) issueBadge (idempotente)};
+
+		\draw[msgarr] (3.5, 7.5) -- (7.0, 7.5)
+			node[above, font=\tiny, midway] {(6) countSubmitted --- verificar conclus\~ao};
+		\draw[retarr] (3.5, 6.9) -- (7.0, 6.9)
+			node[below, font=\tiny, midway] {count};
+
+		\node[notebox, fill=blue!5] at (5.15, 5.9)
+			{se count $\geq$ taskCount\\$\to$ enrollment COMPLETED};
+		\draw[gray!30, thin] (3.5, 5.9) -- (4.25, 5.9);
+
+		\draw[retarr] (0, 4.5) -- (3.5, 4.5)
+			node[below, font=\tiny, midway] {(7) 200 SubmitResult\{isCorrect:true, points, streak\}};
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia de resposta correcta a um desafio]{Submiss\~ao correcta. A op\c{c}\~ao seleccionada \'e mapeada para o \'indice original invertendo o baralhar (passo~2). Os pontos s\~ao calculados com penaliza\c{c}\~ao temporal (Equa\c{c}\~ao~\ref{eq:penalizacao-temporal}). O streak \'e incrementado, a conclus\~ao do t\'opico \'e verificada (passo~6) e o distintivo \'e emitido de forma idempotente se os crit\'erios forem cumpridos (passo~5).}
+	\label{fig:seq-correct}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Resposta errada e ativa\c{c}\~ao do percurso adaptativo}
+\label{ssec:seq-wrong}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Uma resposta errada desencadeia a gera\c{c}\~ao ass\'incrona de um percurso
+adaptativo (Figura~\ref{fig:seq-wrong}). O servidor classifica imediata e
+deterministicamente o padr\~ao de erro usando tr\^es regras em cascata,
+conforme a Tabela~\ref{tab:classificacao-erro}; a resposta HTTP \'e
+devolvida de imediato, e s\'o depois --- j\'a dentro do mesmo bloco
+ass\'incrono que invoca o LLM --- \'e que a sess\~ao de dificuldade
+(\texttt{StruggleSession}) \'e persistida na base de dados.
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\begin{tabular}{p{3.8cm} p{8.0cm}}
+		\toprule
+		\textbf{Padr\~ao classificado} & \textbf{Condi\c{c}\~ao de detec\c{c}\~ao (por ordem de prioridade)} \\
+		\midrule
+		\texttt{TIME\_PRESSURE}
+			& $t_{\text{submiss\~ao}} > t_{\text{prazo}}$ --- submetido ap\'os o prazo de 24 horas. \\
+		\texttt{READING\_ERROR}
+			& A op\c{c}\~ao selecionada \'e adjacente ($\pm 1$) \`a op\c{c}\~ao correta na ordem de
+			  exibi\c{c}\~ao atual (ap\'os baralhar). \\
+		\texttt{WRONG\_CONCEPT}
+			& Default --- nenhuma das condi\c{c}\~oes anteriores se verificou. \\
+		\bottomrule
+	\end{tabular}
+	\caption[Regras de classifica\c{c}\~ao determin\'istica de padr\~oes de erro]{Regras de classifica\c{c}\~ao determin\'istica de padr\~oes de erro, aplicadas em cascata. A classifica\c{c}\~ao \'e s\'incrona, local e n\~ao envolve IA.}
+	\label{tab:classificacao-erro}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.0cm, minimum height=0.7cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		dasharr/.style={-{Latex[length=1.8mm]}, thick, dashed, gray!60},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny,
+		                minimum width=2.2cm, inner sep=3pt}
+	]
+		\node[actbox, fill=blue!8]        (ac1) at (0,   15.0) {Utilizador\\(Mobile)};
+		\node[actbox, fill=orange!8]      (ac2) at (3.0, 15.0) {Servidor};
+		\node[actbox, fill=purple!8]      (ac3) at (6.2, 15.0) {HandleStruggle\\(Async)};
+		\node[actbox, fill=teal!8, dashed](ac4) at (9.8, 15.0) {Fornecedor\\LLM};
+
+		\draw[lifeline] (0,   14.65) -- (0,   3.4);
+		\draw[lifeline] (3.0, 14.65) -- (3.0, 3.4);
+		\draw[lifeline] (6.2, 14.65) -- (6.2, 3.4);
+		\draw[lifeline] (9.8, 14.65) -- (9.8, 3.4);
+
+		\draw[msgarr] (0, 14.2) -- (3.0, 14.2)
+			node[above, font=\tiny, midway] {(1) POST /assignments/\{id\}/submit \{selectedOption\}};
+
+		\node[notebox, fill=orange!5] at (4.55, 12.9)
+			{classifica erro:\\dueAt $<$ now $\to$ TIME\_PRESSURE\\pos. adj. $\to$ READING\_ERROR\\default $\to$ WRONG\_CONCEPT};
+		\draw[gray!30, thin] (3.0, 12.9) -- (3.8, 12.9);
+
+		\draw[retarr] (0, 11.4) -- (3.0, 11.4)
+			node[below, font=\tiny, midway] {(2) 200 SubmitResult\{isCorrect:false, struggleTriggered:true\}};
+
+		\draw[dasharr] (3.0, 10.6) -- (6.2, 10.6)
+			node[above, font=\tiny, midway] {(3) triggerAsync --- generationScope.launch \{...\}};
+
+		\node[notebox, fill=red!5] at (7.85, 9.5)
+			{(4) INSERT StruggleSession\\(OPEN, errorPattern,\\sem tarefas ainda)};
+		\draw[gray!30, thin] (6.2, 9.5) -- (7.05, 9.5);
+
+		\node[notebox, fill=purple!5] at (7.85, 8.3)
+			{(5) embed(struggleText)\\findSimilarStruggle\\$\to$ FRESH/PARTIAL/FULL};
+		\draw[gray!30, thin] (6.2, 8.3) -- (7.05, 8.3);
+
+		\draw[msgarr] (6.2, 7.0) -- (9.8, 7.0)
+			node[above, font=\tiny, midway] {(6) StruggleAnalysisPrompt.user(context)};
+		\draw[retarr] (6.2, 6.4) -- (9.8, 6.4)
+			node[below, font=\tiny, midway] {JSON: 3 subtarefas adaptativas};
+
+		\draw[msgarr] (6.2, 5.4) -- (3.0, 5.4)
+			node[above, font=\tiny, midway] {(7) UPDATE StruggleSession: OPEN + 3 AdaptiveTasks};
+
+		\draw[msgarr] (0, 4.6) -- (3.0, 4.6)
+			node[above, font=\tiny, midway] {(8) GET /struggle/\{id\}};
+		\draw[retarr] (0, 4.0) -- (3.0, 4.0)
+			node[below, font=\tiny, midway] {(9) StruggleSession\{status:OPEN, tasks[3]\}};
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia: resposta errada e activa\c{c}\~ao do percurso adaptativo]{Resposta errada. O padr\~ao de erro \'e classificado sincronamente e de forma determin\'istica (passo~1, cfr. Tabela~\ref{tab:classificacao-erro}); a resposta HTTP \'e devolvida de imediato (passo~2). S\'o depois, dentro do mesmo bloco ass\'incrono (\texttt{generationScope.launch}) que invoca o LLM, \'e que a sess\~ao de dificuldade \'e persistida (passo~4) e as subtarefas s\~ao geradas ou reutilizadas (passos 5--7). O cliente s\'o toma conhecimento da sess\~ao ao consultar o endpoint de consolida\c{c}\~ao (passo~8).}
+	\label{fig:seq-wrong}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Percurso de consolida\c{c}\~ao}
+\label{ssec:seq-struggle}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O percurso de consolida\c{c}\~ao \'e constitu\'ido por tr\^es subtarefas
+adaptativas geradas pelo LLM especificamente para o padr\~ao de erro detetado
+(Figura~\ref{fig:seq-struggle}). Se o utilizador completar todas com sucesso,
+a sess\~ao transita para \texttt{RESOLVED} e a tarefa original \'e reposta em
+estado \texttt{PENDING} para uma nova tentativa aut\'onoma. Se falhar em pelo
+menos uma subtarefa e a profundidade m\'axima ainda n\~ao tiver sido atingida,
+um novo ramo adaptativo \'e gerado com os ramos j\'a vistos exclu\'idos
+(evitando repeti\c{c}\~ao). Se a profundidade m\'axima (\texttt{MAX\_STRUGGLE\_DEPTH = 1})
+for atingida, o sistema escala para o modo de explica\c{c}\~ao.
+
+\vspace*{\fill}
+\newpage
+A Figura~\ref{fig:maquina-estados} apresenta a m\'aquina de estados completa
+deste percurso.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.1cm, minimum height=0.7cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		dasharr/.style={-{Latex[length=1.8mm]}, thick, dashed, gray!60},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny,
+		                minimum width=2.2cm, inner sep=3pt}
+	]
+		\node[actbox, fill=blue!8]   (ac1) at (0,   12.5) {Utilizador\\(Mobile)};
+		\node[actbox, fill=orange!8] (ac2) at (3.5, 12.5) {Servidor};
+		\node[actbox, fill=gray!8]   (ac3) at (7.0, 12.5) {Base de Dados};
+
+		\draw[lifeline] (0,   12.15) -- (0,   1.0);
+		\draw[lifeline] (3.5, 12.15) -- (3.5, 1.0);
+		\draw[lifeline] (7.0, 12.15) -- (7.0, 1.0);
+
+		\draw[msgarr] (0, 11.7) -- (3.5, 11.7)
+			node[above, font=\tiny, midway] {(1) GET /struggle/\{id\}};
+		\draw[retarr] (0, 11.1) -- (3.5, 11.1)
+			node[below, font=\tiny, midway] {StruggleSession\{status:OPEN, tasks[3]\}};
+
+		\draw[gray!40, thin] (-0.4, 10.6) rectangle (2.9, 9.7);
+		\node[font=\tiny, gray!65] at (1.25, 10.15)
+			{(2) POST submit subtask\{i\} $\times 3$};
+
+		\node[notebox, fill=green!5] at (5.15, 8.8)
+			{todas corretas?\\$\to$ RESOLVED\\+ tarefa $\to$ PENDING};
+		\draw[gray!30, thin] (3.5, 8.8) -- (4.25, 8.8);
+
+		\draw[msgarr] (3.5, 7.7) -- (7.0, 7.7)
+			node[above, font=\tiny, midway] {(3a) UPDATE session RESOLVED + assignment PENDING};
+
+		\draw[retarr] (0, 7.0) -- (3.5, 7.0)
+			node[below, font=\tiny, midway] {(4a) 200 AdaptiveResult\{allCorrect:true\}};
+
+		\node[notebox, fill=orange!5] at (5.15, 5.9)
+			{alguma errada:\\depth $<$ MAX\\$\to$ novo ramo\\(excl. branchIds vistos)};
+		\draw[gray!30, thin] (3.5, 5.9) -- (4.25, 5.9);
+
+		\draw[dasharr] (3.5, 4.8) -- (7.0, 4.8)
+			node[above, font=\tiny, midway] {(3b) ASYNC: triggerFromPreviousSession};
+
+		\draw[retarr] (0, 4.1) -- (3.5, 4.1)
+			node[below, font=\tiny, midway] {(4b) 200 AdaptiveResult\{allCorrect:false\}};
+
+		\node[notebox, fill=purple!5] at (5.15, 3.0)
+			{depth $\geq$ MAX=1:\\createExplanation\\$\to$ explanationSessionId};
+		\draw[gray!30, thin] (3.5, 3.0) -- (4.25, 3.0);
+
+		\draw[retarr] (0, 1.9) -- (3.5, 1.9)
+			node[below, font=\tiny, midway] {(4c) 200 AdaptiveResult\{explanationSessionId\}};
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia do percurso de consolida\c{c}\~ao]{Percurso de consolida\c{c}\~ao. O fluxo diverge em tr\^es desfechos: (a) todas corretas $\to$ sess\~ao resolvida e tarefa original reposta; (b) alguma errada e profundidade n\~ao atingida $\to$ novo ramo excluindo ramos j\'a vistos; (c) profundidade m\'axima atingida $\to$ escala para sess\~ao de explica\c{c}\~ao.}
+	\label{fig:seq-struggle}
+\end{figure}
+
+\vspace*{\fill}
+\newpage
+\begin{figure}[H]
+	\centering
+	\resizebox{\textwidth}{!}{%
+	\begin{tikzpicture}[
+		node distance=0.55cm and 1.4cm,
+		estado/.style={draw, rounded corners, align=center, font=\small, minimum width=2.9cm, minimum height=0.9cm},
+		decision/.style={draw, diamond, aspect=2.5, align=center, font=\footnotesize, fill=yellow!10, minimum width=2.2cm},
+		seta/.style={-{Latex[length=2mm]}, thick}
+	]
+		\node[estado, fill=red!10] (wrong) {Resposta errada\\na tarefa principal};
+		\node[estado, fill=orange!10, below=of wrong] (classify) {Classificar padr\~ao\\de erro (s\'incrono)};
+		\node[estado, fill=blue!10, below=of classify] (genbranch) {Gerar percurso\\adaptativo (IA, ass\'inc.)};
+		\node[estado, fill=gray!10, below=of genbranch] (adaptive) {Utilizador responde\\\`as subtarefas};
+		\node[decision, below=0.7cm of adaptive] (passed) {Todas as\\subtarefas\\corretas?};
+
+		\node[estado, left=2.6cm of passed, fill=green!10] (reset) {Reset da tarefa\\principal para\\PENDING};
+		\node[estado, below=0.8cm of reset] (retry) {Utilizador\\retenta a tarefa\\principal};
+
+		\node[decision, right=2.8cm of passed] (depth) {Profun-\\didade\\m\'axima?};
+		\node[estado, above=0.8cm of depth, fill=orange!8] (followup) {Gerar novo\\percurso\\(depth+1)};
+		\node[estado, below=0.8cm of depth, fill=purple!10] (explanation) {Criar sess\~ao\\de explica\c{c}\~ao\\(IA, ass\'inc.)};
+		\node[estado, below=0.8cm of explanation, fill=violet!10] (chat) {Di\'alogo livre\\com o LLM\\(chat aberto)};
+		\node[estado, below=0.8cm of chat, fill=green!10] (resolved) {Sess\~ao resolvida\\$\to$ tarefa reset};
+
+		\draw[seta] (wrong) -- (classify);
+		\draw[seta] (classify) -- (genbranch);
+		\draw[seta] (genbranch) -- node[right, font=\scriptsize]{status OPEN} (adaptive);
+		\draw[seta] (adaptive) -- (passed);
+		\draw[seta] (passed) -- node[above, font=\scriptsize]{Sim} (reset);
+		\draw[seta] (reset) -- (retry);
+		\draw[seta, dashed] (retry.east) -- ++(0.5,0) |- (wrong.east);
+		\draw[seta] (passed) -- node[above, font=\scriptsize]{N\~ao} (depth);
+		\draw[seta] (depth) -- node[right, font=\scriptsize]{N\~ao} (followup);
+		\draw[seta] (depth) -- node[right, font=\scriptsize]{Sim} (explanation);
+		\draw[seta, dashed] (followup.west) -- ++(-0.5,0) |- (adaptive.east);
+		\draw[seta] (explanation) -- (chat);
+		\draw[seta] (chat) -- (resolved);
+	\end{tikzpicture}
+	}% end resizebox
+	\caption[M\'aquina de estados do percurso adaptativo]{M\'aquina de estados completa do percurso adaptativo: uma resposta errada desencadeia a gera\c{c}\~ao de subtarefas; se o utilizador voltar a falhar e atingir a profundidade m\'axima (\texttt{MAX\_STRUGGLE\_DEPTH = 1}), o sistema escala para uma sess\~ao de explica\c{c}\~ao e di\'alogo com o LLM.}
+	\label{fig:maquina-estados}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Modo de explica\c{c}\~ao por IA}
+\label{ssec:seq-explanation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+Quando o utilizador esgota a profundidade m\'axima adaptativa, o sistema
+escala para o modo de explica\c{c}\~ao hol\'istica
+(Figura~\ref{fig:seq-explanation}). A cria\c{c}\~ao da
+\texttt{ExplanationSession} \'e s\'incrona: o servidor persiste o registo
+com estado \texttt{GENERATING} e devolve imediatamente o identificador ao
+cliente (passo~2), que navega para o ecr\~a de explica\c{c}\~ao sem esperar
+pelo LLM. Se a gera\c{c}\~ao falhar, um mecanismo de \emph{fallback}
+autom\'atico repõe a atribui\c{c}\~ao original em \texttt{PENDING},
+garantindo que o utilizador nunca fica bloqueado. Uma vez no estado
+\texttt{ACTIVE}, o utilizador pode iniciar $N$ rondas de di\'alogo antes
+de encerrar a sess\~ao.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		actbox/.style={draw, rounded corners=3pt, align=center, font=\scriptsize\bfseries,
+		               minimum width=2.3cm, minimum height=0.72cm, thick},
+		lifeline/.style={gray!22, dashed, thin},
+		msgarr/.style={-{Latex[length=1.8mm]}, thick},
+		retarr/.style={{Latex[length=1.8mm]}-, thick},
+		dasharr/.style={-{Latex[length=1.8mm]}, thick, dashed, gray!60},
+		notebox/.style={draw, rounded corners=2pt, align=center, font=\tiny,
+		                minimum width=2.1cm, inner sep=3pt}
+	]
+		\node[actbox, fill=blue!8]        (ac1) at (0,   6.4) {Aprendente};
+		\node[actbox, fill=orange!8]      (ac2) at (3.5, 6.4) {Spring\\Server};
+		\node[actbox, fill=purple!8]      (ac3) at (7.0, 6.4) {@Async\\ExplanationSvc};
+		\node[actbox, fill=red!5, dashed] (ac4) at (10.5, 6.4) {Fornecedor\\LLM};
+
+		\draw[lifeline] (0,   6.04) -- (0,   -1.1);
+		\draw[lifeline] (3.5, 6.04) -- (3.5, -1.1);
+		\draw[lifeline] (7.0, 6.04) -- (7.0, -1.1);
+		\draw[lifeline] (10.5,6.04) -- (10.5,-1.1);
+
+		\draw[msgarr] (0, 5.7) -- (3.5, 5.7)
+			node[above, font=\tiny, midway] {(1) POST /struggle/\{id\}/tasks/\{tid\}/submit};
+
+		\node[notebox, fill=orange!6] at (5.1, 5.18)
+			{depth $\ge$ \texttt{MAX=1}\\createSession() s\'incrono};
+		\draw[gray!30, thin] (3.5, 5.18) -- (4.2, 5.18);
+
+		\draw[retarr] (0, 4.72) -- (3.5, 4.72)
+			node[above, font=\tiny, midway] {(2) AdaptiveResult\{explanationSessionId\}};
+
+		\draw[dasharr] (3.5, 4.22) -- (7.0, 4.22)
+			node[above, font=\tiny, midway] {(3) @Async triggerAsync(sessionId)};
+
+		\draw[msgarr] (0, 3.72) -- (3.5, 3.72)
+			node[above, font=\tiny, midway] {(4) GET /explanation/\{sessionId\}};
+		\draw[retarr] (0, 3.28) -- (3.5, 3.28)
+			node[below, font=\tiny, midway] {ExplanationSession\{status:GENERATING\}};
+
+		\node[notebox, fill=purple!6] at (8.45, 2.85)
+			{buildExplanationContext()\\(inclui StruggleHistory)};
+		\draw[gray!30, thin] (7.0, 2.85) -- (7.6, 2.85);
+
+		\draw[msgarr] (7.0, 2.38) -- (10.5, 2.38)
+			node[above, font=\tiny, midway] {(5) LangChain4j: system + user prompt};
+
+		\node[notebox, fill=red!5, draw=red!30] at (8.75, 1.9)
+			{falha $\to$ fallback:\\reset assignment\\$\to$ PENDING};
+
+		\draw[retarr] (7.0, 1.5) -- (10.5, 1.5)
+			node[below, font=\tiny, midway] {(6) texto de explica\c{c}\~ao};
+
+		\node[notebox, fill=purple!8] at (8.45, 1.05)
+			{ExplanationSession\\$\to$ status: ACTIVE};
+		\draw[gray!30, thin] (7.0, 1.05) -- (7.6, 1.05);
+
+		\draw[msgarr] (0, 0.6) -- (3.5, 0.6)
+			node[above, font=\tiny, midway] {(7) GET /explanation/\{id\} (poll)};
+		\draw[retarr] (0, 0.17) -- (3.5, 0.17)
+			node[below, font=\tiny, midway] {ExplanationSession\{ACTIVE, explanation\}};
+
+		\draw[gray!45, thin] (-0.5, -0.08) rectangle (3.2, -0.82);
+		\node[font=\tiny, gray!65] at (1.35, -0.45)
+			{(8) POST /messages + resposta AI $\;\times N$};
+
+		\draw[msgarr] (0, -0.98) -- (3.5, -0.98)
+			node[above, font=\tiny, midway] {(9) POST /explanation/\{id\}/resolve};
+		\node[notebox, fill=green!6] at (5.1, -0.98)
+			{assignment $\to$ PENDING};
+		\draw[gray!30, thin] (3.5, -0.98) -- (4.2, -0.98);
+
+	\end{tikzpicture}
+	\caption[Sequ\^encia do ciclo de explica\c{c}\~ao hol\'istica]{Modo de explica\c{c}\~ao hol\'istica. A cria\c{c}\~ao da sess\~ao \'e s\'incrona (passo~2); a gera\c{c}\~ao do texto \'e ass\'incrona (passos 3--6) com \emph{fallback} autom\'atico em caso de falha. Ap\'os transi\c{c}\~ao para \texttt{ACTIVE}, $N$ rondas de di\'alogo com o LLM s\~ao poss\'iveis (passo~8); a resolu\c{c}\~ao (passo~9) rep\~oe a tarefa em \texttt{PENDING}.}
+	\label{fig:seq-explanation}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{O motor de intelig\^encia artificial}
+\label{sec:motor-ia}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O agente de IA \'e a componente mais complexa do sistema. Esta sec\c{c}\~ao
+descreve em detalhe como cada opera\c{c}\~ao de gera\c{c}\~ao funciona: a
+constru\c{c}\~ao dos prompts, o processamento da resposta, a deduplica\c{c}\~ao
+vetorial e o tratamento de falhas.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Gera\c{c}\~ao de tarefas do percurso fixo}
+\label{ssec:ia-geracao-fixa}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O prompt \'e composto por dois componentes: um \emph{system prompt} que
+estabelece o perfil do modelo e as regras invariantes de formato, e um
+\emph{user prompt} que fornece o contexto espec\'ifico do t\'opico.
+
+O \emph{system prompt} (Listagem~\ref{lst:task-gen-system}) imp\~oe tr\^es
+restri\c{c}\~oes fundamentais: o idioma (obrigat\'orio em toda a resposta),
+o formato de sa\'ida (JSON array apenas, sem texto adicional), e a posi\c{c}\~ao
+da resposta correta (sempre no \'indice 0 do array de op\c{c}\~oes --- o
+sistema baralha antes de enviar ao utilizador).
+
+O system prompt completo encontra-se na Listagem~\ref{lst:task-gen-system}
+(Ap\^endice~\ref{ap:prompts-ia}).
+
+O \emph{user prompt} (Listagem~\ref{lst:task-gen-user}) injeta o contexto
+espec\'ifico do t\'opico, incluindo o texto extra\'ido (at\'e 8\,000
+caracteres), o objetivo do m\'odulo, o n\'ivel de audi\^encia e o idioma.
+A instru\c{c}\~ao de progress\~ao l\'ogica das tarefas reflete o princ\'ipio
+do \emph{scaffolding} cognitivo: tarefas mais cedo constroem fundamentos,
+tarefas mais tarde aplicam conceitos em cen\'arios mais complexos.
+
+O user prompt completo encontra-se na Listagem~\ref{lst:task-gen-user}
+(Ap\^endice~\ref{ap:prompts-ia}).
+
+O n\'ivel de audi\^encia \'e traduzido para linguagem natural conforme a
+Tabela~\ref{tab:audience-levels}.
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\begin{tabular}{p{2.8cm} p{9.5cm}}
+		\toprule
+		\textbf{N\'ivel} & \textbf{Descri\c{c}\~ao injetada no prompt} \\
+		\midrule
+		\texttt{BEGINNER} &
+			Beginner --- assumes no prior knowledge, uses simple language, concrete examples \\
+		\texttt{INTERMEDIATE} &
+			Intermediate --- assumes basic familiarity, introduces complexity, some abstraction \\
+		\texttt{ADVANCED} &
+			Advanced --- assumes solid foundation, focuses on nuance, edge cases, and depth \\
+		\bottomrule
+	\end{tabular}
+	\caption[Mapeamento de n\'ivel de audi\^encia para descri\c{c}\~ao no prompt]{Tradu\c{c}\~ao do n\'ivel de audi\^encia para descri\c{c}\~ao em linguagem natural inclu\'ida no prompt. A granularidade sem\^antica afecta diretamente a dificuldade e o vocabul\'ario das tarefas geradas.}
+	\label{tab:audience-levels}
+\end{table}
+
+\paragraph{Valida\c{c}\~ao e retenta\c{c}\~ao autom\'atica.}
+Ap\'os receber a resposta do LLM, o agente valida o JSON produzido. Se o
+n\'umero de tarefas com esquema v\'alido for inferior ao solicitado, o agente
+executa automaticamente uma segunda invoca\c{c}\~ao com um \emph{schema reminder}
+adicional. Se a segunda tentativa tamb\'em falhar, a gera\c{c}\~ao \'e reportada
+como falhada e o t\'opico transita para \texttt{FAILED}.
+
+\paragraph{Deduplica\c{c}\~ao vetorial.}
+Cada tarefa gerada com sucesso \'e vetorizada (embedding de 1024 dimens\~oes)
+e comparada por similaridade cosseno com os embeddings das tarefas j\'a
+existentes no m\'odulo. Se a dist\^ancia cosseno exceder o limiar de
+duplica\c{c}\~ao, a tarefa \'e marcada como \texttt{DUPLICATE} e descartada,
+evitando que regenera\c{c}\~oes produzam quest\~oes semanticamente redundantes.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Gera\c{c}\~ao adaptativa: ramos de consolida\c{c}\~ao}
+\label{ssec:ia-geracao-adaptativa}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A gera\c{c}\~ao de um ramo adaptativo inclui um mecanismo de reutiliza\c{c}\~ao
+baseado em similaridade que evita chamar o LLM quando j\'a existe conte\'udo
+equivalente. O processo come\c{c}a por calcular um embedding do contexto de
+dificuldade e procura na base de dados vetorial um ramo similar previamente
+gerado, excluindo os ramos que o utilizador j\'a viu para esta atribui\c{c}\~ao.
+
+O resultado determina a estrat\'egia de reutiliza\c{c}\~ao conforme a
+Tabela~\ref{tab:reuse-strategy}.
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\begin{tabular}{p{3.2cm} p{3.0cm} p{5.9cm}}
+		\toprule
+		\textbf{Estrat\'egia} & \textbf{Limiar} & \textbf{Comportamento} \\
+		\midrule
+		\texttt{FULL\_REUSE} &
+			$\cos > 0.90$ &
+			Reutiliza integralmente o ramo existente; sem chamada ao LLM. \\
+		\texttt{PARTIAL\_REUSE} &
+			$0.65 < \cos \leq 0.90$ &
+			Reutiliza parte das subtarefas proporcionalmente \`a similaridade;
+			gera as restantes com o LLM. \\
+		\texttt{FRESH\_GENERATION} &
+			$\cos \leq 0.65$ &
+			Gera todas as subtarefas de raiz. \\
+		\bottomrule
+	\end{tabular}
+	\caption[Estrat\'egias de reutiliza\c{c}\~ao na gera\c{c}\~ao adaptativa]{Estrat\'egias de reutiliza\c{c}\~ao de ramos adaptativos em fun\c{c}\~ao da similaridade cosseno. A reutiliza\c{c}\~ao total ou parcial reduz a lat\^encia e o custo de chamadas ao LLM.}
+	\label{tab:reuse-strategy}
+\end{table}
+
+A propor\c{c}\~ao de subtarefas reutilizadas na estrat\'egia
+\texttt{PARTIAL\_REUSE} \'e calculada por interpola\c{c}\~ao linear:
+
+\begin{equation}
+	n_{\text{reutilizadas}} = \left\lfloor
+		N \cdot \frac{\cos\theta - \theta_{\text{partial}}}{\theta_{\text{full}} - \theta_{\text{partial}}}
+	\right\rfloor, \quad
+	N = |\text{subtarefas v\'alidas do ramo existente}|,\quad
+	\theta_{\text{partial}} = 0.65,\quad
+	\theta_{\text{full}} = 0.90
+	\label{eq:partial-reuse}
+\end{equation}
+
+\noindent Note-se que $N$ n\~ao \'e uma constante fixa: corresponde ao
+n\'umero real de subtarefas v\'alidas existentes no ramo encontrado
+(\texttt{existing.subtasks.size}), coincidindo com 3 apenas quando esse
+ramo tem exatamente tr\^es subtarefas v\'alidas.
+
+O resultado \'e restringido ao intervalo $[1, N]$ para garantir que pelo menos
+uma subtarefa \'e sempre reutilizada no modo parcial.
+
+\begin{sloppypar}
+O \emph{system prompt} adaptativo (Listagem~\ref{lst:struggle-system})
+distingue-se do prompt de percurso fixo por focar a \emph{scaffolding}
+remediativa: o modelo \'e instru\'ido a come\c{c}ar pelo conceito mais
+simples poss\'ivel e a reencadrar a dificuldade como uma oportunidade.
+\end{sloppypar}
+
+O system prompt completo encontra-se na Listagem~\ref{lst:struggle-system}
+(Ap\^endice~\ref{ap:prompts-ia}).
+
+O \emph{user prompt} injeta o padr\~ao de erro com a sua tradu\c{c}\~ao
+pedag\'ogica (Tabela~\ref{tab:error-patterns}), permitindo ao LLM gerar
+subtarefas especificamente adaptadas ao tipo de dificuldade detetada.
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\begin{tabular}{p{4.2cm} p{7.7cm}}
+		\toprule
+		\textbf{Padr\~ao de erro} & \textbf{Instru\c{c}\~ao pedag\'ogica no prompt} \\
+		\midrule
+		\texttt{WRONG\_CONCEPT}
+			& The student misunderstands the core concept. Start by re-explaining it differently. \\
+		\texttt{PARTIAL\_UNDERSTANDING}\textsuperscript{*}
+			& The student understands the concept but applies the wrong steps. Focus on procedure. \\
+		\texttt{READING\_ERROR}
+			& The task instructions were unclear. Provide clearer, more explicit guidance. \\
+		\texttt{TIME\_PRESSURE}
+			& The student rushed under time pressure. Use paced, step-by-step practice tasks. \\
+		\bottomrule
+	\end{tabular}
+	\caption[Mapeamento de padr\~oes de erro para instru\c{c}\~oes pedag\'ogicas no prompt]{Tradu\c{c}\~ao dos padr\~oes de erro para instru\c{c}\~oes pedag\'ogicas espec\'ificas inclu\'idas no prompt adaptativo. A especificidade da instru\c{c}\~ao \'e o principal fator de qualidade das subtarefas geradas.}
+	\label{tab:error-patterns}
+\end{table}
+\noindent\textsuperscript{*}\small\texttt{PARTIAL\_UNDERSTANDING} est\'a definido no modelo de dom\'inio e mapeado na camada de servi\c{c}o, mas n\~ao \'e emitido pelo classificador actual: requer uma m\'aquina de estados de duas tentativas que n\~ao existe nesta vers\~ao do prot\'otipo. O seu desenvolvimento est\'a listado como trabalho futuro (\S\ref{sec:trabalho-futuro}).\normalsize
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Gera\c{c}\~ao da explica\c{c}\~ao hol\'istica}
+\label{ssec:ia-explicacao}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O modo de explica\c{c}\~ao \'e ativado quando o utilizador esgota o percurso
+adaptativo. O sistema disp\~oe nesse ponto de informa\c{c}\~ao rica sobre o
+hist\'orial de dificuldades, compilada num contexto de explica\c{c}\~ao que
+inclui: a descri\c{c}\~ao da tarefa original e o objetivo do m\'odulo; o
+hist\'orial completo das sess\~oes adaptativas (padr\~ao de erro, t\'itulos
+das subtarefas tentadas); o n\'ivel de audi\^encia; e a l\'ingua do utilizador.
+
+O \emph{system prompt} de explica\c{c}\~ao (Listagem~\ref{lst:explanation-prompt})
+especifica explicitamente o formato de sa\'ida como prosa corrida (sem JSON,
+sem listas, sem cabe\c{c}alhos), com 3 a 5 par\'agrafos. Esta restri\c{c}\~ao
+\'e intencional: o utilizador que chegou a este ponto j\'a viu estrutura
+suficiente de m\'ultipla escolha; o que precisa \'e de uma explica\c{c}\~ao
+natural, emp\'atica e flu\'ida.
+
+O system prompt completo encontra-se na Listagem~\ref{lst:explanation-prompt}
+(Ap\^endice~\ref{ap:prompts-ia}).
+
+Para o di\'alogo subsequente, o \emph{system prompt} de resposta
+(Listagem~\ref{lst:reply-prompt}) instrui o modelo a agir como coach
+conversacional focado, com respostas de 2 a 4 frases. Cada mensagem \'e
+enviada ao modelo juntamente com o hist\'orial completo da conversa,
+constru\'ido dinamicamente como texto simples com prefixos de papel
+(\texttt{Coach:} / \texttt{Student:}).
+
+O system prompt completo encontra-se na Listagem~\ref{lst:reply-prompt}
+(Ap\^endice~\ref{ap:prompts-ia}).
+
+A Figura~\ref{fig:escalada-ia} sintetiza a escada progressiva do modo de IA
+desde a gera\c{c}\~ao de tarefas adaptativas at\'e ao di\'alogo livre.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}[
+		node distance=0.85cm,
+		box/.style={draw, rounded corners, align=center, font=\small,
+		            minimum width=3.6cm, minimum height=1.0cm},
+		seta/.style={-{Latex[length=2.5mm]}, thick},
+		lbl/.style={font=\scriptsize, gray!70}
+	]
+		\node[box, fill=red!8]     (t0)  {Tarefa principal\\(resposta errada)};
+		\node[box, fill=orange!8,  below=of t0]  (d1)   {Percurso adaptativo\\profundidade~1};
+		\node[box, fill=purple!10, below=of d1]  (exp)  {Explica\c{c}\~ao hol\'istica\\gerada pelo LLM};
+		\node[box, fill=violet!10, below=of exp] (chat) {Chat aberto com\\o LLM (d\'uvidas)};
+		\node[box, fill=green!10,  below=of chat](reset){Tarefa resetada\\$\to$ nova tentativa};
+
+		\draw[seta] (t0)   -- node[right, lbl]{errou} (d1);
+		\draw[seta] (d1)   -- node[right, lbl]{voltou a falhar (depth m\'ax.)} (exp);
+		\draw[seta] (exp)  -- node[right, lbl]{explica\c{c}\~ao pronta} (chat);
+		\draw[seta] (chat) -- node[right, lbl]{utilizador resolve} (reset);
+	\end{tikzpicture}
+	\caption[Escada progressiva para o modo de explica\c{c}\~ao]{Escada do percurso adaptativo para o modo de explica\c{c}\~ao. Com \texttt{MAX\_STRUGGLE\_DEPTH = 1}, ap\'os uma \'unica falha no percurso adaptativo, o sistema escala diretamente para a sess\~ao de explica\c{c}\~ao hol\'istica e o di\'alogo com o LLM.}
+	\label{fig:escalada-ia}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Reconhecimento: o sistema de distintivos}
+\label{sec:badges}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O pilar do \textbf{reconhecimento} implementa-se atrav\'es de distintivos
+(\emph{badges}) associados a microcompet\^encias. Cada t\'opico tem
+exatamente uma microcompet\^encia correspondente, criada durante a fase
+INDEXING do pipeline. A emiss\~ao do distintivo \'e idempotente: o
+servi\c{c}o \texttt{BadgeIssuanceService} verifica se o utilizador cumpre
+os crit\'erios ap\'os cada submiss\~ao correta, mas nunca emite o mesmo
+distintivo duas vezes.
+
+A condi\c{c}\~ao de emiss\~ao \'e formal: sendo $n$ o n\'umero total de
+tarefas do t\'opico, $s$ o n\'umero de tarefas submetidas e $c$ o n\'umero
+de respostas corretas, um distintivo \'e emitido se e s\'o se:
+
+\begin{equation}
+	s \geq n \quad \text{e} \quad c \geq \lfloor \alpha \cdot n \rfloor,\quad \text{com } \alpha = 0{,}60
+	\label{eq:badge}
+\end{equation}
+
+\noindent O n\'umero m\'inimo de respostas corretas \'e calculado por
+truncamento (\texttt{(taskCount * 0.60).toInt()}), n\~ao por compara\c{c}\~ao
+exata da raz\~ao $c/n$ com $\alpha$; na pr\'atica, isto torna o crit\'erio
+ligeiramente mais permissivo do que uma compara\c{c}\~ao exata para valores
+de $n$ em que $\alpha \cdot n$ n\~ao \'e inteiro.
+
+O limiar $\alpha = 0{,}60$ foi calibrado para ser exigente o suficiente para
+conferir significado ao distintivo, mas permissivo o suficiente para n\~ao
+frustrar utilizadores que fizeram a maior parte do percurso corretamente,
+aproximando-se da l\'ogica de \emph{mastery learning}~\cite{bloom1968learning},
+em que a progress\~ao exige dom\'inio comprovado mas n\~ao perfei\c{c}\~ao
+absoluta. A literatura sobre gamifica\c{c}\~ao em educa\c{c}\~ao sugere que
+os distintivos t\^em maior impacto motivacional quando assinalam
+compet\^encias genu\'inas e reconhec\'iveis~\cite{ott2019gamification}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Envolvimento: mecanismos de reten\c{c}\~ao}
+\label{sec:envolvimento}
+% ─────────────────────────────────────────────────────────────────────────────
+
+O terceiro pilar --- o \textbf{envolvimento} --- \'e sustentado por tr\^es
+mecanismos complementares.
+
+O primeiro \'e o \emph{streak}: um contador de dias consecutivos de atividade
+incrementado a cada resposta correta ou percurso adaptativo resolvido. N\~ao
+\'e penalizado por uma resposta errada, apenas pelo abandono total num dia,
+incentivando a tentativa mesmo sem certeza. Atua como \emph{commitment device}:
+ao tornar o hist\'orial de atividade algo que o utilizador n\~ao quer
+interromper, cria uma press\~ao positiva ao regresso di\'ario~\cite{ott2019gamification}.
+
+O segundo \'e a \textbf{progress\~ao por pr\'e-requisitos}: os t\'opicos
+podem ser organizados num grafo dirigido ac\'iclico (DAG), em que um t\'opico
+s\'o fica desbloqueado depois de o utilizador concluir as suas depend\^encias.
+A detec\c{c}\~ao de ciclos usa pesquisa em profundidade (DFS) na camada de servi\c{c}o,
+garantindo que o administrador n\~ao pode criar depend\^encias circulares
+inadvertidamente. Para o utilizador, o grafo completo \'e vis\'ivel no
+\emph{endpoint} \texttt{/enrollments/\{id\}/roadmap}, servindo simultaneamente
+como motiva\c{c}\~ao (\emph{progress visibility}) e orienta\c{c}\~ao
+(\emph{next step clarity}).
+
+O terceiro \'e o \textbf{desbloqueio di\'ario por \'indice}: as tarefas s\~ao
+atribu\'idas uma por dia, com desbloqueio \`a meia-noite no fuso hor\'ario do
+utilizador. Este ritmo cadenciado reduz a sobrecarga cognitiva e cria uma
+raz\~ao concreta para voltar todos os dias, mantendo o h\'abito f\'acil de
+iniciar e manter.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Interface de programa\c{c}\~ao}
+\label{sec:api}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A Tabela~\ref{tab:api-endpoints} sintetiza os principais \emph{endpoints}
+REST que exp\~oem as funcionalidades descritas neste cap\'itulo.
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\begin{tabular}{p{1.5cm} p{6.0cm} p{1.3cm} p{3.8cm}}
+		\toprule
+		\textbf{M\'etodo} & \textbf{Caminho} & \textbf{Auth} & \textbf{Responsabilidade} \\
+		\midrule
+		\texttt{POST}  & \texttt{/auth/magic-link}                        & ---   & Solicitar magic link \\
+		\texttt{GET}   & \texttt{/auth/verify?token=\{t\}}                & ---   & Verificar token e emitir sess\~ao \\
+		\texttt{POST}  & \texttt{/enrollments}                            & USER  & Inscrever utilizador num t\'opico \\
+		\texttt{DELETE}& \texttt{/enrollments/\{topicId\}}                & USER  & Abandonar inscri\c{c}\~ao \\
+		\texttt{GET}   & \texttt{/topics/\{id\}/task}                     & USER  & Obter tarefa do dia \\
+		\texttt{POST}  & \texttt{/assignments/\{id\}/submit}              & USER  & Submeter resposta \\
+		\texttt{GET}   & \texttt{/enrollments/\{id\}/roadmap}             & USER  & Obter mapa visual do percurso \\
+		\texttt{GET}   & \texttt{/struggle/\{enrollmentId\}}              & USER  & Obter sess\~ao adaptativa ativa \\
+		\texttt{POST}  & {\ttfamily /struggle/\allowbreak\{sId\}/\allowbreak tasks/\allowbreak\{tId\}/\allowbreak submit} & USER  & Submeter subtarefa adaptativa \\
+		\texttt{GET}   & \texttt{/explanations/\{sessionId\}}             & USER  & Obter sess\~ao de explica\c{c}\~ao \\
+		\texttt{POST}  & \texttt{/explanations/\{sId\}/messages}          & USER  & Enviar mensagem ao LLM \\
+		\texttt{POST}  & \texttt{/explanations/\{sId\}/resolve}           & USER  & Encerrar sess\~ao de explica\c{c}\~ao \\
+		\texttt{GET}   & \texttt{/badges}                                 & USER  & Listar distintivos conquistados \\
+		\texttt{POST}  & \texttt{/admin/topics}                           & ADMIN & Criar t\'opico (URL ou PDF) \\
+		\texttt{PUT}   & \texttt{/admin/tasks/\{templateId\}}             & ADMIN & Editar quest\~ao (atualiza\c{c}\~ao em linha) \\
+		\texttt{POST}  & {\ttfamily /admin/\allowbreak topics/\allowbreak\{id\}/\allowbreak prerequisites} & ADMIN & Definir pr\'e-requisitos \\
+		\texttt{GET}   & \texttt{/admin/learning-graph}                   & ADMIN & Obter DAG completo de t\'opicos \\
+		\bottomrule
+	\end{tabular}
+	\caption[Principais \emph{endpoints} REST do \emph{Play4Change}]{Principais \emph{endpoints} REST do \emph{Play4Change}. Os \emph{endpoints} sem autentica\c{c}\~ao s\~ao p\'ublicos; \texttt{USER} requer token de acesso v\'alido; \texttt{ADMIN} requer adicionalmente o papel de administrador.}
+	\label{tab:api-endpoints}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{S\'intese do desenvolvimento}
+\label{sec:sintese-desenvolvimento}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{sloppypar}
+O desenvolvimento do \emph{Play4Change} produziu um prot\'otipo funcional com
+tr\^es camadas bem definidas --- servidor, cliente multiplatforma e painel de
+administra\c{c}\~ao --- articuladas por uma API REST segundo os princ\'ipios da
+arquitectura hexagonal~\cite{cockburn2005hexagonal}. A separa\c{c}\~ao entre o
+contrato de porta (\texttt{TaskGenerationPort}) e a sua implementa\c{c}\~ao
+(\texttt{LangChain4jTaskGenerationAdapter}) garante que o fornecedor de LLM
+pode ser substitu\'ido sem altera\c{c}\~oes no servidor de aplica\c{c}\~ao.
+\end{sloppypar}
+
+O mecanismo mais complexo e distintivo \'e o percurso adaptativo: a
+combina\c{c}\~ao de classifica\c{c}\~ao determin\'istica de erros
+(\S\ref{ssec:seq-wrong}), gera\c{c}\~ao ass\'incrona com deduplica\c{c}\~ao
+vectorial por similaridade cosseno (\S\ref{ssec:ia-geracao-adaptativa}), e
+escala para explica\c{c}\~ao em prosa com di\'alogo livre
+(\S\ref{ssec:seq-explanation}) representa a contribui\c{c}\~ao mais original
+deste prot\'otipo relativamente \`as plataformas existentes.
+
+Importa delimitar com clareza o que este prot\'otipo \'e e o que n\~ao \'e.
+O fluxo completo --- cria\c{c}\~ao de t\'opico, gera\c{c}\~ao de conte\'udo,
+percurso adaptativo, emiss\~ao de distintivo --- est\'a implementado e
+testado de ponta a ponta. No entanto, uma vers\~ao de produ\c{c}\~ao exigiria:
+a calibra\c{c}\~ao fina dos limiares de deduplica\c{c}\~ao e de profundidade
+adaptativa com dados reais; cobertura de testes de integra\c{c}\~ao e de carga;
+e, sobretudo, valida\c{c}\~ao pedag\'ogica do conte\'udo gerado pelo LLM por
+especialistas em educa\c{c}\~ao. Estes aspetos s\~ao discutidos nas limita\c{c}\~oes
+do Cap\'itulo~\ref{cha:conclusao}.

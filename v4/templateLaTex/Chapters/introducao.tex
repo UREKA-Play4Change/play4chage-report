@@ -1,0 +1,110 @@
+%
+% introducao.tex
+% Capítulo 1 — Introdução
+%
+\chapter{Introdução}
+\label{cha:introducao}
+
+\section{Contexto e o Problema}
+\label{sec:contexto-problema}
+
+A U!REKA (\emph{European University Alliance}) é uma aliança de mais de trinta instituições de ensino superior europeias com a missão de preparar estudantes, docentes e cidadãos para liderar a transição para cidades neutras em carbono, sustentáveis e inteligentes \citep{ureka2026website}. Os seus centros de competência abrangem áreas como as ``cidades resilientes e neutras em carbono'' e a ``governação inovadora e o envolvimento dos cidadãos'' \citep{ureka2026alliance} --- um reconhecimento de que esta transição não é apenas um problema de engenharia ou de financiamento, mas também um problema de participação cívica. Tornar uma cidade mais sustentável exige que os cidadãos compreendam o que está em jogo, saibam como agir e se sintam parte do processo.
+
+A questão que se coloca imediatamente é: o que significa, em termos concretos, ``estar preparado'' para essa participação? O relatório \emph{DigComp 2.2 -- The Digital Competence Framework for Citizens}, publicado pelo Centro Comum de Investigação da Comissão Europeia, oferece esse referencial: organiza a competência digital em cinco grandes áreas --- procurar e avaliar informação, comunicar e colaborar, criar conteúdos, manter-se em segurança e resolver problemas --- e descreve-as através de exemplos concretos do que uma pessoa sabe, é capaz de fazer e valoriza em cada uma delas \citep{vuorikari2022digcomp}. A Figura~\ref{fig:digcomp-areas} ilustra esta estrutura.
+
+\begin{figure}[!ht]
+	\centering
+	\includegraphics[width=0.85\textwidth]{digcomp_areas}
+	\caption[Áreas e competências do quadro DigComp 2.2]{As cinco áreas de competência digital e respetivas competências, segundo o quadro DigComp 2.2. Fonte: adaptado de \citep{vuorikari2022digcomp}, com base em material disponibilizado sob licença Creative Commons Attribution 4.0 (CC BY 4.0).}
+	\label{fig:digcomp-areas}
+\end{figure}
+
+Para o \emph{Play4Change}, as \textbf{áreas~1 e~2} são as mais diretamente relevantes: literacia informacional (saber pesquisar, avaliar e identificar desinformação) e comunicação e colaboração digitais (participar em processos de decisão \emph{online} e colaborar de forma construtiva). São precisamente estas as competências que o défice atual mais penaliza --- e que, sem prática estruturada, mais dificilmente se desenvolvem.
+
+O problema tem três camadas que se reforçam mutuamente. A primeira é o \textbf{défice de competências digitais e cívicas}: em 2023, apenas 56\% da população europeia entre os 16 e os 74 anos possuía pelo menos as competências digitais básicas definidas pelo quadro DigComp~\cite{vuorikari2022digcomp,eurostat2023digitalskills} --- ou seja, quase metade dos cidadãos europeus fica abaixo desse limiar, o que limita a sua capacidade de participar em processos de decisão que decorrem crescentemente em plataformas digitais --- desde consultas públicas municipais a plataformas de participação cidadã. A segunda é a \textbf{desinformação e a desconfiança}: num ambiente marcado pela abundância de informação e pela dificuldade crescente de verificação, a capacidade de avaliação crítica é simultaneamente mais necessária e mais difícil de desenvolver sem prática continuada. A terceira, e a mais diretamente operacional, é o \textbf{abandono nas plataformas de aprendizagem digital}: mesmo quando as pessoas adotam ferramentas de educação \emph{online}, a taxa de conclusão raramente ultrapassa os 10\%~\cite{jordan2014mooc}. O problema não está na disponibilidade de conteúdos --- está na incapacidade das plataformas existentes de motivar a continuidade.
+
+É sobre este conjunto de falhas que o projeto se debruça: \emph{de que forma pode uma plataforma de educação digital, informal e gamificada, apoiada por inteligência artificial, ajudar os cidadãos a desenvolver as competências de que precisam para participar na transição para cidades sustentáveis --- e, ao mesmo tempo, conseguir que continuem a usá-la ao longo do tempo?}
+
+\section{A Solução: \emph{Play4Change}}
+\label{sec:solucao}
+
+Em resposta à pergunta com que termina a secção anterior, o \emph{Play4Change} é a resposta de engenharia proposta para este problema. Trata-se de uma plataforma de educação digital informal, gamificada e suportada por inteligência artificial, concebida para ajudar os cidadãos a adquirir, de forma natural e continuada, as competências cívicas e digitais de que precisam para participar na transição para cidades sustentáveis.
+
+A proposta não é um curso estruturado nem uma plataforma de \emph{e-learning} convencional. O \emph{Play4Change} é pensado como uma experiência de aprendizagem quotidiana --- breve, contextualizada e adaptativa --- que compete com o hábito de consumo de conteúdo digital passivo e o substitui por algo que exige e recompensa o pensamento crítico. A secção seguinte detalha a hipótese central que sustenta esta proposta e os três pilares técnicos em que se traduz.
+
+\section{Hipótese, Pilares e Objetivos}
+\label{sec:objetivos-pilares}
+
+A hipótese central que orienta este trabalho é que a combinação de conteúdos curtos e contextualizados, reconhecimento visível do progresso e personalização adaptativa pode contribuir para melhorar a retenção e o envolvimento a longo prazo --- transformando a aprendizagem de competências cívicas e digitais de uma tarefa pontual num hábito. Esta hipótese é avaliada de forma preliminar no Capítulo~\ref{cha:avaliacao}, com uma amostra reduzida de utilizadores, pelo que as conclusões aqui apresentadas têm valor indicativo e não definitivo. Esta hipótese traduz-se em três pilares técnicos que estruturam toda a arquitetura do \emph{Play4Change}.
+
+\begin{figure}[htbp]
+	\centering
+	\begin{tikzpicture}[
+		pilar/.style={draw, rounded corners, align=center, text width=3.1cm, minimum height=2.1cm, font=\small, fill=gray!8},
+		core/.style={draw, rounded corners, align=center, text width=3.4cm, minimum height=1.6cm, font=\bfseries, fill=gray!20},
+		seta/.style={-{Latex[length=2.2mm]}, thick}
+	]
+		% Three pillars
+		\node[pilar, fill=blue!10] (reconhecimento) at (0,0) {\textbf{Reconhecimento}\\[2pt] \footnotesize distintivos que assinalam cada nova competência adquirida};
+		\node[pilar, fill=orange!12] (envolvimento) at (4.4,0) {\textbf{Envolvimento}\\[2pt] \footnotesize mecanismos que motivam o regresso e combatem o abandono};
+		\node[pilar, fill=green!12] (personalizacao) at (8.8,0) {\textbf{Personalização}\\[2pt] \footnotesize IA que adapta conteúdos ao ritmo e às dificuldades de cada um};
+
+		% Core
+		\node[core] (play4change) at (4.4,-3) {Play4Change};
+
+		% Arrows
+		\draw[seta] (reconhecimento.south) -- ++(0,-0.4) -| (play4change.north);
+		\draw[seta] (envolvimento.south) -- (play4change.north);
+		\draw[seta] (personalizacao.south) -- ++(0,-0.4) -| (play4change.north);
+	\end{tikzpicture}
+	\caption[Os três pilares do Play4Change]{Os três pilares --- reconhecimento, envolvimento e personalização --- que sustentam a proposta do \emph{Play4Change} e orientam os objetivos deste trabalho.}
+	\label{fig:tres-pilares}
+\end{figure}
+
+\textbf{Reconhecimento.} Sempre que um utilizador atinge um limiar de domínio num tópico, a plataforma assinala esse facto de forma explícita através de um distintivo. Este mecanismo, ancorado na lógica de aprendizagem por mestria~\cite{bloom1968learning}, cumpre duas funções: dá ao utilizador uma noção concreta da sua progressão e fornece ao sistema um sinal de competência verificada.
+
+\textbf{Envolvimento.} A taxa de abandono que caracteriza as plataformas de \emph{e-learning} é uma falha de design motivacional, não de conteúdo. O \emph{Play4Change} responde com mecanismos específicos: sequências de utilização consecutiva (\emph{streaks}) e desbloqueio diário de conteúdos~\cite{ott2019gamification}. Estes mecanismos transformam o regresso à aplicação num comportamento esperado e recompensado, em vez de uma decisão a tomar de novo todos os dias.
+
+\textbf{Personalização.} Não existe percurso de aprendizagem ótimo único. A plataforma usa inteligência artificial para classificar os erros do utilizador em padrões reconhecíveis, gerar percursos de reforço adaptados ao seu perfil de dificuldade recorrendo a um modelo de linguagem de grande dimensão~\cite{kasneci2023chatgpt}, e manter sessões de explicação interativa em que o utilizador esclarece dúvidas por conversação. A IA não apresenta ao utilizador o que ele já espera ver --- ajusta o caminho ao que ainda não domina.
+
+De forma concreta, este trabalho propõe-se a cumprir dois tipos de objetivos: objetivos de \emph{design}, diretamente ligados aos três pilares acima descritos, e objetivos de processo, relativos à construção e validação do protótipo.
+
+\noindent\textbf{Objetivos de \emph{design}:}
+
+\begin{itemize}
+	\item \textbf{Reconhecimento} --- construir um motor de distintivos que assinale a aquisição de competências de forma objetiva e verificável;
+	\item \textbf{Envolvimento} --- implementar mecanismos que reduzam o abandono e promovam a utilização continuada;
+	\item \textbf{Personalização} --- desenvolver um sistema de aprendizagem adaptativa suportado por IA que ajuste os conteúdos ao ritmo e às dificuldades de cada utilizador.
+\end{itemize}
+
+\noindent\textbf{Objetivos de processo:}
+
+\begin{itemize}
+	\item \textbf{Construção} --- construir e validar um protótipo funcional que integre os três pilares de forma coerente;
+	\item \textbf{Avaliação} --- recolher, junto de utilizadores de diferentes perfis, uma primeira avaliação do que funciona, do que pode melhorar e do que mais valorizam nesta forma de aprender.
+\end{itemize}
+
+O Capítulo~\ref{cha:desenvolvimento} detalha como cada um destes componentes foi concebido e implementado. O presente relatório descreve um protótipo --- um primeiro passo que demonstra viabilidade, mas que deixa espaço deliberado para crescer em cada uma destas três frentes, como se discute no Capítulo~\ref{cha:conclusao}.
+
+\section{Organização do Documento}
+\label{sec:organizacao-documento}
+
+O presente relatório está organizado em seis capítulos, conforme descrito na Tabela~\ref{tab:organizacao}.
+
+\begin{table}[htbp]
+\centering
+\caption{Organização do relatório.}
+\label{tab:organizacao}
+\begin{tabularx}{\textwidth}{@{} l l X @{}}
+\toprule
+\textbf{Capítulo} & \textbf{Título} & \textbf{Conteúdo} \\
+\midrule
+1 & Introdução & Contextualiza o problema, apresenta a solução e define os objetivos e pilares do \emph{Play4Change}. \\[4pt]
+2 & Enquadramento & Aprofunda o estado da arte no âmbito da educação digital, da aprendizagem adaptativa e dos quadros europeus de competência digital e cívica. \\[4pt]
+3 & Design e Implementação do Sistema & Descreve o processo de construção da solução --- requisitos, arquitetura, implementação e \emph{design} da interface. \\[4pt]
+4 & Ferramentas, Tecnologias e Metodologia & Apresenta as tecnologias e metodologias usadas, com destaque para o papel da inteligência artificial no produto e no processo de desenvolvimento. \\[4pt]
+5 & Avaliação & Apresenta e discute os resultados da avaliação preliminar realizada junto de utilizadores reais. \\[4pt]
+6 & Conclusão & Reúne as conclusões principais, assume as limitações do trabalho e aponta caminhos para trabalho futuro. \\
+\bottomrule
+\end{tabularx}
+\end{table}

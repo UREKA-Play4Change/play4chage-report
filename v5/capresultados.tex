@@ -1,0 +1,137 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 9 — Resultados
+%
+\chapter{Resultados} \label{cap:resultados}
+
+Este capítulo apresenta os resultados concretos do projeto Play4Change em três dimensões complementares: a demonstração dos fluxos funcionais do sistema; as métricas de desempenho e a infraestrutura de observabilidade instrumentada; e os mecanismos que garantem a qualidade pedagógica e a segurança das questões geradas por inteligência artificial.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Demonstração do Sistema} \label{sec:demonstracao}
+
+O Play4Change é composto por três interfaces: a aplicação móvel (Kotlin Multiplatform + Compose Multiplatform para Android e iOS), o painel de administração web (React~18 + Vite + TypeScript) e o servidor REST (Spring Boot 3.2, Kotlin, JVM~21). A infraestrutura é orquestrada por Docker Compose com oito serviços: PostgreSQL~16 com pgvector, MinIO, Playwright Scraper, Unstructured.io, Spring Boot, Nginx, Prometheus e Grafana; o módulo de IA (LangChain4j + Mistral) é invocado como API externa, sem contentor próprio.
+
+Os mecanismos internos de cada fluxo --- autenticação por \textit{magic link} e geração assíncrona de tópicos no Capítulo~\ref{cap:fundacoes-implementacao}; atribuição de tarefas, remediação adaptativa e tutoria com IA no Capítulo~\ref{cap:desafios} --- estão descritos em detalhe. Esta secção regista, em vez disso, a evidência de que cada objetivo operacional (Capítulo~\ref{cap:intro}) está de facto concretizado no sistema implementado; para uma demonstração passo a passo do sistema em funcionamento, ver o guia de execução entregue em separado.
+
+A Tabela~\ref{tab:evidencia-objetivos} mapeia cada objetivo à evidência que o sustenta.
+
+\begin{table}[h!]
+\centering
+\caption{Evidência de concretização dos objetivos operacionais}
+\label{tab:evidencia-objetivos}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lp{5.2cm}p{6.3cm}}
+\hline
+\textbf{Objetivo} & \textbf{Requisitos cobertos} & \textbf{Evidência} \\
+\hline
+OBJ-1 --- Plataforma adaptativa DigComp~2.2  & RF01, RF08, RF09, RF11--RF13 & Ciclo de desafio e \textit{feedback} descrito no Capítulo~\ref{cap:desafios}; avaliação SUS (§\ref{sec:testes-usabilidade}); guia de execução em separado \\
+OBJ-2 --- Pipeline de geração por IA          & RF02--RF07                    & Pipeline e RAG detalhados em §\ref{sec:pipeline} e §\ref{sec:rag}; guia de execução em separado \\
+OBJ-3 --- Remediação adaptativa               & RF10                           & Mecanismo em §\ref{sec:consolidation}; guia de execução em separado \\
+OBJ-4 --- Tutoria conversacional com IA       & RF09, RF10                     & Mecanismo em §\ref{sec:explicacao-ia}; guia de execução em separado \\
+OBJ-5 --- Segurança e qualidade do conteúdo   & RNF01--RNF04                   & Tabela~\ref{tab:riscos}; suite de testes (Capítulo~\ref{cap:testes}) \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Os três pontos do sistema mais difíceis de validar sem uma execução real --- o ciclo de desafio e \textit{feedback}, a remediação adaptativa e a tutoria com IA, e o pipeline de geração assíncrona do lado do Administrador --- estão documentados passo a passo, com capturas de ecrã, no guia de execução entregue em separado, e não repetidos aqui; as operações de CRUD simples (autenticação, listagens, formulários) têm o seu funcionamento estabelecido pela suite de testes do Capítulo~\ref{cap:testes}.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Métricas de Desempenho} \label{sec:metricas}
+
+\subsection{Arquitetura de Observabilidade} \label{sec:observabilidade}
+
+O sistema implementa uma pilha de observabilidade alinhada com três pilares --- métricas, logs estruturados e alertas. As métricas são expostas pelo Spring Boot Actuator em \texttt{/actuator/prometheus} e recolhidas de 5 em 5 segundos pelo Prometheus (retenção de 7 dias), com avaliação das regras de alerta a cada 15 segundos e consulta via PromQL no Grafana, com dashboards provisionados automaticamente.
+
+\subsection{Métricas Instrumentadas} \label{sec:metricas-app}
+
+O sistema instrumenta vinte métricas com Micrometer, cobrindo quatro camadas: HTTP (latência e \textit{throughput}, auto-instrumentado pelo Spring MVC), IA (duração e falhas de geração por fase, estratégia de reutilização, deduplicação, estado do \textit{circuit breaker}), aprendizagem (inscrições iniciadas e concluídas, sessões de dificuldade e de explicação, submissões por resultado) e infraestrutura (fila do \textit{thread pool} de geração, memória JVM, bloqueios de \textit{rate limiting}). O catálogo completo, com tipo e \textit{tags} de cada métrica, está no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:metricas-app}).
+
+\subsection{Limitação de Taxa por Caminho} \label{sec:rate-limit-metrics}
+
+O limitador de taxa (§\ref{sec:ratelimiting}) usa \textit{token bucket} (Bucket4j) com cache Caffeine (expiração de 15~min, 50.000 entradas), com granularidade por IP e caminho normalizado. A Tabela~\ref{tab:rate-limits-full} apresenta a configuração atualmente ativa, incluindo os dois \textit{endpoints} de submissão de maior frequência de utilização em toda a aplicação, entretanto corrigidos (Tabela~\ref{tab:rate-limits-broken}).
+
+\begin{table}[htb]
+\centering
+\caption{Limites de taxa efetivamente ativos por caminho de API (janela de 10 minutos por IP).}
+\label{tab:rate-limits-full}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Caminho} & \textbf{Limite} & \textbf{Justificação} \\
+\midrule
+POST /auth/magic-link              & 5  & Previne enumeração de e-mails e spam de tokens \\
+POST /auth/magic-link/verify       & 10 & Previne força bruta sobre tokens de 15 minutos \\
+POST /auth/refresh                 & 20 & Rotação de tokens em sessões ativas \\
+POST /explanation/\{id\}/message   & 10 & Cada mensagem invoca a API Mistral (custo económico) \\
+POST /admin/topics                 & 3  & Criação de tópico desencadeia pipeline de IA completa \\
+POST /admin/topics/pdf             & 2  & Upload de PDF + pipeline + Unstructured.io \\
+POST /admin/topics/\{id\}/regenerate & 2 & Regeneração consome créditos Mistral API \\
+POST /tasks/\{assignmentId\}/submit & 30 & Previne força bruta na submissão da tarefa diária \\
+POST /struggle/\{sessionId\}/tasks/\{taskId\}/submit & 30 & Previne força bruta na submissão de sub-tarefas de \textit{struggle} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htb]
+\centering
+\caption{Regras de \textit{rate limiting} historicamente desalinhadas e já corrigidas --- o padrão configurado não correspondia a nenhum \textit{endpoint} real.}
+\label{tab:rate-limits-broken}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Padrão anteriormente configurado} & \textbf{Limite} & \textbf{Endpoint real correspondente} \\
+\midrule
+\texttt{/topics/\{id\}/task-assignments/\{id\}/submit} & 30 & \texttt{POST /tasks/\{assignmentId\}/submit} \\
+\texttt{/enrollments/\{id\}/struggle/\{id\}/submit}    & 30 & \texttt{POST /struggle/\{sessionId\}/tasks/\{taskId\}/submit} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Estas duas regras herdavam um padrão de rota de uma versão anterior do sistema de rotas e, por isso, nunca correspondiam aos \textit{endpoints} reais --- precisamente os dois de maior frequência de utilização em toda a aplicação (a submissão da resposta à tarefa diária e a submissão de uma sub-tarefa de \textit{struggle}), que ficaram temporariamente sem qualquer limite de taxa, apesar do comentário no próprio \texttt{RateLimitService.kt} indicar a intenção contrária. O problema foi corrigido em \texttt{RateLimitService.kt} (padrões atualizados para corresponder às rotas reais) e coberto por testes de regressão dedicados (\texttt{RateLimitSubmissionPathsTest.kt}), que validam explicitamente tanto a proteção dos dois \textit{endpoints} reais como a ausência de qualquer efeito dos dois padrões antigos.
+
+\subsection{Pool de Threads de Geração e Circuit Breaker} \label{sec:thread-pool-cb}
+
+A configuração do \textit{thread pool} de geração e do \textit{circuit breaker} Resilience4j está descrita na Secção~\ref{sec:protecao-ia}; ambos são instrumentados pelas métricas \texttt{executor\_queued\_tasks} e \texttt{resilience4j\_circuitbreaker\_state} (Tabela~\ref{tab:metricas-app}), com o correspondente alerta \texttt{AiCircuitBreakerOpen} (Tabela~\ref{tab:alertas}).
+
+\subsection{Regras de Alerta Prometheus} \label{sec:alertas-prometheus}
+
+O sistema define oito alertas com avaliação a cada 15 segundos, em quatro grupos temáticos (disponibilidade do servidor, IA, memória JVM e taxa de erro HTTP) e duas severidades: três críticos --- servidor em baixo, \textit{circuit breaker} de IA aberto, uso de heap acima de 95\% --- e cinco de aviso, incluindo taxa de erro HTTP elevada e saturação da fila de geração. A tabela completa com as expressões PromQL está no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:alertas}).
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Qualidade das Questões Geradas} \label{sec:qualidade}
+
+A qualidade das questões geradas resulta de mecanismos já descritos nos Capítulos~\ref{cap:ia} e~\ref{cap:seguranca}: engenharia de prompts com reutilização adaptativa por três estratégias de similaridade coseno (Tabela~\ref{tab:rag-reuse}, §\ref{sec:recuperacao}), deduplicação semântica por pgvector com limiar de 0,90 (§\ref{sec:armazenamento}), chunking de conteúdo extenso com preservação de fronteiras de parágrafo (§\ref{sec:ia-prompting}) e sanitização de saída da IA via Jsoup (§\ref{sec:xss}).
+
+\subsection{Classificação de Padrões de Erro} \label{sec:error-pattern-results}
+
+O \texttt{ErrorPatternClassifier} (§\ref{sec:consolidation}) aplica três regras com prioridade estrita: \texttt{TIME\_PRESSURE} (submissão após \texttt{dueAt}), \texttt{READING\_ERROR} ($|\text{diff}| \leq 1$) e \texttt{WRONG\_CONCEPT} (por omissão). Estes três valores são traduzidos, antes de alimentar o prompt do ramo adaptativo, para um \textit{enum} maior de seis valores usado do lado da IA (Secção~\ref{sec:prompting}), mapeado para instruções pedagógicas específicas (Tabela~\ref{tab:error-pattern-pedagogico}).
+
+\begin{table}[htb]
+\centering
+\caption{Mapeamento de padrões de erro para estratégias pedagógicas de geração.}
+\label{tab:error-pattern-pedagogico}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Padrão detetado} & \textbf{Diagnóstico pedagógico} & \textbf{Instrução ao modelo} \\
+\midrule
+CONCEPTUAL\_MISUNDERSTANDING & Não compreende o conceito base        & Re-explicar o conceito de forma diferente \\
+PROCEDURAL\_ERROR            & Aplica passos errados                 & Focar no procedimento e nos passos corretos \\
+KNOWLEDGE\_GAP               & Falta conhecimento pré-requisito      & Preencher a lacuna antes de regressar \\
+UNCLEAR\_INSTRUCTIONS        & Instrução da tarefa confusa           & Fornecer orientação mais clara e explícita \\
+TIME\_PRESSURE               & Erros por precipitação                & Subtarefas de prática com ritmo passo-a-passo \\
+UNKNOWN                      & Causa indeterminada                   & Scaffolding geral de básico a intermédio \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Garantias de Qualidade das Questões} \label{sec:garantias-qualidade}
+
+O sistema fornece seis garantias estruturais para cada questão gerada:
+
+\begin{enumerate}
+    \item \textbf{Unicidade semântica:} similaridade coseno $< 0{,}90$ com qualquer tarefa existente no mesmo módulo (pgvector IVFFlat).
+    \item \textbf{Formato válido:} exactamente 4 opções, resposta correta persistida no índice~0 (baralhada antes de exibir).
+    \item \textbf{Língua correta:} o prompt instrui o modelo a gerar exclusivamente na língua configurada, com \textit{gating} de idioma no \texttt{DayIndexCalculator}.
+    \item \textbf{Adequação ao nível:} o prompt inclui descrição expandida do nível de audiência (\textit{Beginner}, \textit{Intermediate}, \textit{Advanced}).
+    \item \textbf{Segurança:} sanitização Jsoup em todos os campos de texto; input do utilizador nunca interpolado em strings de prompt.
+    \item \textbf{Resiliência a falhas do modelo:} \textit{schema reminder} automático, abandono gracioso se o resultado final for zero tarefas válidas, e circuit breaker contra cascata de falhas.
+\end{enumerate}

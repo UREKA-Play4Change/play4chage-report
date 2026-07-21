@@ -1,0 +1,105 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 6 — Inteligência Artificial
+%
+\chapter{Inteligência Artificial} \label{cap:ia}
+
+Este capítulo dá continuidade à descrição da ingestão de conteúdo apresentada no Capítulo~\ref{cap:ingestao}, cobrindo o modelo de Inteligência Artificial utilizado pelo Play4Change e a estratégia de \textit{prompting} que estrutura as suas três finalidades: geração de tarefas, síntese de ramos adaptativos e sessões de explicação. O mecanismo de \textit{Retrieval-Augmented Generation} (RAG), que suporta a deduplicação semântica e a reutilização adaptativa de conteúdo, é tratado em separado no Capítulo~\ref{cap:rag}. O ciclo de vida completo dos desafios entregues ao Learner é abordado nos Capítulos~\ref{cap:geracao-desafios} e~\ref{cap:desafios}, e a segurança aplicacional de ponta a ponta, incluindo a proteção específica da camada de IA contra \textit{prompt injection}, no Capítulo~\ref{cap:seguranca}.
+
+% -----------------------------------------------------------
+\section{Modelo de IA e Estratégia de Prompting} \label{sec:ia-prompting}
+% -----------------------------------------------------------
+
+O módulo de IA do Play4Change serve três finalidades distintas: geração de tarefas educativas a partir de conteúdo ingerido, síntese de ramos adaptativos para estudantes com dificuldades, e condução de sessões de explicação interactiva.
+Cada finalidade tem o seu próprio prompt, com preocupações de segurança e limites de contexto especificamente calibrados.
+
+\subsection{Modelo Escolhido e Justificação} \label{sec:modelo}
+
+O sistema utiliza \textbf{Mistral AI} como fornecedor de LLM, integrado através da biblioteca LangChain4j v0.36.2.
+O modelo configurado por omissão é \texttt{mistral-small-latest}, com temperatura $T=0.7$ e \textit{timeout} de 60 segundos por chamada.
+
+São instanciados dois clientes distintos, ambos configurados na classe \texttt{LangChain4jConfig} e ativados condicionalmente via \texttt{@ConditionalOnExpression} apenas quando a variável de ambiente \texttt{MISTRAL\_API\_KEY} está definida: o \texttt{ChatLanguageModel} (\texttt{MistralAiChatModel}), para geração de texto e JSON (\textit{JavaScript Object Notation}) estruturado, e o \texttt{EmbeddingModel} (\texttt{MistralAiEmbeddingModel}), que produz vectores de 1024 dimensões para o pgvector.
+
+A escolha de Mistral Small justifica-se por quatro razões concretas.
+Primeiro, a capacidade multilingue: os prompts incluem um parâmetro \texttt{language} obrigatório (e.g., \texttt{pt}, \texttt{en}, \texttt{es}), e o modelo gera conteúdo educativo com qualidade adequada em múltiplas línguas.
+Segundo, a relação custo/desempenho: a geração de questões de escolha múltipla e explicações requer capacidade de raciocínio moderada, não justificando modelos de maior escala e custo.
+Terceiro, a fiabilidade no output JSON estruturado: o sistema exige que o modelo produza JSON válido com esquema rigoroso (\textit{arrays} com \texttt{title}, \texttt{description}, \texttt{hint}, \texttt{pointsReward}, \texttt{options}, \texttt{correctAnswerIndex}).
+Quarto, a intercambiabilidade já discutida na Secção~\ref{sec:arquitetura}.
+
+Quando a chave de API não está definida, o \texttt{NoOpTaskGenerationAdapter} é ativado automaticamente, respondendo com \texttt{503 Service Unavailable} em todos os \textit{endpoints} de IA, garantindo que o sistema falha de forma explícita em vez de silenciosa.
+
+\subsection{Estratégia de Prompting} \label{sec:prompting}
+
+O sistema define três famílias de prompts, cada uma com \textit{system prompt} fixo e \textit{user prompt} parametrizado com dados do contexto de domínio.
+Em nenhuma das três famílias é injetado diretamente input do utilizador final: essa separação é a principal defesa contra \textit{prompt injection}, conforme descrito na Secção~\ref{sec:protecao-ia}.
+
+\subsubsection*{A: Geração de Tarefas (TaskGenerationPrompt)}
+
+O \textit{system prompt} estabelece a \textit{persona} de designer de conteúdo educativo, as regras de formato (4 opções por questão, resposta correta sempre no índice~0 para o sistema a misturar aleatoriamente), o idioma obrigatório, e o esquema JSON esperado.
+O \textit{user prompt} injeta exclusivamente dados do domínio: título do tópico, objetivo do módulo, nível de audiência (\texttt{BEGINNER}/\texttt{INTERMEDIATE}/\texttt{ADVANCED}), idioma e número de tarefas pretendidas.
+
+O mecanismo de \textit{retry} com \textit{schema reminder} funciona assim: se o JSON de resposta do modelo não contiver o número mínimo de tarefas válidas, o adaptador reenvia o mesmo \textit{user prompt} acrescido de uma mensagem de correção de esquema, consumindo até duas chamadas à API por \textit{chunk}.
+Cada tarefa gerada é ainda sujeita a deduplicação semântica antes de ser persistida, detalhada na Secção~\ref{sec:armazenamento} do Capítulo~\ref{cap:rag}.
+
+\subsubsection*{B: Ramo Adaptativo (StruggleAnalysisPrompt)}
+
+Quando um estudante esgota as tentativas de uma tarefa, o sistema gera um ramo de sub-tarefas mais simples centradas no padrão de erro detetado (\texttt{ErrorPattern}: \texttt{CONCEPTUAL\allowbreak\_MISUNDERSTANDING}, \texttt{PROCEDURAL\_ERROR}, \texttt{KNOWLEDGE\_GAP}, \texttt{UNCLEAR\_INSTRUCTIONS}, \texttt{TIME\_PRESSURE}).
+Este \texttt{ErrorPattern} pertence ao modelo do módulo \texttt{ai-agent} e tem seis valores (\texttt{CONCEPTUAL\allowbreak\_MISUNDERSTANDING}, \texttt{PROCEDURAL\_ERROR}, \texttt{KNOWLEDGE\_GAP}, \texttt{UNCLEAR\_INSTRUCTIONS}, \texttt{TIME\_PRESSURE}, \texttt{UNKNOWN}), mais granular que o \texttt{ErrorPattern} do domínio (Secção~\ref{sec:consolidation} do Capítulo~\ref{cap:desafios}), que tem quatro valores declarados embora o \texttt{ErrorPatternClassifier} só produza efetivamente três (\texttt{WRONG\_CONCEPT}, \texttt{READING\_ERROR}, \texttt{TIME\_PRESSURE}; o quarto valor, \texttt{PARTIAL\_UNDERSTANDING}, está definido no \textit{enum} mas nunca é devolvido pelo classificador na versão atual); é obtido por tradução direta a partir deste último.
+Três dos seis valores do \texttt{ai-agent} não são hoje alcançáveis por esta via: \texttt{PROCEDURAL\_ERROR} e \texttt{KNOWLEDGE\_GAP}, porque o domínio não produz o valor de origem correspondente (o primeiro exigiria \texttt{PARTIAL\_UNDERSTANDING}, que o classificador nunca devolve; o segundo não tem nenhum valor de origem mapeado); e \texttt{UNKNOWN}, que só surge como \textit{fallback} defensivo de uma tradução por \textit{string} equivalente noutro serviço (\texttt{ExplanationService}), não como resultado do fluxo normal.
+
+Antes de invocar o LLM, o sistema verifica a similaridade do contexto de dificuldade atual com contextos anteriores armazenados em pgvector, decidindo entre reutilização total, parcial ou geração de novo ramo consoante o limiar de similaridade (Tabela~\ref{tab:rag-reuse}, Secção~\ref{sec:recuperacao} do Capítulo~\ref{cap:rag}).
+O vetor de entrada é construído como a concatenação de \texttt{errorPattern}, \texttt{taskDescription} e \texttt{subjectDomain}, embebido em 1024 dimensões pelo \texttt{MistralAiEmbeddingModel}.
+
+\subsubsection*{C: Sessão de Explicação (ExplanationPrompt)}
+
+A explicação opera em dois modos sequenciais.
+Na \textbf{fase holística} (assíncrona), após esgotamento das tentativas, o sistema gera uma explicação detalhada baseada no historial completo de erros do estudante; o \textit{system prompt} instrui o modelo a adoptar a persona de tutor empático e a explicar a causa raiz da dificuldade.
+Na \textbf{fase conversacional} (síncrona), o estudante pode fazer perguntas de seguimento, recebendo respostas geradas em tempo real.
+
+Ambas as fases passam pelo \texttt{AiOutputSanitiser} antes de a resposta chegar ao cliente; o fluxo completo é apresentado na Secção~\ref{sec:explicacao-ia} do Capítulo~\ref{cap:desafios}, com o diagrama de sequência no Apêndice~\ref{ap:detalhe-config} (Figura~\ref{fig:seq-explanation-conv}).
+
+\subsubsection*{Limites de Contexto}
+
+Os limites de contexto aplicados em todos os prompts estão centralizados na classe \texttt{AiContextLimits}, descritos na Tabela~\ref{tab:context-limits}.
+
+\begin{table}[h!]
+\centering
+\caption{Limites de contexto da camada de IA (AiContextLimits)}
+\label{tab:context-limits}
+\begin{tabular}{lrl}
+\hline
+\textbf{Constante} & \textbf{Valor} & \textbf{Utilização} \\
+\hline
+\texttt{CONTENT\_CHARS}          & 32\,000 chars & Tamanho máximo de cada \textit{chunk} enviado ao LLM \\
+\texttt{CHUNK\_OVERLAP}          &  2\,000 chars & Sobreposição entre \textit{chunks} consecutivos \\
+\texttt{DESCRIPTION\_CHARS}      &    500 chars  & Objetivo do módulo nos prompts de geração \\
+\texttt{STRUGGLE\_CONTEXT\_CHARS} &  8\,000 chars & Contexto de dificuldade no prompt adaptativo \\
+\texttt{OBJECTIVE\_CHARS}        &    500 chars  & Objetivo do módulo em prompts secundários \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Proteção e Limites da API de IA} \label{sec:protecao-ia}
+
+O sistema implementa seis camadas de defesa independentes entre a entrada HTTP e a chamada ao LLM. As camadas~1--4 (rate limiting, autenticação JWT, validação de input, SSRF) foram descritas nas Secções~\ref{sec:pipeline} e~\ref{sec:limites-ingestao}; as duas seguintes, específicas ao módulo de IA, são detalhadas abaixo.
+
+\subsubsection*{Camada 5: Prevenção de Prompt Injection (Multi-Mensagem Tipada)}
+
+A vulnerabilidade clássica de \textit{prompt injection} em sistemas conversacionais ocorre quando o input do utilizador é interpolado numa string de prompt única, permitindo que o utilizador escape o contexto com instruções como \textit{``Ignora as instruções anteriores e\ldots''}.
+
+O Play4Change adopta uma arquitetura de \textbf{multi-mensagem tipada}: em vez de construir uma string única, cada peça de informação é encapsulada no tipo de mensagem LangChain4j correspondente ao seu nível de confiança.
+A Figura~\ref{fig:seq-ai-anti-injection} (Apêndice~\ref{ap:detalhe-config}) detalha a construção da lista de mensagens para a fase conversacional da explicação.
+
+A lista de mensagens segue uma ordem fixa: \texttt{SystemMessage} de confiança, \texttt{UserMessage} com dados estruturados da base de dados, historial alternado de \texttt{AiMessage}/\texttt{UserMessage} e, por fim, o input atual do utilizador isolado na sua própria \texttt{UserMessage} de origem não confiada (Figura~\ref{fig:seq-ai-anti-injection}). A fronteira de \textit{role} da API Mistral garante que este último nunca altera o comportamento definido no \texttt{SystemMessage}.
+
+Os prompts de geração de tarefas (\texttt{TaskGenerationPrompt}) e de análise de dificuldade (\texttt{StruggleAnalysisPrompt}) não recebem qualquer input do utilizador final: são alimentados exclusivamente com dados estruturados do domínio, eliminando o vector de injecção nessas chamadas.
+
+\subsubsection*{Camada 6: Sanitização de Output (AiOutputSanitiser)}
+
+Todo o texto gerado pelo LLM passa pelo \texttt{AiOutputSanitiser} antes de ser persistido ou devolvido ao cliente, incluindo a resposta conversacional de explicação; o mecanismo e os pontos de aplicação estão descritos na Secção~\ref{sec:xss}.
+
+\subsubsection*{Resiliência e Observabilidade}
+
+A integração com a API Mistral é protegida por \textit{circuit breaker}, \textit{retry} com \textit{backoff} exponencial e \textit{timeout}, com \textit{fail-safe} que repõe o \textit{assignment} em \texttt{PENDING} caso a geração falhe irrecuperavelmente, garantindo que o estudante nunca fica bloqueado. A configuração exacta e as métricas instrumentadas (duração, falhas por tipo, estratégia de reutilização) estão detalhadas nos Apêndices B (Tabela B.9) e C (Tabela C.3).
+
+O mecanismo de \textit{Retrieval-Augmented Generation} que suporta a deduplicação semântica e a reutilização adaptativa de conteúdo referidas ao longo deste capítulo é detalhado no Capítulo~\ref{cap:rag}.

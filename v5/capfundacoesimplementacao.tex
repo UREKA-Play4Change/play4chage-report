@@ -1,0 +1,124 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo — Fundações de Implementação e Autenticação
+%
+\chapter{Fundações de Implementação e Autenticação} \label{cap:fundacoes-implementacao}
+
+Este capítulo concretiza, com tecnologia concreta, o núcleo e o perímetro apresentados no Capítulo~\ref{cap:desenvolvimento}: como o servidor está organizado, como um pedido HTTP é processado do princípio ao fim, e como a autenticação \textit{passwordless} foi implementada.
+
+% -----------------------------------------------------------
+\section{Backend: Spring Server e Pipeline} \label{sec:backend}
+% -----------------------------------------------------------
+
+\subsection{Organização do Projeto} \label{sec:org-projeto}
+
+O servidor é uma aplicação Spring Boot~3 escrita em Kotlin (JVM~21), estruturada segundo a Arquitetura Hexagonal com separação estrita entre três camadas: \texttt{domain}, \texttt{application} e \texttt{infrastructure}/\texttt{web}.
+
+A camada \textbf{domain} é Kotlin puro (sem anotações Spring, JPA ou LangChain4j), com as entidades, agregados e interfaces de \textit{port} dos oito contextos delimitados (\texttt{auth}, \texttt{identity}, \texttt{topic}, \texttt{enrollment}, \texttt{struggle}, \texttt{explanation}, \texttt{badge}, \texttt{report}). A camada \textbf{application} contém os casos de uso e os serviços que os implementam, invocando exclusivamente interfaces de \textit{port}, nunca implementações concretas, para que a lógica de negócio seja testável independentemente da base de dados ou do fornecedor de LLM. A camada \textbf{infrastructure} contém os adaptadores de saída (JPA, \texttt{MinioFileStorageAdapter}, \texttt{UrlScrapeAdapter}, \texttt{UnstructuredPdfAdapter}, \texttt{ResendEmailAdapter}) e os adaptadores de entrada HTTP, organizados em \texttt{admin}, \texttt{user} e \texttt{public}.
+
+O módulo de IA está separado em dois módulos Gradle: \texttt{ai-agent:api} define o contrato \texttt{TaskGenerationPort} sem dependências de \textit{runtime}; \texttt{ai-agent:langchain} é a única localização que referencia LangChain4j, implementando esse contrato com \texttt{@Primary}.
+
+A gestão do esquema é feita exclusivamente por Flyway (33 migrações), com \texttt{ddl-auto: validate}; \textit{queries} críticas para atomicidade (e.g.\ \texttt{claimToken}) usam SQL (\textit{Structured Query Language}) nativo com \texttt{RETURNING} para eliminar janelas TOCTOU (\textit{Time-Of-Check to Time-Of-Use}).
+
+\subsection{Pipeline de Processamento de Pedidos} \label{sec:pipeline}
+
+Cada pedido HTTP atravessa um conjunto de camadas ordenadas de forma determinista antes de atingir o \textit{controller}, descritas na Tabela~\ref{tab:pipeline}.
+
+\subsubsection*{Filtros e interceptores: ordem de execução}
+
+Quatro componentes operam em camadas distintas antes de o pedido atingir o \textit{controller}, descritos na Tabela~\ref{tab:pipeline}.
+
+\begin{table}[h!]
+\centering
+\caption{Componentes do pipeline HTTP e responsabilidades}
+\label{tab:pipeline}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llp{9.5cm}}
+\hline
+\textbf{Ordem} & \textbf{Componente} & \textbf{Responsabilidade} \\
+\hline
+1 & \texttt{RateLimitFilter} (\texttt{HIGHEST\_PRECEDENCE})
+  & \textit{Rate limiting} por IP~$\times$~\textit{path} normalizado, via Bucket4j com \textit{cache} Caffeine; devolve \texttt{429} com \texttt{Retry-After} quando o \textit{bucket} é excedido \\
+2 & \texttt{RequestIdFilter} (\texttt{@Order(1)})
+  & Gera ou propaga o header \texttt{X-Request-Id}; coloca-o no MDC do SLF4J para correlação de logs distribuídos \\
+3 & \texttt{JwtAuthFilter} (\texttt{OncePerRequestFilter})
+  & Valida o JWT do header \texttt{Authorization: Bearer}; popula o \texttt{SecurityContextHolder} com \texttt{userId} e \texttt{role}; devolve \texttt{401} em token inválido \\
+4 & \texttt{LoggingInterceptor} (\texttt{HandlerInterceptor})
+  & Regista \texttt{→ METHOD path} em \texttt{preHandle} e \texttt{← status [Xms]} em \texttt{afterCompletion} \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+O \texttt{RateLimitFilter} corre efetivamente antes de qualquer outro componente da cadeia, inclusive do \texttt{RequestIdFilter} e de qualquer lógica de autenticação, o que impede ataques de força bruta mesmo sobre utilizadores não autenticados; em contrapartida, um pedido rejeitado (\texttt{429}) nunca chega a ter \texttt{X-Request-Id} nem entra no MDC de logging.
+Os limites por \textit{endpoint} (incluindo uma correção recente a duas regras de submissão cujo padrão de rota, herdado de uma versão anterior do sistema de rotas, não correspondia aos \textit{endpoints} reais) são discutidos na Secção~\ref{sec:ratelimiting} e detalhados no Apêndice C (Tabela C.2).
+
+\subsubsection*{Pipeline assíncrono de geração de tópicos}
+
+A criação de um tópico é o fluxo mais complexo do sistema, envolvendo extração de conteúdo, geração por LLM e indexação vetorial.
+A Figura~\ref{fig:seq-topic-gen} (Apêndice~\ref{ap:detalhe-config}) ilustra o pipeline completo, que atravessa cinco estados de máquina de estados:
+
+\begin{center}
+\texttt{INGESTION} $\rightarrow$ \texttt{ANALYSIS} $\rightarrow$ \texttt{GENERATION} $\rightarrow$ \texttt{INDEXING} $\rightarrow$ \texttt{ACTIVE}
+\end{center}
+\begin{center}
+(qualquer fase pode transitar para \texttt{FAILED} em caso de erro)
+\end{center}
+
+O pedido \texttt{POST /admin/topics} devolve imediatamente \texttt{201 Created} com o tópico em estado \texttt{PENDING}; o pipeline executa em paralelo num executor dedicado (\texttt{generationExecutor}) com três \textit{threads} e fila de 25 pedidos.
+O \texttt{SupervisorJob} Kotlin garante que a falha de uma geração não cancela outras em curso.
+O Admin acompanha o progresso em tempo real via \textit{Server-Sent Events} (SSE) no \textit{endpoint} \texttt{GET /admin/topics/\{id\}/progress}, recebendo eventos \texttt{phase-change}, \texttt{generation-progress} e \texttt{complete}.
+
+Dois \textit{schedulers} Spring garantem a robustez do pipeline: o \texttt{StuckGenerationWatchdogJob} (a cada 120\,s) deteta tópicos presos em \texttt{GENERATING} por mais de 15 minutos e transita-os para \texttt{FAILED}; o \texttt{TopicExpirationJob} (a cada 60\,s) marca como \texttt{EXPIRED} os tópicos \texttt{ACTIVE} cuja \texttt{expires\_at} passou. A integração com o LLM é protegida por \textit{circuit breaker}, \textit{retry} e \textit{timeout} (configuração no Apêndice C, Tabela C.3).
+
+\subsection{Integração com os Restantes Componentes} \label{sec:integracao}
+
+O servidor integra-se com cinco sistemas de infraestrutura e dois sistemas externos, sempre mediados por interfaces de \textit{port} no domínio, nunca por referências diretas às implementações (Tabela~\ref{tab:integracoes}).
+
+\begin{table}[h!]
+\centering
+\caption{Integrações do servidor com componentes de infraestrutura e serviços externos}
+\label{tab:integracoes}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llp{8.5cm}}
+\hline
+\textbf{Componente} & \textbf{Papel} & \textbf{Detalhe} \\
+\hline
+Nginx & \textit{Reverse proxy} + estáticos & \textit{Rewrite} de prefixo, \texttt{proxy\_read\_timeout} 120\,s (chamadas LLM), \textit{headers} de segurança e CORS (\textit{Cross-Origin Resource Sharing}) restritivo \\
+PostgreSQL + pgvector & Persistência relacional e vetorial & Spring Data JPA/Hibernate por contexto; \textit{embeddings} de 1024 dimensões para deduplicação \\
+MinIO & Armazenamento de objetos & \texttt{MinioFileStorageAdapter} guarda PDFs e texto extraído de URLs; conteúdo descarregado uma vez, LLM nunca acede ao URL original \\
+Playwright + Unstructured.io & Extração de conteúdo & Microserviços dedicados para URL (HTML renderizado) e PDF (OCR, \textit{Optical Character Recognition}); \texttt{UrlSsrfValidator} valida antes de qualquer \textit{fetch} \\
+Resend & Email transacional & Código de acesso por email; em desenvolvimento, \texttt{ConsoleEmailAdapter} regista o token no log sem enviar email \\
+Prometheus + Grafana & Observabilidade & \texttt{/actuator/prometheus} (porta de gestão, 9090); métricas catalogadas no Apêndice C (Tabela C.9) \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+% -----------------------------------------------------------
+\section{Autenticação Passwordless} \label{sec:autenticacao}
+% -----------------------------------------------------------
+
+O Play4Change implementa autenticação \textit{passwordless} por código de acesso de utilização única enviado por email --- designado \textit{magic link} no código-fonte, embora o utilizador copie e cole o código em vez de clicar numa hiperligação ---, sem qualquer OAuth externo ou SSO. A autenticação por \textit{password} é vulnerável a reutilização entre serviços, força bruta e \textit{phishing}, além de frequentemente esquecida~\cite{bonneau2012}; Bonneau et al. (2012) avaliam 35 esquemas alternativos e concluem que não há vencedor universal, já que os esquemas mais resistentes a ataques (tokens físicos, biometria) tendem a sacrificar a usabilidade em que as \textit{passwords} se destacam~\cite{bonneau2012}. Para um desafio breve e diário, dirigido também a um perfil de menor afinidade tecnológica (Secção~\ref{sec:usab-qualitativa}), um código de utilização única~\cite{fido2019} elimina a fricção de memorização e o próprio conceito de password esquecida, ao custo de a segurança e a recuperação da conta passarem a depender inteiramente do acesso ao email do Learner.
+O design resolve três requisitos simultâneos: eliminar \textit{passwords} para o utilizador gerir, garantir resistência a ataques de reutilização de tokens, e suportar um email de recuperação alternativo como segunda via de acesso --- mitigando especificamente o risco de perda de acesso ao email principal, já que a recuperação não é uma garantia automática do esquema \textit{passwordless} em si, mas uma decisão de desenho adicional e deliberada.
+
+\subsection{Modelo de Dados e Propriedades Criptográficas} \label{sec:auth-model}
+
+O subsistema de autenticação mantém quatro tabelas independentes do domínio principal (\texttt{users}, \texttt{magic\_link\_tokens}, \texttt{refresh\_tokens}, \texttt{recovery\_emails}). A propriedade de segurança central é que \textbf{apenas o \textit{hash} SHA-256 do token é persistido}; o token em claro existe exclusivamente em memória e no email enviado ao utilizador, nunca na base de dados. Esquema de campos, geração criptográfica (\texttt{AuthCrypto}) e demais detalhe de implementação no Apêndice~\ref{ap:detalhe-config} (Secção~\ref{ap:auth-detalhe}, Tabela~\ref{tab:auth-schema}).
+
+\subsection{Fluxo de Autenticação por Código de Acesso} \label{sec:auth-flow}
+
+O fluxo de autenticação decorre em duas fases, pedido do código e verificação do token (Figura~\ref{fig:seq-magic-link}, Apêndice~\ref{ap:detalhe-config}), e assenta em três decisões de segurança deliberadas: o pedido responde sempre \texttt{202 Accepted} independentemente de o email existir, evitando enumeração de contas; o consumo do token --- o utilizador copia o código recebido por email e cola-o no campo de verificação da aplicação móvel ou da página web, que submete o valor ao \textit{endpoint} de verificação --- é uma operação atómica que elimina janelas de corrida; e as três condições de falha (token inválido, expirado ou já usado) são propositadamente indistinguíveis para o cliente, evitando \textit{oracle attacks}. O detalhe de implementação de cada decisão está no Apêndice~\ref{ap:detalhe-config} (Secção~\ref{ap:auth-detalhe}).
+
+Em caso de sucesso, o serviço resolve o email a um utilizador existente, a um email de recuperação verificado, ou a um novo registo implícito, emitindo de seguida o par \textit{access token} (15 min) / \textit{refresh token} (7 dias).
+
+\subsection{Ciclo de Vida dos Tokens JWT e Rotação de Refresh Tokens} \label{sec:token-lifecycle}
+
+O \textit{access token} é um JWT HMAC-SHA-256 de curta duração (15 min); o \textit{refresh token} (7 dias) segue o padrão \textit{token rotation} com deteção de reutilização: se um token já usado for reapresentado, toda a \texttt{family\_id} é revogada, forçando re-autenticação, o que garante que o \textit{logout} revoga toda a cadeia de rotação da sessão. A sessão Spring é \texttt{STATELESS}: cada pedido é autenticado independentemente pelo \texttt{JwtAuthFilter}. O algoritmo de assinatura é fixado explicitamente no código (em vez de deixado à seleção automática da biblioteca) e a chave é validada no arranque pelo \texttt{JwtSecretStartupGuard}; o detalhe desta decisão e da estrutura de \textit{claims} está no Apêndice~\ref{ap:detalhe-config} (Secção~\ref{ap:auth-detalhe}).
+
+\subsection{Autorização e Controlo de Acesso} \label{sec:authz}
+
+A \texttt{SecurityConfig} define quatro zonas de acesso com regras distintas (pública, Swagger, administração e utilizador), detalhadas no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:access-zones}).
+
+A separação da zona de administração é particularmente relevante: um Learner com JWT válido que tente aceder a \texttt{/admin/**} recebe \texttt{403 Forbidden} sem que o pedido atinja qualquer \textit{controller}.
+O Swagger é restrito a administradores em produção para evitar exposição do contrato de API a utilizadores não autorizados.

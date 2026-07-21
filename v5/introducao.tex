@@ -1,0 +1,34 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 1 — Introdução
+%
+\chapter{Introdução} \label{cap:intro}
+
+A transformação digital acelerada das últimas décadas tornou a capacidade de utilizar as tecnologias digitais de forma confiante, crítica e responsável uma competência fundamental para a vida moderna. A União Europeia reconheceu esta necessidade através do \textit{Digital Competence Framework for Citizens} (DigComp), atualmente na versão 2.2, que organiza 21 competências digitais em cinco áreas e serve de base a políticas de educação digital em toda a Europa~\cite{digcomp22}. Este projeto insere-se na aliança universitária europeia U!REKA, da qual o IPL é membro ativo, e é desenvolvido em colaboração com a Amsterdam University of Applied Sciences (HvA), parceira da rede.
+
+\section{Contextualização} \label{sec:contexto}
+
+O \textit{Digital Compass} e o subsequente \textit{Digital Decade Policy Programme} da União Europeia fixam o objetivo de dotar pelo menos 80\% da população europeia de competências digitais básicas até 2030, tendo o DigComp~2.2 como instrumento de referência para o operacionalizar~\cite{digitaldecade2022,digcomp22}. É neste sentido que o presente projeto entende a educação cívica: as competências digitais do DigComp~2.2 constituem hoje uma dimensão essencial da cidadania: utilizar tecnologia de forma crítica, segura e responsável é participar plenamente na vida cívica digital.
+Apesar deste enquadramento, escasseiam plataformas de aprendizagem que tirem partido da Inteligência Artificial (IA) para personalizar a experiência de aprendizagem, e que permitam a gestão autónoma de conteúdos adaptados ao perfil e progresso de cada utilizador.
+
+\section{Motivação} \label{sec:motivacao}
+
+O ``problema dos 2 sigma'' de Bloom (a tutoria individual supera em dois desvios padrão o ensino tradicional em sala de aula, mas é economicamente inviável a larga escala~\cite{bloom1984}) é discutido em detalhe na Secção~\ref{sec:aied}; os LLM reabriram este debate ao aproximar esse ideal do custo marginal~\cite{kasneci2023}. No domínio específico do DigComp~2.2 não existe, até ao momento, uma plataforma adaptativa que recorra à IA para personalizar o percurso de cada utilizador.
+
+Técnicas como o \textit{Retrieval-Augmented Generation} (RAG) permitem ancorar as respostas do modelo em conhecimento específico e verificável~\cite{lewis2020}, abrindo a oportunidade de conjugar o quadro estruturado do DigComp~2.2 com uma experiência na interseção entre aprendizagem formal e informal~\cite{cross2007}.
+
+\section{Objetivos} \label{sec:objetivos}
+
+O objetivo geral deste projeto é construir o \textbf{Play4Change}: um painel de administração web, um cliente móvel para Learners, e um sistema que recorre a Inteligência Artificial (IA) para gerar e adaptar pedagogicamente o conteúdo educativo entregue nesse cliente.
+
+Aprofundando este objetivo, a plataforma centra-se no desenvolvimento de competências digitais, servindo dois perfis distintos: os \textbf{Administradores}, que gerem e criam conteúdos através do painel web, e os \textbf{Learners}, que desenvolvem as suas competências através da aplicação móvel, assente no modelo de um desafio diário.
+
+O projeto concretiza-se em cinco objetivos operacionais, detalhados individualmente no Capítulo~\ref{cap:discussao} (§\ref{sec:analise-objetivos}).
+
+\section{Âmbito, Limitações e Organização do Documento} \label{sec:ambito}
+
+O Play4Change foi desenvolvido no âmbito do projeto \textit{U!REKA SHIFT}, iniciativa da aliança U!REKA que visa soluções educativas inovadoras para as cidades do futuro, com foco na literacia digital. A colaboração entre o IPL e a HvA enquadra-se neste objetivo, contribuindo para as metas do \textit{Digital Compass} para 2030~\cite{digitaldecade2022}. Em termos técnicos, o âmbito cobre o \textit{backend}, o cliente web e o cliente móvel para Learners.
+
+As principais limitações são: a avaliação pedagógica da eficácia da plataforma a larga escala não foi realizada, sendo o foco a conceção técnica do sistema; a integração com sistemas de gestão de aprendizagem externos (LMS) fica para trabalho futuro; e, apesar de a arquitetura Kotlin Multiplatform permitir compilação nativa para iOS, o projeto entrega apenas o alvo Android.
+
+O restante relatório organiza-se do geral para o específico, seguindo a mesma lógica desta introdução: o Capítulo~\ref{cap:estadodaarte} situa o Play4Change no estado da arte da aprendizagem adaptativa, da IA na educação e do RAG; o Capítulo~\ref{cap:requisitos} traduz essa análise em requisitos e casos de uso concretos; o Capítulo~\ref{cap:desenvolvimento} apresenta a arquitetura que responde a esses requisitos; o Capítulo~\ref{cap:implementacao} detalha a implementação dessa arquitetura, do conteúdo submetido pelo Administrador ao desafio entregue ao Learner, com destaque para as decisões mais distintivas do sistema; o Capítulo~\ref{cap:testes-geral} valida essa implementação em duas frentes, a suite de testes automatizados e a avaliação de usabilidade; e o Capítulo~\ref{cap:discussao} discute os resultados face aos objetivos e ao estado da arte.

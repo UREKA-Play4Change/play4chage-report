@@ -1,0 +1,92 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 10 — Segurança da Aplicação
+%
+\chapter{Segurança da Aplicação} \label{cap:seguranca}
+
+Este capítulo encerra a descrição técnica do sistema iniciada nos Capítulos~\ref{cap:desenvolvimento}, \ref{cap:ingestao}, \ref{cap:ia}, \ref{cap:rag}, \ref{cap:geracao-desafios} e \ref{cap:desafios}, detalhando as decisões de segurança tomadas em resposta a vetores de ataque comuns e conhecidos.
+
+A segurança não foi o foco central deste projeto, mas foram tomadas ao longo do desenvolvimento um conjunto de decisões concretas em resposta a vetores de ataque comuns e conhecidos (vários deles catalogados no OWASP, \textit{Open Worldwide Application Security Project}, Top 10), com controlos em várias camadas da arquitetura: proxy reverso (Nginx), servidor de aplicação (Spring Boot), agente de IA (LangChain4j) e cliente web (React/Vite). A lista dos vetores considerados e do controlo correspondente está resumida na Secção~\ref{sec:riscos}, evitando duplicar aqui a mesma informação.
+
+\section{Proteção Contra XSS} \label{sec:xss}
+
+A proteção contra \textit{Cross-Site Scripting} (XSS) combina três técnicas complementares e independentes.
+
+\subsection*{Sanitização de Output de IA}
+
+O \texttt{AiOutputSanitiser} sanitiza todo o conteúdo gerado pelo modelo Mistral antes de ser persistido, usando \texttt{Jsoup.parse(input).text()} para remover elementos HTML, descodificar entidades e descartar o conteúdo de \texttt{<script>}/\texttt{<style>}. É aplicado a cada campo \texttt{String} do \texttt{TaskTemplate} gerado e às respostas conversacionais de explicação, mitigando o vetor de páginas raspadas (\textit{scraped}) que possam conter HTML malicioso e ser reproduzidas literalmente pelo modelo.
+
+\subsection*{Content Security Policy via Nginx}
+
+O Nginx aplica uma \textit{Content Security Policy} (CSP) restritiva às respostas da SPA estática (bloco \texttt{location /} do \texttt{nginx.conf}): \texttt{default-src} e \texttt{script-src} limitados a \texttt{'self'} (sem \texttt{unsafe-eval} nem CDNs externos), \texttt{style-src} com \texttt{'unsafe-inline'} apenas pelo necessário aos estilos gerados pelo Vite/React no \textit{build}, e \texttt{frame-ancestors 'none'} contra \textit{clickjacking}. Ao contrário dos restantes \textit{headers} de segurança (Tabela~\ref{tab:security-headers}, Secção~\ref{sec:outros-seguranca}), que são globais a todas as respostas, a CSP é, por decisão documentada (ADR-018), aplicada apenas a este bloco, não às respostas JSON da API proxied em \texttt{/play4change-server/}, \texttt{/api}, \texttt{/swagger-ui} ou \texttt{/v3}.
+
+\subsection*{React JSX Auto-escaping}
+
+O React aplica \textit{escaping} automático de todas as expressões \texttt{\{expression\}} ao renderizar no DOM.
+Mesmo que a base de dados contivesse HTML residual (falha nas camadas anteriores), o React converteria \texttt{<} e \texttt{>} em entidades HTML antes da inserção no DOM, eliminando XSS reflexo em componentes bem formados.
+
+\section{Rate Limiting por IP} \label{sec:ratelimiting}
+
+O \textit{rate limiting} é implementado no filtro \texttt{RateLimitFilter}, com ordem \texttt{HIGHEST\_PRECEDENCE} na cadeia de filtros Spring, garantindo que a verificação ocorre antes de qualquer autenticação ou lógica de negócio.
+O algoritmo utilizado é \textit{token bucket} via Bucket4j, com janela de \textit{refill} de 10~minutos.
+Os \textit{buckets} são mantidos em cache Caffeine com TTL (\textit{Time To Live}) de 15~minutos e capacidade máxima de 50\,000 entradas.
+Cada \textit{bucket} é identificado pela chave composta \texttt{"<ip>:<path\_normalizado>"}, isolando os limites por recurso e por origem.
+
+O \texttt{IpExtractor} extrai o IP do header \texttt{X-Forwarded-For} definido pelo Nginx, mas rejeita endereços privados para prevenir \textit{spoofing} por injecção de header, caindo nesse caso para \texttt{remoteAddr}.
+Os limites concretos por \textit{endpoint} são apresentados no Apêndice C (Tabela C.2); documenta-se aí também um problema entretanto corrigido, em que quatro regras estavam configuradas contra padrões de rota desalinhados: duas delas resíduo da funcionalidade de \textit{Peer Review} entretanto removida, e as outras duas (submissão de tarefa e de sub-tarefa de \textit{struggle}) efetivamente sem limite de taxa até à correção.
+
+\section{Validação e Sanitização de Inputs} \label{sec:validacao}
+
+A validação de \textit{inputs} é realizada em quatro níveis independentes: \textbf{Cliente} (TypeScript, optimização de UX, não controlo de segurança, para email, PDF e URLs); \textbf{Servidor} (Jakarta Bean Validation nos DTOs de entrada, \texttt{@NotBlank}/\texttt{@Email}/\texttt{@Size}, devolvendo \texttt{400} sem chegar à camada de serviço); \textbf{Prevenção de SSRF} (\texttt{UrlSsrfValidator}: esquema HTTPS obrigatório, resolução DNS e rejeição de IPs privados/\textit{loopback}/\textit{link-local}, detalhado na Secção~\ref{sec:url} do Capítulo~\ref{cap:ingestao}); e \textbf{Limites de Contexto para IA} (\texttt{AiContextLimits}, Tabela~\ref{tab:context-limits}, Secção~\ref{sec:ia-prompting} do Capítulo~\ref{cap:ia}), aplicados antes de construir os prompts independentemente do tamanho do \textit{input} original.
+
+\section{Outros Controlos de Segurança} \label{sec:outros-seguranca}
+
+\subsection*{Autenticação JWT com Validação de Arranque}
+
+O \texttt{JwtSecretStartupGuard} valida o segredo JWT no arranque, falhando se tiver menos de 64 caracteres ou for igual ao valor de desenvolvimento por omissão (apenas em perfil \texttt{prod}, ver Secção~\ref{sec:token-lifecycle}); o \texttt{CredentialStartupGuard} verifica analogamente as credenciais de serviços externos. Estes guardas impedem a promoção de configurações de desenvolvimento para produção.
+
+\subsection*{Rotação de Refresh Token com Detecção de Reutilização}
+
+O mecanismo de rotação com família (Secção~\ref{sec:autenticacao}) deteta roubo de token: se um token já marcado como \texttt{used = true} for apresentado, toda a família é revogada e um evento \texttt{SECURITY} é emitido.
+
+\subsection*{RBAC e CORS Restritivo}
+
+O \texttt{SecurityConfig} implementa controlo de acesso baseado em papéis (RBAC, \textit{Role-Based Access Control}), definindo rotas protegidas por papel (\texttt{/admin/**} exige \texttt{ROLE\_ADMIN}; Swagger restrito a admin em produção), validado no \texttt{JwtAuthFilter} contra a lista \texttt{VALID\_ROLES}. O \texttt{WebMvcConfig} configura CORS com lista de origens explícita, verificada ao arranque (rejeita \textit{wildcards} e entradas em branco), definidas em produção via \texttt{APP\_CORS\_ALLOWED\_ORIGINS}.
+
+\subsection*{Headers HTTP de Segurança (Nginx)}
+
+O Nginx acrescenta cinco \textit{headers} de segurança no total: \texttt{Strict-Transport-Security}, \texttt{X-Content-Type-Options}, \texttt{X-Frame-Options} e \texttt{Referrer-Policy}, aplicados globalmente a todas as respostas, e a \textit{Content-Security-Policy} já descrita na Secção~\ref{sec:xss}, aplicada apenas ao bloco da SPA estática, cobrindo \textit{downgrade} para HTTP, MIME-sniffing, \textit{clickjacking} e vazamento de \textit{referrer}; a configuração exacta de cada um está listada no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:security-headers}).
+
+\subsection*{Segurança do Scraper}
+
+O scraper Playwright opera com \textit{timeout} de navegação de 25~s, \textit{timeout} total de 35~s, e remoção ativa de \texttt{<script>}, \texttt{<style>}, \texttt{<iframe>}, \texttt{<nav>}, \texttt{<footer>} antes de extrair texto, em complemento ao \texttt{UrlSsrfValidator} que valida a URL antes de qualquer pedido ao scraper.
+
+\section{Vetores de Ataque Considerados e Mitigações} \label{sec:riscos}
+
+Não foi conduzida uma auditoria de segurança formal nem uma análise de risco quantificada; a segurança foi endereçada de forma pragmática, à medida que cada vetor de ataque relevante para a arquitetura concreta do sistema foi identificado. A Tabela~\ref{tab:riscos} resume os dez vetores considerados e a decisão de mitigação tomada para cada um.
+
+\begin{table}[h!]
+\centering
+\caption{Vetores de ataque considerados e controlo implementado}
+\label{tab:riscos}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lp{6.5cm}p{7cm}}
+\hline
+\textbf{Vetor} & \textbf{Controlo implementado} & \textbf{Observação} \\
+\hline
+XSS via conteúdo gerado por IA         & \texttt{AiOutputSanitiser} + CSP (parcial, §\ref{sec:xss}) + \textit{auto-escaping} do React & --- \\
+Prompt Injection                       & Multi-mensagem tipada + \texttt{AiContextLimits}      & Mitiga ataques simples; o Mistral não garante resistência total a \textit{inputs} adversariais sofisticados \\
+Custo descontrolado de chamadas à API de IA & Rate limiting por IP (10 req/10\,min em \texttt{/explanation}, entre outros) & Mitiga abuso de um único atacante, não um ataque distribuído a partir de múltiplos IPs \\
+Roubo de \textit{refresh token}         & Rotação com família + revogação total em caso de reutilização & Janela de 7~dias de exposição se o token for exfiltrado; impacto limitado pela TTL de 15~min do \textit{access token} \\
+Segredo JWT por omissão em produção     & \texttt{JwtSecretStartupGuard} impede o arranque      & --- \\
+SSRF via URL de ingestão               & \texttt{UrlSsrfValidator}                             & --- \\
+Força bruta no código de acesso        & Rate limiting (5 req/10\,min)                         & --- \\
+\textit{Spoofing} de IP no rate limiting & \texttt{IpExtractor} rejeita endereços privados no header & --- \\
+Escalada de privilégios (Learner~$\to$~Admin) & RBAC + validação de papel no JWT               & --- \\
+CORS \textit{wildcard}                 & Verificação de lista de origens ao arranque           & --- \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Três destas decisões merecem uma nota adicional, por serem as que deixam uma margem de exposição residual mais visível: a proteção contra \textit{prompt injection} não é absoluta (depende do comportamento do modelo, não apenas da separação de mensagens); o \textit{rate limiting} por IP não impede um ataque distribuído a partir de múltiplos endereços; e a janela de 7 dias do \textit{refresh token} só é neutralizada se o XSS acima estiver de facto bem mitigado. Nenhuma destas foi objeto de um exercício de mitigação adicional: ficam identificadas como pontos a reforçar caso o sistema avance para produção com utilização real.

@@ -1,0 +1,128 @@
+% !TEX root = relatorio.tex
+%
+% Capítulo 3 — Análise e Requisitos
+%
+\chapter{Análise e Requisitos} \label{cap:requisitos}
+
+A definição clara dos requisitos de um sistema é um dos fatores mais determinantes para o sucesso de um projeto de engenharia de software~\cite{sommerville2016}.
+Este capítulo segue uma progressão deliberada, do geral para o específico: começa por identificar quem usa a plataforma e que necessidades traz (Secção~\ref{sec:utilizadores}); traduz essas necessidades em requisitos funcionais (o que o sistema deve fazer, Secção~\ref{sec:rf}) e não funcionais (sob que condições de qualidade o deve fazer, Secção~\ref{sec:rnf}); e fecha com os casos de uso que ilustram, de ponta a ponta, como esses requisitos se materializam em fluxos concretos de utilização (Secção~\ref{sec:casosdeuso}).
+
+% -----------------------------------------------------------
+\section{Identificação dos Utilizadores} \label{sec:utilizadores}
+% -----------------------------------------------------------
+
+A identificação dos utilizadores é o ponto de partida de qualquer processo de desenvolvimento centrado no utilizador (\textit{User-Centered Design})~\cite{norman1988}, e levou, no contexto do Play4Change, à identificação de dois perfis de utilizador com necessidades, objetivos e contextos de uso distintos.
+
+\subsection{Administrador}
+
+O \textbf{Administrador} é o perfil responsável pela criação e gestão de conteúdo pedagógico, tipicamente um formador ou responsável de uma instituição parceira da rede U!REKA, sem necessidade de \textit{expertise} em IA ou engenharia de software. Interage com a plataforma exclusivamente através do \textbf{cliente web}: submete PDF ou URLs como fontes de conhecimento, revê os tópicos e desafios gerados pela IA, e gere os Learners registados. Esta separação, produção de conteúdo versus consumo e progressão, é consistente com os modelos de \textit{Intelligent Tutoring Systems} (ITS)~\cite{anderson1985}.
+
+\subsection{Learner}
+
+O \textbf{Learner} é o destinatário da experiência de aprendizagem. O seu perfil é deliberadamente amplo: qualquer cidadão que pretenda desenvolver as suas competências digitais no referencial DigComp~2.2, independentemente do nível de partida ou do contexto institucional em que se insere.
+
+O Learner interage com a plataforma através do \textbf{cliente móvel}, numa experiência desenhada para ser discreta e integrada na rotina diária. O modelo de um \textbf{desafio por dia} não é arbitrário: sessões curtas e regulares são significativamente mais eficazes do que sessões longas e esporádicas (\textit{spaced repetition})~\cite{ebbinghaus1885,cepeda2006}, e a Teoria da Autodeterminação de Deci e Ryan mostra que a motivação intrínseca é sustentada por três necessidades psicológicas básicas, \textit{autonomia}, \textit{competência} e \textit{relatedness} (ligação social a outras pessoas, não apenas a um propósito abstrato)~\cite{deci2000}, fatores a que este modelo responde parcialmente: a autonomia e a competência são endereçadas diretamente pelo desenho do desafio diário, mas a \textit{relatedness} depende das funcionalidades sociais ainda por implementar (Secção~\ref{sec:trabalho-futuro}). A escolha do canal móvel segue a justificação já apresentada na Secção~\ref{sec:formal-informal}.
+
+% -----------------------------------------------------------
+\section{Requisitos Funcionais} \label{sec:rf}
+% -----------------------------------------------------------
+
+Identificados os dois perfis de utilizador e as necessidades que os distinguem, importa agora traduzir essas necessidades em comportamentos concretos. Os requisitos funcionais descrevem os comportamentos que o sistema deve exibir em resposta a determinadas entradas ou condições~\cite{sommerville2016}.
+A Tabela~\ref{tab:rf} apresenta os requisitos funcionais do Play4Change, organizados por área funcional.
+
+\begin{longtable}{p{1.3cm}p{3.5cm}p{8cm}}
+\caption{Requisitos funcionais do sistema Play4Change} \label{tab:rf} \\
+\hline
+\textbf{ID} & \textbf{Área} & \textbf{Descrição} \\
+\hline
+\endfirsthead
+\multicolumn{3}{l}{\small \textit{(continuação da Tabela~\ref{tab:rf})}} \\
+\hline
+\textbf{ID} & \textbf{Área} & \textbf{Descrição} \\
+\hline
+\endhead
+\hline \multicolumn{3}{r}{\small \textit{continua na página seguinte}} \\
+\endfoot
+\hline
+\endlastfoot
+RF01 & Autenticação      & O sistema deve suportar autenticação para ambos os perfis de utilizador, Administrador e Learner. \\
+RF02 & Criação de Conteúdo & O Administrador deve poder criar tópicos a partir de fontes documentais (um documento PDF ou um URL), com o conteúdo pedagógico gerado automaticamente por Inteligência Artificial e passível de edição ou regeneração pelo Administrador. \\
+RF03 & Reutilização de Conhecimento & O sistema deve reutilizar conhecimento e conteúdo já gerados sempre que semanticamente equivalentes a um novo pedido, evitando duplicação. \\
+RF04 & Progressão do Learner & O Learner deve receber um desafio diário extraído dos tópicos em que está inscrito e ainda não concluídos, com \textit{feedback} imediato após cada resposta. \\
+RF05 & Adaptação à Dificuldade & O sistema deve adaptar o percurso de remediação ao nível de dificuldade sentido pelo Learner, ajustando-o ao seu padrão de erro. \\
+RF06 & Tutoria com IA    & Quando a remediação adaptativa não for suficiente para resolver a dificuldade, o sistema deve disponibilizar tutoria conversacional com IA. \\
+RF07 & Clientes          & O sistema deve disponibilizar um cliente web para o Administrador, com painel de administração e \textit{landing page} pública, e um cliente móvel para o Learner, centrado na experiência do desafio diário. \\
+\end{longtable}
+
+% -----------------------------------------------------------
+\section{Requisitos Não Funcionais} \label{sec:rnf}
+% -----------------------------------------------------------
+
+Para além do que o sistema faz, importa definir sob que condições o deve fazer bem. Os requisitos não funcionais definem as propriedades e restrições do sistema que não dizem respeito a comportamentos específicos, mas à qualidade global da solução~\cite{bass2021}.
+A Tabela~\ref{tab:rnf} apresenta os requisitos não funcionais identificados para o Play4Change.
+
+\begin{table}[H]
+\centering
+\caption{Requisitos não funcionais do sistema Play4Change}
+\label{tab:rnf}
+\begin{tabular}{p{1.3cm}p{3cm}p{8.5cm}}
+\hline
+\textbf{ID} & \textbf{Categoria} & \textbf{Descrição} \\
+\hline
+RNF01 & Segurança       & O sistema deve proteger minimamente os utilizadores e a infraestrutura contra vetores de ataque comuns e conhecidos e assegurar que a comunicação entre clientes e servidor é cifrada, sem pretensão de cobertura exaustiva. \\
+RNF02 & Testes          & As defesas de segurança e os limites operacionais do sistema (e.g.\ limites de taxa por IP) devem ser validados por testes automatizados que cubram, no mínimo, os casos de fronteira mais óbvios. \\
+RNF03 & Usabilidade     & Os clientes web e móvel devem ser intuitivos e autoexplicativos para o seu propósito, permitindo ao utilizador concluir as suas tarefas principais (gerir conteúdo, no caso do Administrador; completar o desafio diário, no caso do Learner) sem necessidade de instrução prévia. \\
+RNF04 & Manutenibilidade & O código deve seguir os princípios SOLID, favorecendo um sistema fácil de compreender, testar e evoluir. \\
+\hline
+\end{tabular}
+\end{table}
+
+% -----------------------------------------------------------
+\section{Casos de Uso} \label{sec:casosdeuso}
+% -----------------------------------------------------------
+
+Os requisitos definidos nas secções anteriores materializam-se em fluxos concretos de interação entre os atores e o sistema~\cite{jacobson1992}.
+Apresentam-se de seguida os três casos de uso que cobrem, de ponta a ponta, os fluxos centrais da plataforma: submissão de conteúdo e geração de desafios, resposta ao desafio diário, e remediação adaptativa. Os restantes fluxos do sistema (gestão de perfil, consulta de estatísticas, revisão de sinalizações, entre outros) são variações mais simples destes três padrões e não são detalhados individualmente.
+
+\subsection{CU01: Submeter Conteúdo e Gerar Desafios}
+
+\textbf{Ator principal:} Administrador.\\
+\textbf{Pré-condição:} O Administrador está autenticado no painel web.\\
+\textbf{Fluxo principal:}
+\begin{enumerate}
+    \item O Administrador define o tópico e submete um documento PDF ou um URL (\textit{Uniform Resource Locator}) como fonte de conhecimento.
+    \item De forma síncrona, o sistema extrai o texto do documento ou página e valida que não está vazio; uma falha de extração é devolvida de imediato ao Administrador, sem chegar a criar o tópico.
+    \item Ainda de forma síncrona, o sistema guarda uma cópia do conteúdo original, como registo de auditoria e fonte para uma eventual regeneração; uma falha neste passo também é devolvida de imediato, sem criar o tópico.
+    \item Guardada essa cópia, o sistema cria de imediato o tópico em estado \texttt{PENDING} e confirma ao Administrador a submissão, lançando em paralelo o pipeline assíncrono de geração.
+    \item De forma assíncrona, o sistema divide o texto em \textit{chunks} e invoca o modelo de IA para gerar módulos e os respetivos desafios (\textit{task templates}).
+    \item Por cada desafio gerado, o sistema verifica se já existe um desafio semelhante no módulo; se existir, descarta-o, persistindo apenas os desafios novos e distintos.
+    \item Concluída a geração, o tópico transita automaticamente para o estado \texttt{ACTIVE}, sem aprovação explícita do Administrador; este pode editar um desafio específico ou desencadear a regeneração completa do tópico.
+\end{enumerate}
+\textbf{Pós-condição:} O tópico está \texttt{ACTIVE}, com os desafios e o conhecimento associado indexados e disponíveis para atribuição aos Learners.
+
+\subsection{CU02: Responder ao Desafio Diário}
+
+\textbf{Ator principal:} Learner.\\
+\textbf{Pré-condição:} O Learner está autenticado na aplicação móvel e está inscrito em, pelo menos, um tópico.\\
+\textbf{Fluxo principal:}
+\begin{enumerate}
+    \item O Learner abre a aplicação móvel.
+    \item O sistema resolve o desafio do dia para o tópico em que o Learner está inscrito (criando a atribuição se ainda não existir uma para a data corrente) e apresenta-o; o desafio em si já foi gerado antecipadamente pela IA durante o pipeline de ingestão do tópico, não havendo recuperação vetorial em tempo real neste passo.
+    \item O Learner submete a sua resposta.
+    \item O sistema avalia a resposta e apresenta de imediato se esta está correta, os pontos atribuídos e o \textit{streak} atualizado.
+    \item O sistema regista o resultado e atualiza o perfil de progressão do Learner.
+\end{enumerate}
+\textbf{Pós-condição:} O resultado é registado; se a resposta estiver incorreta, é desencadeada a sessão de remediação descrita em CU03.
+
+\subsection{CU03: Remediação Adaptativa}
+
+\textbf{Ator principal:} Learner.\\
+\textbf{Pré-condição:} O Learner respondeu incorretamente a um desafio do dia.\\
+\textbf{Fluxo principal:}
+\begin{enumerate}
+    \item O sistema classifica deterministicamente o padrão do erro.
+    \item O sistema gera três sub-tarefas mais simples, centradas no padrão de erro detetado, para reconduzir o Learner ao desafio original.
+    \item O Learner resolve as sub-tarefas; se as completar todas corretamente, a sessão é marcada como resolvida e o desafio original do dia é reposto para nova tentativa.
+    \item Se o Learner voltar a falhar após esgotar a profundidade de remediação definida, o sistema substitui as sub-tarefas por uma sessão de explicação sintetizada por IA, com possibilidade de diálogo de esclarecimento.
+\end{enumerate}
+\textbf{Pós-condição:} O Learner é conduzido de volta ao desafio original, com uma remediação centrada no seu erro específico; esta adaptação ocorre dentro do próprio desafio do dia, não altera a escolha de que tópico apresentar em dias seguintes: essa seleção continua a ser feita pelo próprio Learner, através de inscrição explícita nos tópicos disponíveis.

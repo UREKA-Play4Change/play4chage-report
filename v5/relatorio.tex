@@ -1,0 +1,254 @@
+% Classe do documento e parâmetros gerais.
+\documentclass[a4paper,openright,twoside,11pt]{report}
+
+% Packages utilizadas e respetivos parâmetros.
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\addto{\captionsportuguese}{\renewcommand{\bibname}{Refer\^{e}ncias}}
+\addto{\captionsportuguese}{\renewcommand{\contentsname}{\'{I}ndice}}
+\addto{\captionsportuguese}{\renewcommand{\appendixname}{Ap\^{e}ndice}}
+
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amssymb}   % \checkmark
+\usepackage{booktabs}  % tabelas com \toprule, \midrule, \bottomrule
+\usepackage{longtable} % tabelas multi-página
+\usepackage{float}     % especificador [H] para posicionamento exacto de floats
+\usepackage{enumitem}  % listas de descrição com o termo numa linha e o texto na linha seguinte
+
+% Numerar e incluir no índice até ao nível de subsubsecção (ex.: 5.2.2.1)
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+% Símbolos de comparação para tabelas
+\newcommand{\cmark}{\textbf{\checkmark}}
+\newcommand{\xmark}{$\times$}
+\newcommand{\pmark}{\textasciitilde}
+\usepackage[Algoritmo]{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\renewcommand{\algorithmicrequire}{\textbf{Dados: }}
+\renewcommand{\algorithmicensure}{\textbf{Resultado: }}
+
+% Definições das dimensões das páginas
+\setlength{\textheight}{24.00cm}
+\setlength{\textwidth}{15.50cm}
+\setlength{\topmargin}{0.35cm}
+\setlength{\headheight}{0cm}
+\setlength{\headsep}{0cm}
+\setlength{\oddsidemargin}{0.25cm}
+\setlength{\evensidemargin}{0.25cm}
+
+%\renewcommand{\baselinestretch}{1}
+
+% Página inicial (capa)
+\title{
+   \vspace{-50mm}
+   \begin{minipage}[c]{\textwidth}
+      \centering
+      \includegraphics[height=20mm]{./figures/logoISELnew2.png}%
+      \hspace{10mm}%
+      \centering
+      \includegraphics[height=14mm]{./figures/ureka-logo.png}
+   \end{minipage}\\[20mm]
+   {\bf \vspace{40mm} Play4Change -- Aplica\c{c}\~{a}o de Aprendizagem Adaptativa para Educa\c{c}\~{a}o C\'{i}vica}
+}
+
+   \vspace{50mm}
+% Nome dos autores (um por linha)
+\author{
+\begin{tabular}{ll}
+             & Radesh Ilesh Gamanbhai Govind \\[50mm]
+\end{tabular}}
+
+\date{
+\begin{tabular}{ll}
+  {Orientadores:} & Nuno Datia \\
+                  & Michel Vorenhout \\
+                  & António Serrador \\
+\end{tabular}\\[10mm]
+Relatório do projeto realizado no âmbito de Projeto e Seminário\\
+Licenciatura em Engenharia Informática e de Computadores\\[20mm]
+11 de Julho de 2026}
+
+
+\begin{document}
+\pagenumbering{roman}
+\thispagestyle{empty}
+\maketitle
+
+\baselineskip 18pt % line spacing: 12pt for single, 18pt for 1 1/2, and 24pt for double spacing
+
+\newpage
+\thispagestyle{empty}
+% Fim da contracapa
+
+% Página com identificação completa (número e nome) e assinaturas do(s) estudante(s) e do(s) orientador(es)
+\cleardoublepage
+\setcounter{page}{1}
+\begin{center}
+\textsc{\LARGE Instituto Politécnico de Lisboa}\\[5mm]
+\textsc{\large Instituto Superior de Engenharia de Lisboa}\\[45mm]
+
+{\large \bf Play4Change -- Aplica\c{c}\~{a}o de Aprendizagem Adaptativa para Educa\c{c}\~{a}o C\'{i}vica}\\[20mm]
+
+\begin{tabular}{rl}
+  A51620  & Radesh Ilesh Gamanbhai Govind\\[10mm]
+          & \rule{75mm}{0.5pt}\\
+\end{tabular}\\[10mm]
+
+\begin{tabular}{rl}
+  Orientadores: & Nuno Datia\\[10mm]
+                & \rule{75mm}{0.5pt}\\[5mm]
+                & Michel Vorenhout\\[10mm]
+                & \rule{75mm}{0.5pt}\\[5mm]
+                & António Serrador\\[10mm]
+                & \rule{75mm}{0.5pt}\\
+\end{tabular}\\[10mm]
+
+Relatório do projeto realizado no âmbito de Projeto e Seminário\\
+Licenciatura em Engenharia Informática e de Computadores\\[20mm]
+11 de Julho de 2026\\
+\end{center}
+
+% Página de resumo em Portuguêsa
+\cleardoublepage
+\chapter*{Resumo}
+Apesar de o referencial europeu DigComp~2.2 (\textit{Digital Competence Framework for Citizens}) estruturar as competências digitais essenciais à cidadania e servir de base a políticas de literacia digital em toda a Europa, escasseiam plataformas de aprendizagem que recorram a Inteligência Artificial (IA) para personalizar o percurso de cada utilizador e que gerem e adaptem autonomamente o seu próprio conteúdo pedagógico.
+
+Esta lacuna é particularmente relevante à luz do ``problema dos 2 sigma'' de Bloom (a tutoria individual supera claramente o ensino tradicional em sala de aula, mas é historicamente inviável a larga escala), que os \textit{Large Language Models} (LLM) tornam hoje possível aproximar a um custo marginal reduzido. O projeto insere-se na aliança europeia U!REKA SHIFT (Instituto Politécnico de Lisboa/ISEL e Amsterdam University of Applied Sciences), alinhando-se com a meta europeia de dotar a população de competências digitais básicas até 2030.
+
+O Play4Change responde a esta lacuna com uma plataforma de aprendizagem adaptativa composta por um painel de administração web, uma aplicação móvel centrada num desafio diário e um servidor Spring Boot. A plataforma gera automaticamente conteúdo pedagógico por Inteligência Artificial a partir de documentos fornecidos por um formador; quando um Learner erra, o sistema adapta-se às dificuldades de cada um e se necessário ainda escala para tutoria conversacional com IA.
+
+Uma avaliação de usabilidade com utilizadores reais registou uma pontuação SUS (\textit{System Usability Scale}) média de 76,0, acima da média de referência da indústria (68,0), com a tutoria por IA identificada como a funcionalidade mais valorizada, um resultado que atesta a facilidade de uso, não o ganho de competências DigComp~2.2. Os resultados confirmam a viabilidade técnica de uma plataforma que gera e adapta autonomamente o seu conteúdo pedagógico; a avaliação do ganho pedagógico a larga escala fica para trabalho futuro.
+
+\vspace{5mm}
+\noindent{\bf Palavras-chave:} Aprendizagem Adaptativa; Inteligência Artificial Generativa; \textit{Retrieval-Augmented Generation}; Competências Digitais; DigComp~2.2.
+
+% Página de abstract em Inglês
+\cleardoublepage
+\chapter*{Abstract}
+Although the European DigComp~2.2 (\textit{Digital Competence Framework for Citizens}) framework structures the digital competences essential to citizenship and underpins digital literacy policy across Europe, adaptive learning platforms that leverage Artificial Intelligence (AI) to personalise each user's learning path, and that autonomously generate and adapt their own pedagogical content remain scarce.
+
+This gap is particularly relevant in light of Bloom's ``2 sigma problem'' (one-to-one tutoring clearly outperforms traditional classroom teaching, but has historically been unaffordable at scale), which \textit{Large Language Models} (LLMs) now make achievable at a fraction of the cost. The project is part of the European U!REKA SHIFT alliance (Instituto Politécnico de Lisboa/ISEL and the Amsterdam University of Applied Sciences), aligning with the EU goal of equipping the population with basic digital competences by 2030.
+
+Play4Change addresses this gap with an adaptive learning platform comprising a web administration panel, a mobile application centred on a daily challenge, and a Spring Boot server. The platform automatically generates pedagogical content via Artificial Intelligence from documents supplied by an instructor; when a Learner answers incorrectly, the system adapts to each user's difficulties and, if necessary, further escalates to conversational AI tutoring.
+
+A usability evaluation with real users recorded an average System Usability Scale (SUS) score of 76.0, above the industry reference average (68.0), with AI tutoring identified as the most valued feature, a result that attests to ease of use, not to DigComp~2.2 competence gains. The results confirm the technical feasibility of a platform that autonomously generates and adapts its own pedagogical content; evaluating pedagogical gains at scale is left for future work.
+
+\vspace{5mm}
+\noindent{\bf Keywords:} Adaptive Learning; Generative Artificial Intelligence; Retrieval-Augmented Generation; Digital Competences; DigComp~2.2.
+
+%% Página de agradecimentos
+%\cleardoublepage
+%\chapter*{Agradecimentos}
+%Texto dos agradecimentos. É opcional.\\
+
+%% Página sobre utilização de IA
+\cleardoublepage
+\chapter*{Utilização de Inteligência Artificial}
+
+No desenvolvimento deste projeto foram utilizadas as seguintes ferramentas de inteligência artificial generativa:
+
+\begin{itemize}
+  \item \textbf{Google Gemini Flash e Gemini Pro:} utilizados principalmente na fase de investigação e enquadramento: pesquisa de conceitos, leitura e síntese de documentação técnica, e exploração de alternativas de design antes de tomar decisões de arquitetura. Foram também utilizados para \textit{debater} e estudar tópicos novos, funcionando como interlocutor para clarificar dúvidas sobre padrões de domínio e comportamento de APIs externas.
+
+  \item \textbf{Claude Sonnet (Claude Code e Claude Cowork)}: utilizados ao longo de todo o ciclo de desenvolvimento. O Claude Code (interface de linha de comandos) foi o principal auxiliar de programação: geração de esqueletos de código, sugestão e implementação de refactores, diagnóstico e correcção de bugs, e escrita de testes unitários. O Claude Cowork (interface de desktop) foi utilizado na fase de redacção do relatório: análise de saídas do Claude Code, geração de figuras de diagramas de sequência com matplotlib.
+
+  \item \textbf{Prova de conceitos (\textit{proof of concepts})}: em várias ocasiões, as ferramentas de IA foram utilizadas para construir protótipos mínimos que permitiram validar a viabilidade técnica de uma abordagem antes de a integrar no projeto principal.
+\end{itemize}
+
+Em todos os casos, o código e o texto gerados foram revistos, iterados, adaptados e validados pelo autor.
+
+% Página de lista de acrónimos e siglas
+\cleardoublepage
+\chapter*{Lista de Acrónimos e Siglas}
+\begin{center}
+\begin{tabular}{ll}
+\hline
+\textbf{Sigla} & \textbf{Significado} \\
+\hline
+API     & \textit{Application Programming Interface} \\
+CORS    & \textit{Cross-Origin Resource Sharing} \\
+CSP     & \textit{Content Security Policy} \\
+DAG     & \textit{Directed Acyclic Graph} (grafo acíclico dirigido) \\
+DDD     & \textit{Domain-Driven Design} \\
+DigComp & \textit{Digital Competence Framework for Citizens} \\
+DNS     & \textit{Domain Name System} \\
+ECTS    & \textit{European Credit Transfer and Accumulation System} \\
+HTTP(S) & \textit{HyperText Transfer Protocol (Secure)} \\
+IA      & Inteligência Artificial \\
+ITS     & \textit{Intelligent Tutoring System} \\
+JPA     & \textit{Jakarta Persistence API} \\
+JSON    & \textit{JavaScript Object Notation} \\
+JVM     & \textit{Java Virtual Machine} \\
+JWT     & \textit{JSON Web Token} \\
+LLM     & \textit{Large Language Model} \\
+MVI     & \textit{Model-View-Intent} \\
+OCR     & \textit{Optical Character Recognition} \\
+OWASP   & \textit{Open Worldwide Application Security Project} \\
+RAG     & \textit{Retrieval-Augmented Generation} \\
+RBAC    & \textit{Role-Based Access Control} \\
+REST    & \textit{Representational State Transfer} \\
+SPA     & \textit{Single Page Application} \\
+SQL     & \textit{Structured Query Language} \\
+SSE     & \textit{Server-Sent Events} \\
+SSRF    & \textit{Server-Side Rioequest Forgery} \\
+SUS     & \textit{System Usability Scale} \\
+TOCTOU  & \textit{Time-Of-Check to Time-Of-Use} \\
+TTL     & \textit{Time To Live} \\
+URL     & \textit{Uniform Resource Locator} \\
+UUID    & \textit{Universally Unique Identifier} \\
+XSS     & \textit{Cross-Site Scripting} \\
+\hline
+\end{tabular}
+\end{center}
+
+% Geração do índice de conteúdos
+\cleardoublepage
+\tableofcontents \cleardoublepage
+
+% Geração do índice de figuras e de tabelas
+%\listoffigures \cleardoublepage
+%\listoftables \cleardoublepage
+
+% Reiniciar a numeração de páginas
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+% Capitulo 1 — Introdução
+\include{introducao}
+
+% Capitulo 2 — Estado da Arte
+\include{capenquadramento}
+
+% Capitulo 3 — Análise e Requisitos
+\include{caprequisitos}
+
+% Capitulo 4 — Arquitetura e Fundações
+\include{capexemplos}
+
+% Capitulo 5 — Implementação
+\include{capimplementacao}
+
+% Capitulo 6 — Testes (automatizados + usabilidade)
+\include{captestes}
+
+% Capitulo (não numerado) — Resultados
+% \include{capresultados}
+
+% Capitulo 7 — Discussão (inclui a síntese final / conclusão)
+\include{capdiscussao}
+
+% Referências
+\bibliographystyle{unsrt}
+\bibliography{referencias}
+\addcontentsline{toc}{chapter}{Refer\^{e}ncias}
+
+% Apêndices
+\appendix
+\include{apendiceex}
+
+\end{document} 
