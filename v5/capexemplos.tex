@@ -4,201 +4,23 @@
 %
 \chapter{Arquitetura e Fundações} \label{cap:desenvolvimento}
 
-O Play4Change é uma plataforma de aprendizagem adaptativa composta por três superfícies cliente (Android/iOS/Web), um serviço de backend e um módulo de geração por Inteligência Artificial, orquestrados através de uma infraestrutura totalmente contida em \textit{containers}. Este capítulo descreve a arquitetura geral do sistema, a organização do backend e o mecanismo de autenticação; o Capítulo~\ref{cap:ingestao} continua com o pipeline de ingestão de conteúdo, o Capítulo~\ref{cap:ia} detalha o modelo de IA, o Capítulo~\ref{cap:rag} o mecanismo de RAG, o Capítulo~\ref{cap:geracao-desafios} descreve a geração de desafios por IA, o Capítulo~\ref{cap:desafios} a sua atribuição, remediação e tutoria com o Learner, e o Capítulo~\ref{cap:seguranca} fecha com a segurança aplicacional.
-
-% -----------------------------------------------------------
 \section{Arquitetura Geral do Sistema} \label{sec:arquitetura}
-% -----------------------------------------------------------
 
-\subsection{Visão Macro e Estilo Arquitetural}
-
-O backend do Play4Change adopta a \textbf{Arquitetura Hexagonal} (\textit{Ports \& Adapters}), organizada dentro de um modelo de contextos delimitados (\textit{Bounded Contexts}) de \textit{Domain-Driven Design} (DDD)~\cite{evans2003} --- exigida pela natureza do problema: a complexidade reside no domínio (geração adaptativa de tarefas, deteção de dificuldade, percurso de consolidação), que tem de permanecer isolado de detalhes de persistência, protocolo HTTP ou fornecedor de LLM.
-
-A arquitetura organiza-se em três anéis concêntricos com dependências que fluem sempre para o interior:
-
-\begin{itemize}
-    \item \textbf{Anel de domínio:} classes Kotlin puras, sem qualquer anotação de \textit{framework}. Contém as entidades, os agregados, os eventos de domínio e as interfaces de \textit{port}.
-    \item \textbf{Anel de aplicação:} casos de uso que orquestram o domínio, chamando exclusivamente interfaces de \textit{port} — nunca implementações concretas.
-    \item \textbf{Anel de infraestrutura:} adaptadores de entrada (\textit{REST controllers}, filtros de segurança JWT) e adaptadores de saída (JPA, Resend, LangChain4j, MinIO), todos injetados pelo contentor Spring em tempo de execução.
-\end{itemize}
-
-Uma consequência prática desta separação: o domínio e a aplicação nunca referenciam LangChain4j diretamente, pelo que substituir o fornecedor de LLM de Mistral para outro modelo não exige alterar nenhuma linha de lógica de negócio --- exige apenas uma nova implementação de \texttt{TaskGenerationPort} anotada com \texttt{@Primary} e, ao nível do \textit{build}, trocar a dependência de \texttt{ai-agent:langchain} pelo módulo Gradle correspondente ao novo adaptador.
-
-\subsection{Decomposição em Módulos}
-
-O sistema está decomposto em seis módulos com regras de dependência estritas, apresentados na Tabela~\ref{tab:modulos}.
-
-\begin{table}[h!]
-\centering
-\caption{Módulos do sistema Play4Change e responsabilidades}
-\label{tab:modulos}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{llp{9cm}}
-\hline
-\textbf{Módulo} & \textbf{Tecnologia} & \textbf{Responsabilidade} \\
-\hline
-\texttt{server}            & Kotlin, Spring Boot 3, JVM 21          & API REST, lógica de domínio e aplicação, adaptadores de infraestrutura \\
-\texttt{ai-agent:api}      & Kotlin puro                            & Contratos de \textit{port} para geração IA — sem implementação nem dependências de \textit{runtime} \\
-\texttt{ai-agent:langchain}& Kotlin, LangChain4j, Mistral           & Adaptador IA: geração de tarefas, ramificação adaptativa, síntese de explicações \\
-\texttt{composeApp}        & Kotlin Multiplatform, Compose MP       & Cliente móvel Android e iOS — arquitetura MVI via Decompose \\
-\texttt{common}            & Kotlin Multiplatform                   & Objetos de valor partilhados, tipos de erro, \textit{result wrappers} — sem dependências de \textit{framework} \\
-\texttt{play4change-web}   & React 18, TypeScript, Vite, TanStack   & SPA de administração — gestão de tópicos, utilizadores e métricas \\
-\hline
-\end{tabular}%
-}
-\end{table}
-
-A regra de dependência é rigorosa: \texttt{common} não depende de nenhum módulo; \texttt{ai-agent:api} depende apenas de \texttt{common}; o \textbf{domínio e a aplicação} do \texttt{server} referenciam apenas a interface \texttt{TaskGenerationPort} (Secção~\ref{sec:arquitetura} acima). Dos seis módulos da Tabela~\ref{tab:modulos}, só os primeiros cinco são módulos Gradle do mesmo projeto (\texttt{settings.gradle.kts}); o \texttt{play4change-web} vive num repositório Git independente, com \textit{toolchain} (npm/Vite) e ciclo de vida de \textit{build} próprios, tratado aqui como módulo apenas no sentido lato de componente arquitetural.
-
-\subsection{Camadas do Sistema}
-
-A Figura~\ref{fig:arquitetura} apresenta a visão macro do sistema, organizada em quatro zonas de rede com fronteiras explícitas.
+O Play4Change está estruturado em torno de uma ideia simples: quem consome a plataforma nunca fala diretamente com quem gera, guarda ou protege o que é consumido. O Administrador cria e gere conteúdo através do cliente web; o Learner consome-o através do desafio diário no cliente móvel (RF07). Entre os dois e o resto do sistema fica sempre um núcleo que decide o que fazer, sem depender de como cada peça está concretizada. A Figura~\ref{fig:arquitetura} apresenta essa estrutura.
 
 \begin{figure}[h!]
     \centering
-    \resizebox{\textwidth}{!}{\includegraphics{./figures/Play4Change-Arquitetura.pdf}}
+    \includegraphics[width=\textwidth]{./figures/Architecture-p4c.png}
     \caption{Arquitetura geral do sistema Play4Change}
     \label{fig:arquitetura}
 \end{figure}
 
-\textbf{Camada de apresentação:} os dois clientes --- móvel (Android/iOS) e web (SPA React) --- comunicam exclusivamente via HTTPS com a camada de rede de fronteira.
+Os dois clientes entram pelo mesmo caminho: um túnel de acesso público, que assegura que o tráfego dos clientes não expõe uma porta diretamente e que essa comunicação é cifrada (RNF01), seguido por uma cadeia de filtros de borda que filtra e autentica (RF01) antes de qualquer pedido chegar à lógica de negócio.
 
-\textbf{Rede de fronteira:} um \textit{reverse proxy} Nginx centraliza o tráfego de entrada, encaminhando pedidos de API para o Spring Boot via HTTP interno e servindo os ficheiros estáticos da SPA React (\texttt{try\_files} para \textit{client-side routing}); o servidor de aplicação nunca serve ativos estáticos.
+Só depois de atravessar este perímetro é que um pedido chega ao núcleo. É o núcleo que resolve o desafio diário do Learner, adapta o percurso quando há dificuldade e escala para tutoria quando a adaptação não é suficiente (RF04--RF06); e que, do lado do Administrador, recebe um documento ou URL e decide gerar tópicos e desafios a partir dele (RF02, CU01).
 
-\textbf{Rede privada:} o servidor Spring Boot, as bases de dados e a observabilidade estão isolados numa rede privada inacessível externamente. O servidor acede ao \textbf{PostgreSQL 16} (\texttt{pgvector} + \texttt{uuid-ossp}) para persistência relacional e vetorial, e ao \textbf{MinIO} (compatível com S3) para ficheiros e APKs; Prometheus e Grafana completam a pilha de observabilidade, detalhada no Apêndice C (Tabelas C.9 e C.10).
+Para isso, o núcleo depende de quatro tipos de capacidade externa, e nunca fala diretamente com nenhuma implementação concreta de nenhuma delas, apenas com o que cada uma promete fazer: extrair conteúdo de uma fonte, gerar conteúdo pedagógico e explicações, persistir e indexar semanticamente o que já foi gerado para o reutilizar sempre que possível (RF03), e notificar o utilizador. O sistema é ainda observado de fora: métricas de funcionamento são recolhidas periodicamente a partir do núcleo, sem que essa recolha interfira com nenhum pedido em curso.
 
-\textbf{Serviços externos:} o \textbf{Mistral AI} (via LangChain4j) para geração de tarefas e explicações, e o \textbf{Resend} para entrega de email no fluxo \textit{passwordless}.
+Esta indireção não é um detalhe acidental: é o que garante que trocar qualquer uma destas capacidades por outra equivalente não obriga a tocar na lógica de negócio (RNF04), e é o que torna o núcleo testável isoladamente, sem depender de nenhuma delas estar de facto disponível.
 
-\subsection{Domínio: Contextos Delimitados}
-
-O domínio está particionado em \textbf{oito contextos delimitados}, cada um com os seus próprios agregados, contratos de repositório e serviços de aplicação. Nenhum contexto acede diretamente aos agregados de outro — a comunicação inter-contexto passa sempre por interfaces de serviço de aplicação.
-
-\begin{itemize}
-    \item \textbf{Auth} — Fluxo de \textit{magic link}, ciclo de vida de tokens JWT, gestão de papéis (\textit{roles})
-    \item \textbf{Identity} — Perfil do Learner, preferências, fuso horário, email de recuperação
-    \item \textbf{Topic} — Estrutura curricular: tópicos $\rightarrow$ módulos $\rightarrow$ \textit{templates} de tarefas (versionados, com \textit{embeddings})
-    \item \textbf{Enrollment} — Inscrição do Learner em tópicos, agendamento de atribuições, rastreio de progresso
-    \item \textbf{Struggle} — Heurísticas de deteção de dificuldade, persistência de registos de \textit{struggle}, lógica de activação adaptativa
-    \item \textbf{Explanation} — Sessões de explicação sintetizadas por IA e conversa de seguimento
-    \item \textbf{Badge} — Avaliação de critérios de conquista, ciclo de vida de atribuição de \textit{badges}
-    \item \textbf{Report} — Sinalização de tarefas incorretas ou ambíguas pelo Learner e fila de revisão do Administrador (correção ou dispensa), à semelhança do mecanismo de \textit{report} de questões do Duolingo; implementado de ponta a ponta no servidor e no painel web, mas ainda não ligado a nenhum dos dois clientes (Secção~\ref{sec:trabalho-futuro})
-\end{itemize}
-
-Um pedido típico do Learner atravessa Nginx, o filtro de segurança JWT e o controlador REST, que delega de imediato ao caso de uso de aplicação --- sem conter lógica de negócio --- que por sua vez invoca os \textit{ports} de repositório e de geração IA necessários. A cadeia completa de filtros HTTP é detalhada na Secção~\ref{sec:pipeline}.
-
-% -----------------------------------------------------------
-\section{Backend --- Spring Server e Pipeline} \label{sec:backend}
-% -----------------------------------------------------------
-
-\subsection{Organização do Projeto} \label{sec:org-projeto}
-
-O servidor é uma aplicação Spring Boot~3 escrita em Kotlin (JVM~21), estruturada segundo a Arquitetura Hexagonal com separação estrita entre três camadas: \texttt{domain}, \texttt{application} e \texttt{infrastructure}/\texttt{web}.
-
-A camada \textbf{domain} é Kotlin puro (sem anotações Spring, JPA ou LangChain4j), com as entidades, agregados e interfaces de \textit{port} dos oito contextos delimitados (\texttt{auth}, \texttt{identity}, \texttt{topic}, \texttt{enrollment}, \texttt{struggle}, \texttt{explanation}, \texttt{badge}, \texttt{report}). A camada \textbf{application} contém os casos de uso e os serviços que os implementam, invocando exclusivamente interfaces de \textit{port} --- nunca implementações concretas --- para que a lógica de negócio seja testável independentemente da base de dados ou do fornecedor de LLM. A camada \textbf{infrastructure} contém os adaptadores de saída (JPA, \texttt{MinioFileStorageAdapter}, \texttt{UrlScrapeAdapter}, \texttt{UnstructuredPdfAdapter}, \texttt{ResendEmailAdapter}) e os adaptadores de entrada HTTP, organizados em \texttt{admin}, \texttt{user} e \texttt{public}.
-
-O módulo de IA está separado em dois módulos Gradle: \texttt{ai-agent:api} define o contrato \texttt{TaskGenerationPort} sem dependências de \textit{runtime}; \texttt{ai-agent:langchain} é a única localização que referencia LangChain4j, implementando esse contrato com \texttt{@Primary}.
-
-A gestão do esquema é feita exclusivamente por Flyway (33 migrações), com \texttt{ddl-auto: validate}; \textit{queries} críticas para atomicidade (e.g.\ \texttt{claimToken}) usam SQL nativo com \texttt{RETURNING} para eliminar janelas TOCTOU.
-
-\subsection{Pipeline de Processamento de Pedidos} \label{sec:pipeline}
-
-Cada pedido HTTP atravessa um conjunto de camadas ordenadas de forma determinista antes de atingir o \textit{controller}, descritas na Tabela~\ref{tab:pipeline}.
-
-\subsubsection*{Filtros e interceptores --- ordem de execução}
-
-Quatro componentes operam em camadas distintas antes de o pedido atingir o \textit{controller}, descritos na Tabela~\ref{tab:pipeline}.
-
-\begin{table}[h!]
-\centering
-\caption{Componentes do pipeline HTTP e responsabilidades}
-\label{tab:pipeline}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{llp{9.5cm}}
-\hline
-\textbf{Ordem} & \textbf{Componente} & \textbf{Responsabilidade} \\
-\hline
-1 & \texttt{RateLimitFilter} (\texttt{HIGHEST\_PRECEDENCE})
-  & \textit{Rate limiting} por IP~$\times$~\textit{path} normalizado, via Bucket4j com \textit{cache} Caffeine; devolve \texttt{429} com \texttt{Retry-After} quando o \textit{bucket} é excedido \\
-2 & \texttt{RequestIdFilter} (\texttt{@Order(1)})
-  & Gera ou propaga o header \texttt{X-Request-Id}; coloca-o no MDC do SLF4J para correlação de logs distribuídos \\
-3 & \texttt{JwtAuthFilter} (\texttt{OncePerRequestFilter})
-  & Valida o JWT do header \texttt{Authorization: Bearer}; popula o \texttt{SecurityContextHolder} com \texttt{userId} e \texttt{role}; devolve \texttt{401} em token inválido \\
-4 & \texttt{LoggingInterceptor} (\texttt{HandlerInterceptor})
-  & Regista \texttt{→ METHOD path} em \texttt{preHandle} e \texttt{← status [Xms]} em \texttt{afterCompletion} \\
-\hline
-\end{tabular}%
-}
-\end{table}
-
-O \texttt{RateLimitFilter} corre efetivamente antes de qualquer outro componente da cadeia --- inclusive do \texttt{RequestIdFilter} e de qualquer lógica de autenticação --- o que impede ataques de força bruta mesmo sobre utilizadores não autenticados; em contrapartida, um pedido rejeitado (\texttt{429}) nunca chega a ter \texttt{X-Request-Id} nem entra no MDC de logging.
-Os limites por \textit{endpoint} --- incluindo uma correção recente a duas regras de submissão cujo padrão de rota, herdado de uma versão anterior do sistema de rotas, não correspondia aos \textit{endpoints} reais --- são discutidos na Secção~\ref{sec:ratelimiting} e detalhados no Apêndice D (Tabela D.2).
-
-\subsubsection*{Pipeline assíncrono de geração de tópicos}
-
-A criação de um tópico é o fluxo mais complexo do sistema, envolvendo extração de conteúdo, geração por LLM e indexação vetorial.
-A Figura~\ref{fig:seq-topic-gen} (Apêndice~\ref{ap:detalhe-config}) ilustra o pipeline completo, que atravessa cinco estados de máquina de estados:
-
-\begin{center}
-\texttt{INGESTION} $\rightarrow$ \texttt{ANALYSIS} $\rightarrow$ \texttt{GENERATION} $\rightarrow$ \texttt{INDEXING} $\rightarrow$ \texttt{ACTIVE}
-\end{center}
-\begin{center}
-(qualquer fase pode transitar para \texttt{FAILED} em caso de erro)
-\end{center}
-
-O pedido \texttt{POST /admin/topics} devolve imediatamente \texttt{201 Created} com o tópico em estado \texttt{PENDING}; o pipeline executa em paralelo num executor dedicado (\texttt{generationExecutor}) com três \textit{threads} e fila de 25 pedidos.
-O \texttt{SupervisorJob} Kotlin garante que a falha de uma geração não cancela outras em curso.
-O Admin acompanha o progresso em tempo real via \textit{Server-Sent Events} (SSE) no \textit{endpoint} \texttt{GET /admin/topics/\{id\}/progress}, recebendo eventos \texttt{phase-change}, \texttt{generation-progress} e \texttt{complete}.
-
-Dois \textit{schedulers} Spring garantem a robustez do pipeline: o \texttt{StuckGenerationWatchdogJob} (a cada 120\,s) deteta tópicos presos em \texttt{GENERATING} por mais de 15 minutos e transita-os para \texttt{FAILED}; o \texttt{TopicExpirationJob} (a cada 60\,s) marca como \texttt{EXPIRED} os tópicos \texttt{ACTIVE} cuja \texttt{expires\_at} passou. A integração com o LLM é protegida por \textit{circuit breaker}, \textit{retry} e \textit{timeout} (configuração no Apêndice D, Tabela D.3).
-
-\subsection{Integração com os Restantes Componentes} \label{sec:integracao}
-
-O servidor integra-se com cinco sistemas de infraestrutura e dois sistemas externos, sempre mediados por interfaces de \textit{port} no domínio --- nunca por referências diretas às implementações (Tabela~\ref{tab:integracoes}).
-
-\begin{table}[h!]
-\centering
-\caption{Integrações do servidor com componentes de infraestrutura e serviços externos}
-\label{tab:integracoes}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{llp{8.5cm}}
-\hline
-\textbf{Componente} & \textbf{Papel} & \textbf{Detalhe} \\
-\hline
-Nginx & \textit{Reverse proxy} + estáticos & \textit{Rewrite} de prefixo, \texttt{proxy\_read\_timeout} 120\,s (chamadas LLM), \textit{headers} de segurança e CORS restritivo \\
-PostgreSQL + pgvector & Persistência relacional e vetorial & Spring Data JPA/Hibernate por contexto; \textit{embeddings} de 1024 dimensões para deduplicação \\
-MinIO & Armazenamento de objetos & \texttt{MinioFileStorageAdapter} guarda PDFs e texto extraído de URLs; conteúdo descarregado uma vez, LLM nunca acede ao URL original \\
-Playwright + Unstructured.io & Extração de conteúdo & Microserviços dedicados para URL (HTML renderizado) e PDF (OCR); \texttt{UrlSsrfValidator} valida antes de qualquer \textit{fetch} \\
-Resend & Email transacional & \textit{Magic link}; em desenvolvimento, \texttt{ConsoleEmailAdapter} regista o token no log sem enviar email \\
-Prometheus + Grafana & Observabilidade & \texttt{/actuator/prometheus} (porta de gestão, 9090); métricas catalogadas no Apêndice C (Tabela C.9) \\
-\hline
-\end{tabular}%
-}
-\end{table}
-
-% -----------------------------------------------------------
-\section{Autenticação Passwordless} \label{sec:autenticacao}
-% -----------------------------------------------------------
-
-O Play4Change implementa autenticação \textit{passwordless} por \textit{magic link}, sem qualquer OAuth externo ou SSO --- escolha justificada pelo perfil concreto de utilização do Learner face aos restantes esquemas de autenticação (Secção~\ref{sec:auth-arte}).
-O design resolve três requisitos simultâneos: eliminar \textit{passwords} para o utilizador gerir, garantir resistência a ataques de reutilização de tokens, e suportar um email de recuperação alternativo como segunda via de acesso.
-
-\subsection{Modelo de Dados e Propriedades Criptográficas} \label{sec:auth-model}
-
-O subsistema de autenticação mantém quatro tabelas independentes do domínio principal (\texttt{users}, \texttt{magic\_link\_tokens}, \texttt{refresh\_tokens}, \texttt{recovery\_emails}). A propriedade de segurança central é que \textbf{apenas o \textit{hash} SHA-256 do token é persistido}; o token em claro existe exclusivamente em memória e no email enviado ao utilizador, nunca na base de dados. Esquema de campos, geração criptográfica (\texttt{AuthCrypto}) e demais detalhe de implementação no Apêndice~\ref{ap:detalhe-config} (Secção~\ref{ap:auth-detalhe}, Tabela~\ref{tab:auth-schema}).
-
-\subsection{Fluxo de Autenticação por Magic Link} \label{sec:auth-flow}
-
-O fluxo de autenticação decorre em duas fases --- pedido do \textit{magic link} e verificação do token (Figura~\ref{fig:seq-magic-link}, Apêndice~\ref{ap:detalhe-config}) --- e assenta em três decisões de segurança deliberadas: o pedido responde sempre \texttt{202 Accepted} independentemente de o email existir, evitando enumeração de contas; o consumo do token é uma operação atómica que elimina janelas de corrida; e as três condições de falha (token inválido, expirado ou já usado) são propositadamente indistinguíveis para o cliente, evitando \textit{oracle attacks}. O detalhe de implementação de cada decisão está no Apêndice~\ref{ap:detalhe-config} (Secção~\ref{ap:auth-detalhe}).
-
-Em caso de sucesso, o serviço resolve o email a um utilizador existente, a um email de recuperação verificado, ou a um novo registo implícito, emitindo de seguida o par \textit{access token} (15 min) / \textit{refresh token} (7 dias).
-
-\subsection{Ciclo de Vida dos Tokens JWT e Rotação de Refresh Tokens} \label{sec:token-lifecycle}
-
-O \textit{access token} é um JWT HMAC-SHA-256 de curta duração (15 min); o \textit{refresh token} (7 dias) segue o padrão \textit{token rotation} com deteção de reutilização --- se um token já usado for reapresentado, toda a \texttt{family\_id} é revogada, forçando re-autenticação, o que garante que o \textit{logout} revoga toda a cadeia de rotação da sessão. A sessão Spring é \texttt{STATELESS}: cada pedido é autenticado independentemente pelo \texttt{JwtAuthFilter}. O algoritmo de assinatura é fixado explicitamente no código (em vez de deixado à seleção automática da biblioteca) e a chave é validada no arranque pelo \texttt{JwtSecretStartupGuard}; o detalhe desta decisão e da estrutura de \textit{claims} está no Apêndice~\ref{ap:detalhe-config} (Secção~\ref{ap:auth-detalhe}).
-
-\subsection{Autorização e Controlo de Acesso} \label{sec:authz}
-
-A \texttt{SecurityConfig} define quatro zonas de acesso com regras distintas --- pública, Swagger, administração e utilizador --- detalhadas no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:access-zones}).
-
-A separação da zona de administração é particularmente relevante: um Learner com JWT válido que tente aceder a \texttt{/admin/**} recebe \texttt{403 Forbidden} sem que o pedido atinja qualquer \textit{controller}.
-O Swagger é restrito a administradores em produção para evitar exposição do contrato de API a utilizadores não autorizados.
+Um pedido típico atravessa este perímetro antes de chegar à lógica de negócio; o Capítulo~\ref{cap:implementacao} detalha, já ao nível de implementação, como cada uma destas fronteiras foi concretizada.

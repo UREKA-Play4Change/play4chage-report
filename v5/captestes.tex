@@ -1,15 +1,18 @@
 % !TEX root = relatorio.tex
 %
-% Capítulo 11 — Suite de Testes Automatizados
+% Capítulo 6 — Testes
 %
-\chapter{Suite de Testes Automatizados} \label{cap:testes}
+\chapter{Testes} \label{cap:testes-geral}
 
-A validação automatizada do Play4Change assenta em três camadas complementares: testes unitários que verificam o comportamento isolado do domínio e dos serviços de aplicação, testes de integração que exercitam a camada HTTP em contexto Spring parcial, e testes de segurança que confrontam as defesas com os vectores de ataque considerados (§\ref{sec:riscos}). Juntas, estas camadas cobrem 50 ficheiros de teste distribuídos pelos módulos \textit{server} e \textit{play4change-web}. A avaliação de usabilidade com doze utilizadores reais é tratada em separado no Capítulo~\ref{cap:usabilidade}.
+Este capítulo valida o que foi descrito no Capítulo~\ref{cap:implementacao}, em duas frentes complementares: a Secção~\ref{cap:testes} cobre a suite automatizada (testes unitários, de integração e de segurança, que verificam o comportamento do sistema camada a camada e o confrontam com os vetores de ataque considerados, §\ref{sec:riscos}); a Secção~\ref{cap:usabilidade} reporta a avaliação de usabilidade conduzida com doze utilizadores reais, que mede a perceção de facilidade de uso, não o ganho efetivo de competências digitais.
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Suite Automatizada e Estratégia de Testes} \label{sec:estrategia-testes}
+\section{Testes Automatizados} \label{cap:testes} \label{sec:estrategia-testes}
+% ─────────────────────────────────────────────────────────────────────────────
 
-A estratégia assenta em três princípios: \textbf{isolamento total pelo padrão hexagonal} (todas as dependências externas são interfaces, substituídas por duplicados \textit{Mockk}, pelo que os testes de domínio correm em memória pura); \textbf{\texttt{Either<Error,~T>} como contrato de resultado} (a biblioteca Arrow obriga cada caso de uso a devolver \texttt{Either<DomainError,~T>} em vez de lançar exceções, tornando os casos de insucesso tão verificáveis como os de sucesso); e \textbf{separação em três níveis} --- unitário, integração (\texttt{@WebMvcTest}) e segurança --- resumidos, com a dimensão da suite por módulo, na Tabela~\ref{tab:suite-dimensao}.
+A validação automatizada assenta em três camadas complementares: testes unitários que verificam o comportamento isolado do domínio e dos serviços de aplicação, testes de integração que exercitam a camada HTTP em contexto Spring parcial, e testes de segurança que confrontam as defesas com os vetores de ataque considerados (§\ref{sec:riscos}). Juntas, cobrem 51 ficheiros de teste distribuídos pelos módulos \textit{server} e \textit{play4change-web}, resumidos na Tabela~\ref{tab:suite-dimensao}.
+
+A estratégia assenta em três princípios: \textbf{isolamento total pelo padrão hexagonal} (todas as dependências externas são interfaces, substituídas por duplicados \textit{Mockk}, pelo que os testes de domínio correm em memória pura); \textbf{\texttt{Either<Error,~T>} como contrato de resultado} (a biblioteca Arrow obriga cada caso de uso a devolver \texttt{Either<DomainError,~T>} em vez de lançar exceções, tornando os casos de insucesso tão verificáveis como os de sucesso); e \textbf{separação em três níveis} (unitário, integração via \texttt{@WebMvcTest}, e segurança).
 
 \begin{table}[htb]
 \centering
@@ -20,18 +23,98 @@ A estratégia assenta em três princípios: \textbf{isolamento total pelo padrã
 \toprule
 \textbf{Nível / Módulo} & \textbf{Ficheiros} & \textbf{Ferramenta} & \textbf{Contexto Spring} & \textbf{Deps. externas} \\
 \midrule
-Unitário (server)      & 26 & JUnit~5 + Mockk       & Nenhum               & Todas em mock \\
+Unitário (server)      & 27 & JUnit~5 + Mockk       & Nenhum               & Todas em mock \\
 Integração (server)    & 11 & @WebMvcTest + MockMvc & Parcial (camada web) & Serviços em mock \\
 Frontend (React/Vite)  & 13 & Vitest + RTL          & ---                  & Mock \\
 \midrule
-\textbf{Total} & \textbf{50} & & & \\
+\textbf{Total} & \textbf{51} & & & \\
 \bottomrule
 \end{tabular}%
 }
 \end{table}
 
-Os testes \textbf{unitários} cobrem o domínio e a aplicação em memória pura: autenticação (revogação de família de tokens JWT em caso de roubo, ameaça R04 §\ref{sec:riscos}; consumo atómico do \textit{magic link}), entrega de desafios (baralhagem determinística de opções por semente de utilizador §\ref{sec:atribuicao}; guarda de arranque que impede \texttt{devMode} em produção) e deteção de dificuldades (ciclos no grafo de pré-requisitos por DFS; classificação de padrões de erro por prioridade estrita).
+Os testes \textbf{unitários} cobrem o domínio e a aplicação em memória pura: autenticação (revogação de família de tokens JWT em caso de roubo, ameaça R04 §\ref{sec:riscos}; consumo atómico do código de acesso), entrega de desafios (baralhagem determinística de opções por semente de utilizador §\ref{sec:atribuicao}; guarda de arranque que impede \texttt{devMode} em produção) e deteção de dificuldades (ciclos no grafo de pré-requisitos, um DAG ou \textit{Directed Acyclic Graph}, por DFS; classificação de padrões de erro por prioridade estrita).
 
-Os testes de \textbf{integração} exercitam a camada HTTP completa via \texttt{@WebMvcTest} --- serialização JSON, filtros de segurança, validação de \textit{beans} --- em dez controladores REST (autenticação, pré-requisitos, \textit{struggle}, relatórios, preferências, crachás, estatísticas, Swagger) e num teste de \textit{rate limiting} particularmente rigoroso.\label{sec:testes-rate-int} O \texttt{RateLimitTest} substitui o \texttt{TimeMeter} real por um \texttt{ManualTimeMeter}, tornando deterministas quatro casos (limite estrito, reset de janela, isolamento por IP, cabeçalho \texttt{Retry-After}); o complementar \texttt{RateLimitSubmissionPathsTest} cobre a correção do desalinhamento de rota nos \textit{endpoints} de submissão (§\ref{sec:ratelimiting} do Capítulo~\ref{cap:seguranca}).
+Os testes de \textbf{integração} exercitam a camada HTTP completa via \texttt{@WebMvcTest} (serialização JSON, filtros de segurança, validação de \textit{beans}) em dez controladores REST (autenticação, pré-requisitos, \textit{struggle}, relatórios, preferências, crachás, estatísticas, Swagger) e num teste de \textit{rate limiting} particularmente rigoroso.\label{sec:testes-rate-int} O \texttt{RateLimitTest} substitui o \texttt{TimeMeter} real por um \texttt{ManualTimeMeter}, tornando deterministas quatro casos (limite estrito, reset de janela, isolamento por IP, cabeçalho \texttt{Retry-After}); o complementar \texttt{RateLimitSubmissionPathsTest} cobre a correção do desalinhamento de rota nos \textit{endpoints} de submissão (§\ref{sec:ratelimiting} do Capítulo~\ref{cap:implementacao}).
 
-Os testes de \textbf{segurança} validam as defesas identificadas na análise de risco (§\ref{sec:riscos}): SSRF (\texttt{UrlSsrfValidatorTest}, 10 casos cobrindo \textit{loopback}, redes privadas, \textit{link-local} e esquema não-HTTPS --- detalhe de casos na Tabela~\ref{tab:ssrf-casos}, Apêndice~\ref{ap:detalhe-config}), sanitização de \textit{output} da IA (\texttt{AiOutputSanitiserTest}, 5 casos), força bruta no \textit{magic link} (coberta pelo \texttt{RateLimitTest} acima) e dois guardas de arranque anti-fraude (\texttt{devMode} e \texttt{TaskDeliveryStartupGuard}) que impedem cadências de desenvolvimento de chegarem a produção.
+Os testes de \textbf{segurança} validam as defesas identificadas na análise de risco (§\ref{sec:riscos}): SSRF (\texttt{UrlSsrfValidatorTest}, 10 casos cobrindo \textit{loopback}, redes privadas, \textit{link-local} e esquema não-HTTPS), sanitização de \textit{output} da IA (\texttt{AiOutputSanitiserTest}, 5 casos), força bruta no código de acesso (coberta pelo \texttt{RateLimitTest} acima) e dois guardas de arranque anti-fraude (\texttt{devMode} e \texttt{TaskDeliveryStartupGuard}) que impedem cadências de desenvolvimento de chegarem a produção.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Testes de Usabilidade} \label{cap:usabilidade}
+% ─────────────────────────────────────────────────────────────────────────────
+
+A avaliação de usabilidade foi conduzida com doze utilizadores reais através da escala SUS (\textit{System Usability Scale}). Antes de apresentar os resultados, importa delimitar o que esta avaliação mede: a escala SUS quantifica a perceção subjetiva de facilidade de utilização e de aprendizagem da interface, não a aquisição efetiva de competências digitais pelo utilizador. Uma pontuação SUS elevada indica que a aplicação é fácil de usar; não constitui, por si só, evidência de que os Learners melhoraram as suas competências no referencial DigComp~2.2. Este relatório não contém dados (avaliação de competências antes/depois da utilização, ou medição longitudinal de desempenho) que permitam sustentar essa inferência.
+
+\subsection{Metodologia} \label{sec:usab-metodologia}
+
+A avaliação de usabilidade foi conduzida através de um questionário Google Forms aplicado a 12 participantes entre 8 e 12 de Junho de 2026 (4 estudantes actuais do ISEL, 7 testadores externos, 1 antigo aluno), organizado em quatro secções: avaliação global (escala 1–5), quatro declarações de envolvimento (Likert 1–5), a escala SUS (\textit{System Usability Scale}) de Brooke~\cite{brooke1996sus} (10 itens, Likert 1–5), e questões abertas.
+
+\subsection{Análise SUS} \label{sec:usab-sus}
+
+A pontuação SUS segue a fórmula de Brooke: subtrai-se 1 aos itens ímpares (positivos) e o valor a 5 nos pares (negativos), soma-se os 10 resultados e multiplica-se por 2,5, numa escala de 0 a 100. Este valor de 0 a 100 \textbf{não é uma percentagem}: é um \textit{score} compósito que só é interpretável por comparação com um referencial externo~\cite{nngroup2018}. Segue-se por isso, para interpretar os resultados, a orientação do Nielsen Norman Group sobre a análise do SUS~\cite{nngroup2018}, que reporta o \textit{benchmarking} de Sauro a mais de 500 estudos: a pontuação SUS média observada na indústria é 68,0, e um sistema com pontuação $\geq$80 posiciona-se no top 10\% dos sistemas avaliados nesse universo de estudos. A Tabela~\ref{tab:sus-scores} apresenta as pontuações obtidas face a este referencial.
+
+\begin{table}[htb]
+\centering
+\caption{Pontuações SUS por participante (\textit{n}~=~12), face à média de referência da indústria (68,0)~\cite{nngroup2018}.}
+\label{tab:sus-scores}
+\begin{tabular}{@{}lllr@{}}
+\toprule
+\textbf{Part.} & \textbf{Perfil} & \textbf{Face à referência (68,0)} & \textbf{SUS} \\
+\midrule
+P01 & Estudante & Acima (top 10\%$^{*}$) & 80,0 \\
+P02 & Estudante & Acima (top 10\%$^{*}$) & 97,5 \\
+P03 & Externo   & Acima (top 10\%$^{*}$) & 90,0 \\
+P04 & Externo   & Abaixo                 & 45,0 \\
+P05 & Alumni    & Abaixo                 & 35,0 \\
+P06 & Externo   & Abaixo                 & 50,0 \\
+P07 & Externo   & Acima                  & 77,5 \\
+P08 & Externo   & Acima (top 10\%$^{*}$) & 95,0 \\
+P09 & Estudante & Abaixo                 & 60,0 \\
+P10 & Externo   & Acima (top 10\%$^{*}$) & 97,5 \\
+P11 & Externo   & Acima (top 10\%$^{*}$) & 92,5 \\
+P12 & Estudante & Acima (top 10\%$^{*}$) & 92,5 \\
+\midrule
+\multicolumn{3}{@{}l}{\textbf{Média}} & \textbf{76,0} \\
+\multicolumn{3}{@{}l}{\textbf{Mediana}} & \textbf{85,0} \\
+\bottomrule
+\multicolumn{4}{@{}p{13cm}}{\footnotesize $^{*}$Pontuação $\geq$80, o limiar que Sauro reporta como correspondente ao top 10\% dos estudos de referência~\cite{nngroup2018}.} \\
+\end{tabular}
+\end{table}
+
+A média de 76,0 está 8,0 pontos acima da média de referência de 68,0 reportada por Sauro para mais de 500 estudos~\cite{nngroup2018}, e sete dos doze participantes (58,3\%) atingiram uma pontuação igual ou superior a 80, o limiar que posiciona um sistema no top 10\% desse universo de referência. A discrepância entre média (76,0) e mediana (85,0) reflecte dois \textit{outliers} (P04~=~45, P05~=~35) que puxam a média para baixo; sem eles, a média sobe para 83,25. A avaliação global obteve uma média de 4,25 em 5.
+
+Uma ressalva de leitura aplica-se a estes números: comparar doze respostas contra um \textit{benchmarking} assente em centenas de estudos é indicativo, não uma inferência estatisticamente robusta.
+
+As declarações de envolvimento (Tabela~\ref{tab:sus-engagement}) mostram o design visual como a mais bem pontuada (4,33) e o encorajamento a regressar diariamente como a mais baixa (3,92), sugerindo margem de melhoria na retenção.
+
+\begin{table}[htb]
+\centering
+\caption{Médias das declarações de envolvimento (escala Likert 1–5, \textit{n}~=~12).}
+\label{tab:sus-engagement}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Declaração} & \textbf{Média} \\
+\midrule
+A aplicação motivou-me a aprender sobre educação cívica / cidades inteligentes & 3,83 \\
+Os desafios pareceram relevantes para problemas do mundo real                  & 4,00 \\
+O design visual e a estética do jogo foram apelativos                         & 4,33 \\
+Senti-me encorajado/a a regressar e completar desafios diariamente            & 3,92 \\
+\midrule
+Os caminhos de aprendizagem IA adaptaram-se eficazmente ao meu desempenho     & 4,08 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análise Qualitativa} \label{sec:usab-qualitativa}
+
+As respostas abertas revelaram pontos fortes e oportunidades de melhoria consistentes.
+
+\textbf{Pontos fortes.} A explicação adaptativa após resposta errada foi apontada como melhor funcionalidade por quatro participantes; a intuitividade da interface por outros quatro; e a adaptabilidade da IA ao desempenho individual por três. Os desafios diários e a relevância das questões foram igualmente referidos positivamente.
+
+\textbf{Problemas técnicos.} A mais grave foi uma \textit{race condition} visual na remediação adaptativa: a resposta era marcada correta e, meio segundo depois, aparecia como errada. Foram também reportados a barra de pesquisa oculta durante a inserção de e-mail, respostas corretas marcadas intermitentemente como erradas, e questões repetidas em caminhos alternativos. Os dois participantes com pontuações mais baixas (P04, P05) apontaram ainda a confusão causada pela transição abrupta para um novo desafio após resposta errada, sem explicação, um comportamento que ocorre antes de a sessão de remediação adaptativa ser criada.
+
+\textbf{Perfis de afinidade tecnológica.} A observação direta revelou uma segunda linha de segmentação, além do vínculo institucional (Tabela~\ref{tab:sus-scores}): P04 e P05, os dois \textit{outliers} negativos, pertencem a um perfil de utilização tecnológica mínima, sugerindo que a sua pontuação reflecte não só o bug de transição identificado acima, mas também uma dificuldade de base com aprendizagem digital autónoma, precisamente o perfil que mais beneficiaria do Play4Change (retomada em §\ref{sec:trabalho-futuro}).
+
+\textbf{Sugestões de melhoria.} As mais recorrentes foram funcionalidades sociais (amigos, tabelas de classificação), diversificação de tópicos, maior concisão das explicações IA em mobile, e personalização geográfica das questões por localização.
+
+\textbf{Conclusão da avaliação.} Os resultados SUS indicam uma usabilidade global consistentemente acima da média de referência da indústria (68,0), com a maioria dos participantes (sete em doze) a atingir o limiar de top 10\% ($\geq$80) reportado por Sauro/NNGroup~\cite{nngroup2018}. Os dois \textit{outliers} convergem num problema de comunicação de estado após erro, mitigável com uma transição animada, mas reflectem também uma barreira de entrada mais alta para o perfil de menor afinidade tecnológica.

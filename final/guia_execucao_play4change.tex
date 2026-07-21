@@ -1,0 +1,322 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.3cm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{amssymb}
+\usepackage{seqsplit}
+\usepackage[expansion=false]{microtype}
+
+% Melhor comportamento de justificação/quebra de linha, especialmente
+% para termos técnicos em inglês sem pontos de hifenização conhecidos.
+\sloppy
+\setlength{\emergencystretch}{3em}
+\tolerance=2000
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{linkblue}{RGB}{37,99,235}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=linkblue,
+    urlcolor=linkblue,
+    citecolor=linkblue,
+    pdftitle={Guia de Execução — Play4Change},
+    pdfauthor={Radesh Ilesh Gamanbhai Govind}
+}
+
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    breakatwhitespace=false,
+    frame=single,
+    framerule=0.3pt,
+    rulecolor=\color{gray!40},
+    xleftmargin=4pt,
+    xrightmargin=4pt,
+    columns=fullflexible
+}
+
+% Comando para termos técnicos (identificadores, nomes de ficheiros,
+% variáveis, comandos) que possam ser quebrados em qualquer ponto,
+% para nunca ultrapassarem a largura da coluna onde se inserem.
+\newcommand{\code}[1]{\texttt{\seqsplit{#1}}}
+
+\titleformat{\section}{\Large\bfseries\color{linkblue}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\setlength{\headheight}{14pt}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancyhead[L]{Guia de Execução — Play4Change}
+\fancyfoot[C]{\thepage}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\begin{document}
+
+% ---------------------------------------------------------------
+% Capa
+% ---------------------------------------------------------------
+\begin{titlepage}
+\centering
+
+{\scshape\large Instituto Politécnico de Lisboa\par}
+\vspace{0.2cm}
+{\scshape Instituto Superior de Engenharia de Lisboa\par}
+
+\vspace{2.5cm}
+
+{\Huge\bfseries Guia de Execução\par}
+\vspace{0.4cm}
+{\LARGE Play4Change\par}
+\vspace{0.3cm}
+{\large Aplicação de Aprendizagem Adaptativa para Educação Cívica\par}
+
+\vspace{2cm}
+
+{\large Radesh Ilesh Gamanbhai Govind\par}
+
+\vspace{1.5cm}
+
+{\large Orientadores:\par}
+\vspace{0.2cm}
+{\large Nuno Datia\par}
+{\large Michel Vorenhout\par}
+{\large António Serrador\par}
+
+\vspace{2cm}
+
+{\normalsize Documento de apoio à execução do projeto, realizado no âmbito de Projeto e Seminário\par}
+{\normalsize Licenciatura em Engenharia Informática e de Computadores\par}
+
+\vfill
+
+{\large 11 de julho de 2026\par}
+
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ---------------------------------------------------------------
+\section{Visão geral da arquitetura}
+
+\begin{longtable}{L{3.2cm}L{3.2cm}L{3.4cm}L{4.6cm}}
+\toprule
+\textbf{Componente} & \textbf{Tecnologia} & \textbf{Onde vive} & \textbf{Como se corre} \\
+\midrule
+\endhead
+Backend (API REST) & Kotlin + Spring Boot 3.2, Arrow Either & repo \code{play4change-core} & Docker Compose, localmente ou em servidor próprio \\
+Base de dados & PostgreSQL 16 + pgvector, Flyway & repo \code{play4change-core} (\textit{container}) & Executada automaticamente via Docker Compose \\
+Armazenamento de ficheiros & MinIO (compatível com S3) & repo \code{play4change-core} (\textit{container}) & Executado automaticamente via Docker Compose \\
+Agente de inteligência artificial & LangChain4j 0.36 + Mistral (\code{mistral-small-latest}) & repo \code{play4change-core} (módulo \code{ai-agent}) & Executado dentro do \textit{container} do servidor \\
+Portal web (página pública + administração) & React, Vite, TypeScript & repo \code{play4change-web} & Já publicado — acesso direto por URL \\
+Aplicação móvel & Kotlin Multiplatform + Compose Multiplatform (Android/iOS) & repo \code{play4change-core} (\code{composeApp}) & APK pronto, distribuído a partir do portal web \\
+Observabilidade & Micrometer, Prometheus, Grafana & repo \code{play4change-core} (\textit{containers}) & Executada automaticamente via Docker Compose \\
+\bottomrule
+\end{longtable}
+
+\subsection*{Resumo do processo}
+\begin{enumerate}
+    \item Executar o backend localmente com Docker Compose.
+    \item Utilizar o portal web, já publicado no Cloudflare Pages, sem necessidade de o executar localmente.
+    \item Instalar a aplicação Android a partir do ficheiro APK disponibilizado no portal.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Repositórios}
+
+\begin{longtable}{L{3cm}L{5.6cm}L{6.4cm}}
+\toprule
+\textbf{Repositório} & \textbf{URL} & \textbf{Conteúdo} \\
+\midrule
+\endhead
+\code{play4change-core} & \url{https://github.com/UREKA-Play4Change/play4change-core} & Backend (Spring Boot), agente de inteligência artificial, aplicação móvel (Kotlin Multiplatform), infraestrutura (Docker, Nginx, Prometheus, Grafana) \\
+\code{play4change-web} & \url{https://github.com/UREKA-Play4Change/play4change-web} & Portal web (React) — página pública e painel de administração \\
+\bottomrule
+\end{longtable}
+
+\noindent Clonagem dos repositórios:
+\begin{lstlisting}[language=bash]
+git clone https://github.com/UREKA-Play4Change/play4change-core.git
+git clone https://github.com/UREKA-Play4Change/play4change-web.git
+\end{lstlisting}
+
+\begin{quote}
+\textit{Nota: só é necessário clonar o repositório \code{play4change-web} caso seja preciso executar o \textit{frontend} localmente (por exemplo, para desenvolvimento). Para apenas utilizar a aplicação, basta aceder ao portal já publicado.}
+\end{quote}
+
+% ---------------------------------------------------------------
+\section{Tecnologias e software necessários}
+
+\begin{longtable}{L{3.6cm}L{4.2cm}L{6.2cm}}
+\toprule
+\textbf{Ferramenta} & \textbf{Necessária para} & \textbf{Notas} \\
+\midrule
+\endhead
+Docker + Docker Compose & Execução do backend & Obrigatório \\
+JDK 21 & \textit{Builds} locais de Gradle fora do Docker (opcional) & Apenas necessário caso seja alterado o código do servidor \\
+Node.js 20 ou superior & Execução do \textit{frontend} localmente (opcional) & Apenas necessário caso seja alterado o código do portal web \\
+MinIO Client (\code{mc}) & Criação do \textit{bucket} do MinIO no primeiro arranque & \code{brew install minio/stable/mc} (macOS) \\
+Android Studio / \code{adb} & Compilação do APK localmente ou instalação em dispositivo via USB & Opcional — o APK já é disponibilizado pronto a instalar \\
+Telemóvel ou emulador Android & Instalação da aplicação móvel & --- \\
+\bottomrule
+\end{longtable}
+
+% ---------------------------------------------------------------
+\section{Configuração do backend antes da execução}
+
+No repositório \code{play4change-core}, deve copiar-se o ficheiro de exemplo e preencher os respetivos valores:
+
+\begin{lstlisting}[language=bash]
+cp .env.example .env
+\end{lstlisting}
+
+\begin{longtable}{L{3.4cm}L{5.4cm}L{5.4cm}}
+\toprule
+\textbf{Variável} & \textbf{Descrição} & \textbf{Onde obter} \\
+\midrule
+\endhead
+\code{JWT\_SECRET} & Segredo de assinatura HS256 (mínimo de 32 caracteres) & Gerada como uma sequência aleatória \\
+\code{MISTRAL\_API\_KEY} & Chave da API da Mistral para geração de conteúdo & \url{https://console.mistral.ai} \\
+\code{RESEND\_API\_KEY} & Chave da API da Resend para envio de \textit{emails} de \textit{magic link} & \url{https://resend.com} \\
+\code{RESEND\_FROM} & Endereço de remetente (ex.: \code{noreply@teudominio.com}) & --- \\
+\code{MINIO\_ROOT\_USER} / \code{MINIO\_ROOT\_PASSWORD} & Credenciais do MinIO & Valor por omissão: \code{minioadmin} / \code{minioadmin} \\
+\code{DB\_USER} / \code{DB\_PASS} & Credenciais do PostgreSQL & Valor por omissão: \code{play4change} / \code{play4change} \\
+\code{FRONTEND\_ORIGIN} & Origem permitida por CORS (URL do \textit{frontend}) & Ex.: \url{https://play4change-web.pages.dev} \\
+\code{CORS\_ALLOWED\_ORIGINS} & Lista de origens permitidas por CORS & --- \\
+\code{SPRING\_PROFILES\_ACTIVE} & Perfil ativo: \code{dev}, \code{test} ou \code{prod} & --- \\
+\code{GRAFANA\_ADMIN\_PASSWORD} & Palavra-passe de administração do Grafana & --- \\
+\code{CLOUDFLARE\_TUNNEL\_TOKEN} / \code{CLOUDFLARE\_TUNNEL\_ID} & Apenas necessário caso o backend seja exposto à internet através de um Cloudflare Tunnel & Não é necessário para execução apenas local \\
+\bottomrule
+\end{longtable}
+
+\begin{quote}
+\textit{Sem valores válidos para \code{MISTRAL\_API\_KEY} e \code{RESEND\_API\_KEY}, a geração de conteúdo por inteligência artificial e o envio de \textit{magic links} não funcionam; o restante da aplicação continua a funcionar normalmente.}
+\end{quote}
+
+% ---------------------------------------------------------------
+\section{Execução do backend}
+
+\begin{lstlisting}[language=bash]
+cd play4change-core
+./scripts/setup.sh          # constroi e inicia todos os containers (Postgres, MinIO, scraper, unstructured, server, nginx, prometheus, grafana)
+./scripts/minio-init.sh     # cria o bucket do MinIO (apenas na primeira execucao)
+\end{lstlisting}
+
+Verificação de que o servidor está operacional:
+
+\begin{lstlisting}[language=bash]
+curl http://localhost:8080/actuator/health
+# {"status":"UP"}
+\end{lstlisting}
+
+\subsection*{Serviços disponíveis após o arranque}
+
+\begin{longtable}{L{3.8cm}L{5.6cm}L{4.8cm}}
+\toprule
+\textbf{Serviço} & \textbf{URL} & \textbf{Credenciais} \\
+\midrule
+\endhead
+API REST & \url{http://localhost:8080} & --- \\
+Swagger UI (documentação interativa) & \url{http://localhost:8080/swagger-ui.html} & --- \\
+Grafana & \url{http://localhost:3000} & admin / valor de \code{GRAFANA\_ADMIN\_PASSWORD} \\
+Prometheus & \url{http://localhost:9090} & --- \\
+Consola do MinIO & \url{http://localhost:9001} & valor de \code{MINIO\_ROOT\_USER} / \code{MINIO\_ROOT\_PASSWORD} \\
+\bottomrule
+\end{longtable}
+
+\subsection*{Scripts auxiliares}
+
+\begin{longtable}{L{4.6cm}L{9.8cm}}
+\toprule
+\textbf{Script} & \textbf{Finalidade} \\
+\midrule
+\endhead
+\code{./scripts/setup.sh} & Reconstrução completa — \textbf{elimina os volumes} (Postgres/MinIO) \\
+\code{./scripts/restart-server.sh} & Reconstrução apenas do servidor, sem eliminar dados — utilizado durante o desenvolvimento \\
+\code{./scripts/db-shell.sh} & Abre uma sessão \code{psql} dentro do \textit{container} do PostgreSQL \\
+\code{./scripts/promote-admin.sh <email>} & Promove um utilizador a administrador (ver secção 7) \\
+\code{./scripts/build-android.sh [debug|release]} & Compila o APK localmente \\
+\bottomrule
+\end{longtable}
+
+% ---------------------------------------------------------------
+\section{Acesso ao portal web (já publicado)}
+
+Não é necessária qualquer execução local — o \textit{frontend} já está publicado no Cloudflare Pages:
+
+\begin{center}
+\url{https://play4change-web.pages.dev/}
+\end{center}
+
+\begin{itemize}
+    \item \code{/} — página pública, sem necessidade de autenticação.
+    \item \code{/admin} — painel de administração, requer conta com \textit{role} \code{ADMIN} (autenticação por \textit{magic link}).
+\end{itemize}
+
+A publicação é automática através de GitHub Actions (\code{deploy.yml}), sempre que existe um \textit{push} para o ramo \code{main} do repositório \code{play4change-web}.
+
+\begin{quote}
+\textit{Caso seja necessário executar o \textit{frontend} localmente para desenvolvimento, deve correr-se \code{npm install \&\& npm run dev} dentro de \code{play4change-web}, com um ficheiro \code{.env.local} a apontar a variável \code{VITE\_API\_BASE\_URL} para o backend em utilização (por exemplo, \url{http://localhost:8080}) e \code{VITE\_USE\_MOCK=false}.}
+\end{quote}
+
+% ---------------------------------------------------------------
+\section{Primeiro utilizador administrador}
+
+Não existe conta de administrador pré-criada. Após qualquer utilizador iniciar sessão pelo menos uma vez (através de \textit{magic link} no portal), deve executar-se:
+
+\begin{lstlisting}[language=bash]
+./scripts/promote-admin.sh o-email-da-pessoa@exemplo.com
+\end{lstlisting}
+
+A alteração de \textit{role} só produz efeito depois de a sessão ser encerrada e reiniciada (\textit{logout}/\textit{login}).
+
+% ---------------------------------------------------------------
+\section{Instalação da aplicação móvel (Android)}
+
+A aplicação é disponibilizada já compilada em formato APK, distribuído diretamente a partir do portal web:
+
+\begin{enumerate}
+    \item No telemóvel Android, aceder a \url{https://play4change-web.pages.dev/play4change.apk}, ou ao \textit{link} de descarregamento disponibilizado no portal.
+    \item Autorizar a instalação de aplicações de origem desconhecida, quando solicitado pelo Android.
+    \item Instalar e abrir a aplicação.
+\end{enumerate}
+
+\subsection*{Alternativa: compilação do APK a partir do código-fonte}
+
+\begin{lstlisting}[language=bash]
+cd play4change-core
+./scripts/build-android.sh release   # ou "debug"
+adb install -r <caminho-do-apk-gerado>
+\end{lstlisting}
+
+Novas versões (\textit{tags} \code{v*} no repositório) geram automaticamente um novo APK através de GitHub Actions (\code{release.yml}), publicado como \textit{release} do GitHub.
+
+% ---------------------------------------------------------------
+\section{Verificação final (lista de confirmação)}
+
+\begin{itemize}[label=$\square$]
+    \item \code{docker compose ps} — todos os \textit{containers} com estado \code{healthy}/\code{running}
+    \item \code{curl http://localhost:8080/actuator/health} devolve \code{\{"status":"UP"\}}
+    \item Portal web acessível em \url{https://play4change-web.pages.dev/}
+    \item Início de sessão por \textit{magic link} funcional (\textit{email} recebido via Resend)
+    \item Utilizador promovido a administrador consegue aceder a \code{/admin}
+    \item APK instalado e aplicação móvel abre sem erros
+\end{itemize}
+
+\end{document}

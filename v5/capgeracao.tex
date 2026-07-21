@@ -4,7 +4,7 @@
 %
 \chapter{Geração de Desafios} \label{cap:geracao-desafios}
 
-Este capítulo dá continuidade à descrição do modelo de IA e do RAG apresentada nos Capítulos~\ref{cap:ia} e~\ref{cap:rag}, detalhando a geração de desafios (\textit{tasks}) por Inteligência Artificial no Play4Change --- do modelo de dados que os representa ao \textit{pipeline} assíncrono de quatro fases que os produz a partir do conteúdo ingerido. A atribuição destes desafios aos utilizadores, a remediação adaptativa e a tutoria com IA são tratadas em separado no Capítulo~\ref{cap:desafios}.
+Este capítulo dá continuidade à descrição do modelo de IA e do RAG apresentada nos Capítulos~\ref{cap:ia} e~\ref{cap:rag}, detalhando a geração de desafios (\textit{tasks}) por Inteligência Artificial no Play4Change, do modelo de dados que os representa ao \textit{pipeline} assíncrono de quatro fases que os produz a partir do conteúdo ingerido. A atribuição destes desafios aos utilizadores, a remediação adaptativa e a tutoria com IA são tratadas em separado no Capítulo~\ref{cap:desafios}.
 
 % -----------------------------------------------------------
 \section{Modelo de Dados} \label{sec:modelo-dados-desafios}
@@ -13,8 +13,8 @@ Este capítulo dá continuidade à descrição do modelo de IA e do RAG apresent
 Cada desafio existe em dois níveis de abstracção complementares:
 
 \begin{itemize}
-    \item \textbf{\texttt{TaskTemplate}} --- definição canónica de um desafio, gerada pelo LLM, com a resposta correta sempre fixada no índice~0 e um \textit{embedding} de 1024 dimensões para deduplicação.
-    \item \textbf{\texttt{TaskInstance}} --- variante com distratores alternativos: partilha a resposta correta do \textit{template} mas oferece opções diferentes, até \texttt{instancesPerTask~=~5} por \textit{template}, permitindo que utilizadores distintos vejam a mesma questão com opções erradas variadas.
+    \item \textbf{\texttt{TaskTemplate}:} definição canónica de um desafio, gerada pelo LLM, com a resposta correta sempre fixada no índice~0 e um \textit{embedding} de 1024 dimensões para deduplicação.
+    \item \textbf{\texttt{TaskInstance}:} variante com distratores alternativos: partilha a resposta correta do \textit{template} mas oferece opções diferentes, até \texttt{instancesPerTask~=~5} por \textit{template}, permitindo que utilizadores distintos vejam a mesma questão com opções erradas variadas.
 \end{itemize}
 Esquema de campos completo no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:model-tasks}).
 
@@ -24,10 +24,10 @@ O facto de o \texttt{correctAnswer} ser sempre o índice~0 no template e na inst
 \section{Pipeline de Geração em Quatro Fases} \label{sec:pipeline-geracao}
 % -----------------------------------------------------------
 
-A geração é um processo \textit{batch} assíncrono, orquestrado pelo \texttt{TaskGenerationOrchestrator}, com estado rastreado na coluna \texttt{current\_phase} pela mesma máquina de estados da Secção~\ref{sec:pipeline} do Capítulo~\ref{cap:desenvolvimento}.
+A geração é um processo \textit{batch} assíncrono, orquestrado pelo \texttt{TaskGenerationOrchestrator}, com estado rastreado na coluna \texttt{current\_phase} pela mesma máquina de estados da Secção~\ref{sec:pipeline} do Capítulo~\ref{cap:fundacoes-implementacao}.
 
 A fase \texttt{ANALYSIS} marca todos os templates existentes como \texttt{is\_current = FALSE} e cria o novo módulo.
-Na fase \texttt{GENERATION}, por cada \textit{chunk} (Tabela~\ref{tab:context-limits}), o \texttt{TaskGenerationPrompt} instrui o LLM a gerar tarefas com quatro opções, resposta correta no índice~0, sem sobreposição semântica com tarefas já geradas --- deduplicação por pgvector já detalhada na Secção~\ref{sec:armazenamento} do Capítulo~\ref{cap:rag}.
+Na fase \texttt{GENERATION}, por cada \textit{chunk} (Tabela~\ref{tab:context-limits}), o \texttt{TaskGenerationPrompt} instrui o LLM a gerar tarefas com quatro opções, resposta correta no índice~0, sem sobreposição semântica com tarefas já geradas (deduplicação por pgvector já detalhada na Secção~\ref{sec:armazenamento} do Capítulo~\ref{cap:rag}).
 Na fase \texttt{INDEXING}, o \texttt{BatchInstanceGenerationService} processa os templates em lotes de~10 e gera até 5 instâncias por template via chamadas LLM adicionais.
 
-O mecanismo de \textit{retry} com \textit{schema reminder} (Secção~\ref{sec:ia-prompting} do Capítulo~\ref{cap:ia}) aplica-se a cada \textit{chunk} nesta fase. A falha no primeiro \textit{chunk} aborta a geração (\texttt{FAILED}); falhas em \textit{chunks} subsequentes são toleradas, preservando as tarefas já persistidas. As seis garantias de qualidade aplicadas a cada questão gerada estão detalhadas no Apêndice D (Tabela D.1).
+O mecanismo de \textit{retry} com \textit{schema reminder} (Secção~\ref{sec:ia-prompting} do Capítulo~\ref{cap:ia}) aplica-se a cada \textit{chunk} nesta fase. A falha no primeiro \textit{chunk} aborta a geração (\texttt{FAILED}); falhas em \textit{chunks} subsequentes são toleradas, preservando as tarefas já persistidas. As seis garantias de qualidade aplicadas a cada questão gerada estão detalhadas no Apêndice C (Tabela C.1).

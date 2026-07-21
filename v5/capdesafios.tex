@@ -4,7 +4,7 @@
 %
 \chapter{Atribuição, Remediação e Tutoria com IA} \label{cap:desafios}
 
-Este capítulo dá continuidade à descrição da geração de desafios apresentada no Capítulo~\ref{cap:geracao-desafios}, descrevendo o percurso do Learner desde a atribuição diária de um desafio até à sua resolução --- passando pelo percurso adaptativo de remediação (\textit{struggle path}) e pelo modo de tutoria conversacional com IA quando a remediação não é suficiente. Na nomenclatura interna do sistema, os desafios são denominados \textit{tasks} e cada conceito de negócio tem correspondência direta a entidades de domínio bem delimitadas. A segurança aplicacional de ponta a ponta é tratada em separado no Capítulo~\ref{cap:seguranca}.
+Este capítulo dá continuidade à descrição da geração de desafios apresentada no Capítulo~\ref{cap:geracao-desafios}, descrevendo o percurso do Learner desde a atribuição diária de um desafio até à sua resolução, passando pela remediação adaptativa e pelo modo de tutoria conversacional com IA quando a remediação não é suficiente. Na nomenclatura interna do sistema, os desafios são denominados \textit{tasks} e cada conceito de negócio tem correspondência direta a entidades de domínio bem delimitadas. A segurança aplicacional de ponta a ponta é tratada em separado no Capítulo~\ref{cap:seguranca}.
 
 % -----------------------------------------------------------
 \section{Atribuição aos Utilizadores} \label{sec:atribuicao}
@@ -15,16 +15,16 @@ Este capítulo dá continuidade à descrição da geração de desafios apresent
 Dois agregados gerem o estado da aprendizagem por utilizador:
 
 \begin{itemize}
-    \item \textbf{\texttt{Enrollment}} --- inscrição ativa de um utilizador num módulo, com o dia corrente do percurso, o estado (\texttt{ACTIVE}\,|\,\texttt{COMPLETED}\,|\,\texttt{EXPIRED}\,|\,\texttt{PAUSED}) e os pontos e \textit{streak} acumulados.
-    \item \textbf{\texttt{TaskAssignment}} --- atribuição concreta de um desafio a um utilizador num dia, com a permutação de opções aplicada, o prazo de 24~horas e o estado de submissão.
+    \item \textbf{\texttt{Enrollment}:} inscrição ativa de um utilizador num módulo, com o dia corrente do percurso, o estado (\texttt{ACTIVE}\,|\,\texttt{COMPLETED}\,|\,\texttt{EXPIRED}\,|\,\texttt{PAUSED}) e os pontos e \textit{streak} acumulados.
+    \item \textbf{\texttt{TaskAssignment}:} atribuição concreta de um desafio a um utilizador num dia, com a permutação de opções aplicada, o prazo de 24~horas e o estado de submissão.
 \end{itemize}
 Esquema de campos completo no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:model-assignment}).
 
 \subsection*{Fluxo Pull-based}
 
-A atribuição de desafios é \textit{pull-based}: o utilizador solicita a tarefa do dia via \texttt{GET /tasks/today}, e o serviço resolve quatro casos mutuamente exclusivos, por ordem de precedência: (1)~sessão de \textit{struggle} aberta; (2)~sessão de explicação ativa; (3)~assignment já existente para o \texttt{dayIndex} atual; (4)~criação de novo assignment.
+A atribuição de desafios é \textit{pull-based}: o utilizador solicita a tarefa do dia via \texttt{GET /tasks/today}, e o serviço resolve quatro casos mutuamente exclusivos, por ordem de precedência: (1)~sessão de remediação adaptativa aberta; (2)~sessão de explicação ativa; (3)~assignment já existente para o \texttt{dayIndex} atual; (4)~criação de novo assignment.
 
-No caso~(4), o sistema selecciona aleatoriamente uma das \texttt{TaskInstance} disponíveis (variedade de distratores), gera uma permutação aleatória das quatro opções (\texttt{optionOrder}), e define \texttt{dueAt = now() + 24h}.
+No caso~(4), o sistema seleciona de forma determinística (por semente) uma das \texttt{TaskInstance} disponíveis (variedade de distratores) e a permutação das quatro opções (\texttt{optionOrder}) --- reprodutível para o mesmo utilizador, embora sem padrão previsível para quem não conhece a semente ---, e define \texttt{dueAt = now() + 24h}.
 
 \subsection*{Permutação das Opções e Penalizações por Atraso}
 
@@ -35,10 +35,10 @@ A resposta submetida é um índice de posição de ecrã; o sistema resolve o í
 A submissão após \texttt{dueAt} é aceite mas penalizada em função do atraso \textit{face ao próprio \texttt{dueAt}} (e não do tempo total desde a atribuição): 100\% dos pontos sem atraso, 75\% até 24\,h, 50\% até 72\,h, e 25\% (mínimo 1 ponto) além disso.
 
 % -----------------------------------------------------------
-\section{Consolidation Path (Struggle Path)} \label{sec:consolidation}
+\section{Remediação Adaptativa} \label{sec:consolidation}
 % -----------------------------------------------------------
 
-Quando um utilizador responde incorrectamente, o sistema não termina a interação --- desencadeia automaticamente uma sessão de remediação adaptativa (\textit{struggle session}).
+Quando um utilizador responde incorrectamente, o sistema não termina a interação: desencadeia automaticamente uma sessão de remediação adaptativa.
 O objetivo é diagnosticar a causa do erro e apresentar três sub-tarefas \textit{scaffolded} que devolvam o utilizador ao nível da tarefa original.
 
 \subsection*{Classificação do Padrão de Erro}
@@ -64,24 +64,24 @@ Antes de invocar a IA, o \texttt{ErrorPatternClassifier} classifica a falha de f
 
 \subsection*{Geração Assíncrona da Sessão}
 
-Após classificar o erro, o \texttt{TaskService} persiste o resultado e delega ao \texttt{HandleStruggleService} via \texttt{triggerAsync} --- a resposta HTTP é devolvida imediatamente ao utilizador, sem esperar pela geração do ramo adaptativo pelo LLM.
-Em caso de falha ou \textit{timeout} do LLM, a sessão é marcada como \texttt{ABANDONED} e o assignment original é reposto em \texttt{PENDING} --- o utilizador nunca fica bloqueado.
+Após classificar o erro, o \texttt{TaskService} persiste o resultado e delega ao \texttt{HandleStruggleService} via \texttt{triggerAsync}: a resposta HTTP é devolvida imediatamente ao utilizador, sem esperar pela geração do ramo adaptativo pelo LLM.
+Em caso de falha ou \textit{timeout} do LLM, a sessão é marcada como \texttt{ABANDONED} e o assignment original é reposto em \texttt{PENDING}, e o utilizador nunca fica bloqueado.
 
 \subsection*{Submissão e Resolução das Tarefas Adaptativas}
 
 O utilizador acede às três sub-tarefas via \texttt{GET /struggle/enrollment/\{enrollmentId\}}.
-Cada submissão pode resultar em quatro desfechos, avaliados após a conclusão de todas as tarefas: (1)~\textbf{ainda não concluídas} --- devolver resultado parcial; (2)~\textbf{todas corretas} --- marcar sessão como \texttt{RESOLVED} e repor assignment em \texttt{PENDING}; (3)~\textbf{falha, depth $<$ \texttt{MAX\_STRUGGLE\_DEPTH}} --- gerar nova sessão de \textit{struggle} encadeada; (4)~\textbf{falha, depth $\geq$ \texttt{MAX\_STRUGGLE\_DEPTH} (= 1)} --- criar sessão de explicação por IA.
+Cada submissão pode resultar em quatro desfechos, avaliados após a conclusão de todas as tarefas: (1)~\textbf{ainda não concluídas}: devolver resultado parcial; (2)~\textbf{todas corretas}: marcar sessão como \texttt{RESOLVED} e repor assignment em \texttt{PENDING}; (3)~\textbf{falha, depth $<$ \texttt{MAX\_STRUGGLE\_DEPTH}}: gerar nova sessão de \textit{struggle} encadeada; (4)~\textbf{falha, depth $\geq$ \texttt{MAX\_STRUGGLE\_DEPTH} (= 1)}: criar sessão de explicação por IA.
 
-A profundidade máxima de remediação está fixada em \texttt{MAX\_STRUGGLE\_DEPTH} = 1 --- uma decisão de desenho deliberada, assente em dois argumentos. O primeiro é pedagógico: as sub-tarefas partilham o formato de escolha múltipla do desafio original, pelo que encadear níveis adicionais do mesmo formato tem retorno decrescente --- uma incompreensão que sobrevive a três sub-tarefas \textit{scaffolded} dificilmente se resolve com mais três no mesmo molde, e a tutoria conversacional (Secção~\ref{sec:explicacao-ia}) é o mecanismo desenhado precisamente para esse caso. O segundo é operacional: cada nível adicional multiplica as chamadas à API de IA e prolonga o tempo até o Learner regressar ao fluxo principal. O compromisso é reconhecido: tópicos avançados não dispõem de patamares intermédios antes do escalamento, e tornar a profundidade configurável por tópico fica identificado como trabalho futuro (Secção~\ref{sec:trabalho-futuro}).
+A profundidade máxima de remediação está fixada em \texttt{MAX\_STRUGGLE\_DEPTH} = 1, uma decisão de desenho deliberada, assente em dois argumentos. O primeiro é pedagógico: as sub-tarefas partilham o formato de escolha múltipla do desafio original, pelo que encadear níveis adicionais do mesmo formato tem retorno decrescente: uma incompreensão que sobrevive a três sub-tarefas \textit{scaffolded} dificilmente se resolve com mais três no mesmo molde, e a tutoria conversacional (Secção~\ref{sec:explicacao-ia}) é o mecanismo desenhado precisamente para esse caso. O segundo é operacional: cada nível adicional multiplica as chamadas à API de IA e prolonga o tempo até o Learner regressar ao fluxo principal. O compromisso é reconhecido: tópicos avançados não dispõem de patamares intermédios antes do escalamento, e tornar a profundidade configurável por tópico fica identificado como trabalho futuro (Secção~\ref{sec:trabalho-futuro}).
 
-As tarefas adaptativas atribuem zero pontos e não afetam o \textit{streak} --- são modo de aprendizagem puro.
+As tarefas adaptativas atribuem zero pontos e não afetam o \textit{streak}: são modo de aprendizagem puro.
 
 % -----------------------------------------------------------
 \section{Tutoria com IA} \label{sec:explicacao-ia}
 % -----------------------------------------------------------
 
 Quando o utilizador esgota toda a profundidade de remediação sem sucesso, o sistema ativa o modo de tutoria conversacional com IA.
-Esta sessão sintetiza o historial completo de erros e oferece uma explicação holística em prosa, seguida de um diálogo de esclarecimento sem limite de turnos.
+Esta sessão sintetiza o historial completo de erros e oferece uma explicação holística em prosa, seguida de um diálogo de esclarecimento sem limite de turnos. O acesso a este diálogo é limitado por utilizador, protegendo o custo das chamadas ao modelo de IA (detalhe no Capítulo~\ref{cap:seguranca}, Secção~\ref{sec:ratelimiting}).
 
 \subsection*{Estados da Sessão de Explicação}
 
@@ -91,7 +91,7 @@ A sessão de explicação percorre três estados:
 \]
 
 A transição \texttt{GENERATING} $\to$ \texttt{ACTIVE} ocorre quando a geração pelo LLM termina com sucesso.
-Se a geração falhar ou esgotar o \textit{timeout} (60\,s via \texttt{withTimeoutOrNull}), a sessão transita diretamente para \texttt{RESOLVED} e o assignment é reposto em \texttt{PENDING} (\textit{fail-safe} --- o utilizador nunca fica bloqueado).
+Se a geração falhar ou esgotar o \textit{timeout} (60\,s via \texttt{withTimeoutOrNull}), a sessão transita diretamente para \texttt{RESOLVED} e o assignment é reposto em \texttt{PENDING} (\textit{fail-safe}: o utilizador nunca fica bloqueado).
 A transição para \texttt{RESOLVED} pelo utilizador, via \texttt{POST /explanation/\{sessionId\}/resolve}, também repõe o assignment em \texttt{PENDING}, devolvendo-o ao fluxo diário normal.
 
 \subsection*{Geração Holística e Diálogo Conversacional}

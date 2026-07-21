@@ -7,12 +7,12 @@
 Este capítulo dá continuidade à descrição da arquitetura iniciada no Capítulo~\ref{cap:desenvolvimento}, detalhando a primeira fase do pipeline de criação de tópicos: a extração de texto a partir de PDF ou URL, as camadas de validação aplicadas ao pedido de ingestão, e os limites de contexto que preparam o conteúdo extraído para a geração por Inteligência Artificial, tratada no Capítulo~\ref{cap:ia}.
 
 A ingestão de conteúdo é a primeira fase do pipeline de criação de tópicos.
-Um Administrador fornece uma fonte --- um URL público ou um ficheiro PDF --- a partir da qual o sistema extrai texto simples que servirá de base à geração automática de tarefas educativas.
+Um Administrador fornece uma fonte, um URL público ou um ficheiro PDF, a partir da qual o sistema extrai texto simples que servirá de base à geração automática de tarefas educativas.
 
 A camada de extração segue o padrão \textit{Port \& Adapter}: a interface \texttt{ContentExtractorPort} é definida na camada de aplicação com dois métodos, \texttt{extractFromUrl(url: String): String} e \texttt{extractFromPdf(pdfBytes: ByteArray): String}, e é implementada na infraestrutura pelo \texttt{ContentExtractorAdapter}.
 O domínio nunca referencia nenhuma tecnologia de extração diretamente.
 
-Independentemente da fonte, o fluxo sincrónico partilha o mesmo padrão: o \texttt{Topic\allowbreak Management\allowbreak Service} extrai o texto, valida que não está vazio, persiste o conteúdo original no MinIO (como ficheiro de auditoria e para eventual regeneração), cria o tópico em estado \texttt{PENDING} e lança o pipeline assíncrono de geração --- devolvendo \texttt{201 Created} imediatamente sem aguardar a conclusão da IA.
+Independentemente da fonte, o fluxo sincrónico partilha o mesmo padrão: o \texttt{Topic\allowbreak Management\allowbreak Service} extrai o texto, valida que não está vazio, persiste o conteúdo original no MinIO (como ficheiro de auditoria e para eventual regeneração), cria o tópico em estado \texttt{PENDING} e lança o pipeline assíncrono de geração, devolvendo \texttt{201 Created} imediatamente sem aguardar a conclusão da IA.
 
 \section{Extração de Texto: PDF e URL} \label{sec:pdf} \label{sec:url}
 
@@ -35,15 +35,15 @@ Persistência & MinIO, \texttt{topics/\{id\}/content.pdf} & MinIO, \texttt{topic
 }
 \end{table}
 
-O ponto de entrada HTTP aceita título, descrição, categoria, dificuldade, língua, número de tarefas e data de expiração como metadados, validados declarativamente (Secção~\ref{sec:limites-ingestao}); o fluxo por PDF substitui o campo \texttt{file} (máx.\ 25\,MB) por \texttt{url} (sujeito a validação SSRF) no fluxo por URL. O esquema completo dos campos é reproduzido no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:pdf-fields}).
+O ponto de entrada HTTP aceita título, descrição, categoria, dificuldade, língua, número de tarefas e data de expiração como metadados, validados declarativamente (Secção~\ref{sec:limites-ingestao}); o fluxo por PDF substitui o campo \texttt{file} (máx.\ 25\,MB) por \texttt{url} (sujeito a validação SSRF, \textit{Server-Side Request Forgery}) no fluxo por URL. O esquema completo dos campos é reproduzido no Apêndice~\ref{ap:detalhe-config} (Tabela~\ref{tab:pdf-fields}).
 
 A Figura~\ref{fig:seq-ingest-url} (Apêndice~\ref{ap:detalhe-config}) detalha o fluxo por URL, incluindo a validação de segurança SSRF; o fluxo por PDF segue o mesmo padrão de invocação síncrona ao adaptador, substituindo o Playwright pela Unstructured API.
 
 \subsection*{Prevenção de SSRF}
 
-Antes de qualquer pedido de rede, o \texttt{UrlSsrfValidator} executa uma validação sequencial que termina na primeira violação detetada: esquema obrigatório \texttt{https}, presença de um componente de \textit{host} válido e, por resolução DNS (\texttt{InetAddress.getAllByName}), rejeição de qualquer endereço \textit{loopback} (127.0.0.0/8, ::1), de rede privada RFC~1918 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), \textit{link-local} (169.254.0.0/16, fe80::/10) ou \textit{multicast}.
+Antes de qualquer pedido de rede, o \texttt{UrlSsrfValidator} executa uma validação sequencial que termina na primeira violação detetada: esquema obrigatório \texttt{https}, presença de um componente de \textit{host} válido e, por resolução DNS (\textit{Domain Name System}, via \texttt{InetAddress.getAllByName}), rejeição de qualquer endereço \textit{loopback} (127.0.0.0/8, ::1), de rede privada RFC~1918 (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), \textit{link-local} (169.254.0.0/16, fe80::/10) ou \textit{multicast}.
 Qualquer violação lança uma \texttt{UrlSsrfViolationException} que o \texttt{TopicManagementService} converte em \texttt{400 Bad Request}.
-Esta validação mitiga ataques de \textit{Server-Side Request Forgery} (SSRF), impedindo que o sistema seja usado como \textit{proxy} para alcançar serviços internos da rede Docker.
+Esta validação mitiga ataques de SSRF, impedindo que o sistema seja usado como \textit{proxy} para alcançar serviços internos da rede Docker.
 
 \section{Limites e Validações} \label{sec:limites-ingestao}
 
@@ -58,7 +58,7 @@ A ingestão de conteúdo envolve quatro camadas de validação independentes, ca
 \hline
 \textbf{Camada} & \textbf{Nome} & \textbf{Mecanismo} & \textbf{Resposta em erro} \\
 \hline
-1 & Rate Limiting & \texttt{RateLimitFilter} (Secção~\ref{sec:pipeline}), limites conservadores por IP antes de qualquer autenticação, dado tratar-se da operação de maior custo computacional e financeiro do sistema (limites na Tabela D.2, Apêndice D) & 429 \\
+1 & Rate Limiting & \texttt{RateLimitFilter} (Secção~\ref{sec:pipeline}), limites conservadores por IP antes de qualquer autenticação, dado tratar-se da operação de maior custo computacional e financeiro do sistema (limites na Tabela C.2, Apêndice C) & 429 \\
 2 & Validação HTTP & Tamanho do ficheiro PDF (máx.\ 25\,MB, \texttt{TopicController}) e campos obrigatórios via \texttt{@Valid} (Jakarta Validation) & 413 / 400 \\
 3 & Validação de Domínio & Invariantes de negócio no \texttt{TopicManagementService} (conteúdo não vazio, \texttt{taskCount} positivo) e violação SSRF & 400 \\
 4 & Conteúdo Extraído & Ausência de texto extraível, \textit{timeout} ou indisponibilidade do extrator, violação SSRF & 400 (cenários no Apêndice~\ref{ap:detalhe-config}, Tabela~\ref{tab:ingest-errors}) \\
@@ -71,4 +71,4 @@ A ingestão de conteúdo envolve quatro camadas de validação independentes, ca
 
 Após extração bem-sucedida, o texto é particionado pelo \texttt{ContentChunker} antes de ser enviado ao LLM.
 Os parâmetros são definidos em \texttt{AiContextLimits}: tamanho máximo de cada \textit{chunk} de 32\,000 caracteres, com sobreposição (\textit{overlap}) de 2\,000 caracteres entre \textit{chunks} consecutivos para preservar contexto nas fronteiras.
-O algoritmo prefere divisões em limites de parágrafo (\texttt{\textbackslash n\textbackslash n}) dentro dos últimos 500 caracteres de cada \textit{chunk}, recorrendo ao corte rígido por posição apenas quando não encontra parágrafo --- garantindo que o contexto enviado ao modelo preserva a coerência semântica do texto original. Estes parâmetros são retomados e centralizados na classe \texttt{AiContextLimits} discutida no Capítulo~\ref{cap:ia} (Secção~\ref{sec:ia-prompting}).
+O algoritmo prefere divisões em limites de parágrafo (\texttt{\textbackslash n\textbackslash n}) dentro dos últimos 500 caracteres de cada \textit{chunk}, recorrendo ao corte rígido por posição apenas quando não encontra parágrafo, garantindo que o contexto enviado ao modelo preserva a coerência semântica do texto original. Estes parâmetros são retomados e centralizados na classe \texttt{AiContextLimits} discutida no Capítulo~\ref{cap:ia} (Secção~\ref{sec:ia-prompting}).
